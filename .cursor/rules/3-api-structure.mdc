@@ -1,0 +1,26 @@
+---
+description: 
+globs: app/api/
+alwaysApply: false
+---
+## FastAPI Rules
+
+### API Design
+- Use RESTful conventions for endpoints
+- Group related endpoints using APIRouter
+- Use proper HTTP status codes
+- Include comprehensive error handling using method in exceptions.py
+- Use dependency injection for database sessions and authentication
+- Implement proper request/response models with Pydantic
+
+### Endpoint Naming
+- Use plural nouns for resource collections: `/products/`, `/categories/`
+- Use specific actions for non-CRUD operations: `/products/{id}/activate`
+- Version APIs: `/api/v1/products/`
+
+### Error Handling
+- Use appropriate HTTP status codes
+- Return detailed error messages
+- Include error codes for automated handling
+- Log all errors with request context
+- Handle validation errors consistently

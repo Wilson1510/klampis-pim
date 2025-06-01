@@ -1,0 +1,50 @@
+---
+description: 
+globs: tests/**/*
+alwaysApply: false
+---
+
+## Testing
+- Write unit tests for all business logic
+- Use pytest for testing framework
+- Mock external dependencies if needed
+- Maintain test coverage 100% if possible
+- Use factories for test data creation
+- Use meaningful test names that describe the scenario
+- Follow Arrange-Act-Assert pattern
+- Use parametrized tests for multiple test cases
+- Create helper utilities for common test operations
+- Include both positive and negative test cases and also edge cases
+- Test error conditions explicitly
+
+## Testing Principles
+- Follow test pyramid: unit > integration > end-to-end
+- Write tests for all API endpoints
+- Test validation rules thoroughly
+- Ensure database operations are tested using real database
+- Maintain perfect coverage if possible
+- Use fixtures for test setup
+- Keep tests independent and idempotent
+- Make sure asyncio_mode for pytest is set auto at pytest.ini
+
+## Test Types
+
+### Unit Tests
+- Test individual functions and methods
+- Focus on business logic
+
+### API Tests
+- Test all API endpoints
+- Verify request/response formats
+- Check authentication and authorization
+- Test error handling
+- Validate pagination and filtering
+
+### Database Tests
+- Test model operations
+- Verify relationship behavior
+- Test migrations
+- Validate constraints and indexes
+- Using real database, create testing database
+
+

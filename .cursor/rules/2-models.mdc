@@ -1,0 +1,43 @@
+---
+description: 
+globs: app/core/base.py,app/models/**/*
+alwaysApply: false
+---
+# Database Models Guidelines
+
+## Core Principles
+- Use SQLAlchemy ORM with async support
+- Follow consistent naming conventions
+- Implement proper relationships between models
+- Include audit fields on all models
+- Use appropriate indexes for performance optimization
+- Inherit Base model in all models
+- Use Auto Increment ID for primary keys
+- Use SQLAlchemy as_declarative for Base model
+- Fields at Base model are `id`, `created_at`, `updated_at`, `created_by`, `updated_by`, `is_active`, and `sequence`.
+
+## JSONB Attribute Strategy
+- Store product-specific attributes as JSONB in the Skus table
+- Validate JSONB structure based on attributes on his product
+- Each products defines its own attribute schema
+- Create GIN indexes on JSONB fields that will be frequently queried
+- Use SQLAlchemy's JSONB operators for efficient querying
+
+## Attribute Examples By Product
+- Fanta: volume, flavor
+- Ember Plastik: diameter, height, material
+- And many more
+
+## Naming Conventions
+- Table names: plural, CamelCase (e.g., Categories, Products)
+- Column names: singular, snake_case (e.g., category_id, created_at)
+- Primary keys: id
+- Foreign keys: entity_name_id (e.g., category_id)
+- Junction tables: SingularSingular (e.g., ProductAttributes)
+
+## Migration Strategy
+- Use Alembic for database migrations
+- Create migrations for all schema changes
+- Test migrations in development before applying to production
+- Include both upgrade and downgrade paths
+- Carefully handle JSONB field migrations

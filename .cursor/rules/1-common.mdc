@@ -1,0 +1,107 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Common Rules for PIM System
+
+## Project Overview
+This is a Product Information Management (PIM) system for large supermarkets built with:
+- **Backend**: FastAPI with Python 3.11
+- **Database**: PostgreSQL with SQLAlchemy ORM
+- **Architecture**: Clean Architecture with Repository Pattern
+
+## Code Style & Standards
+
+### Python Code Style
+- Follow PEP 8 with line length of 88 characters (Black formatter)
+- Use type hints for all function parameters and return values
+- Use descriptive variable and function names in snake_case
+- Use PascalCase and Plural nouns for class names
+- Use UPPER_CASE for constants
+- Prefer f-strings for string formatting
+- Use docstrings for all public functions, classes, and modules
+
+### Import Organization
+```python
+# Standard library imports
+import os
+from datetime import datetime
+from typing import List, Optional
+
+# Third-party imports
+from fastapi import FastAPI, Depends
+from sqlalchemy import Column, Integer
+
+# Local imports
+from app.core.config import settings
+from app.models.product import Product
+```
+
+## Repository Pattern
+- Create repository interfaces for each domain entity
+- Implement concrete repositories with SQLAlchemy
+- Use dependency injection to provide repositories to services
+- Keep database queries in repositories, not in API endpoints
+
+## Service Layer
+- Implement business logic in service classes
+- Services should depend on repository interfaces, not concrete implementations
+- Handle business validation and rules in services
+- Services should return domain objects or DTOs, not database models
+
+## Error Handling
+- Create custom exception classes for different error types
+- Use FastAPI exception handlers for consistent error responses
+- Log errors appropriately with structured logging
+- Never expose internal error details to API consumers
+
+## Security
+- Use JWT tokens for authentication
+- Implement role-based access control (RBAC)
+- Validate all input data with Pydantic schemas
+- Use parameterized queries to prevent SQL injection
+- Implement rate limiting for API endpoints
+
+
+## Environment & Configuration
+- Use environment variables for all configuration
+- Never commit secrets or sensitive data
+- Use Pydantic Settings for configuration management
+- Support multiple environments (dev, staging, prod)
+
+## Performance
+- Use database indexes appropriately
+- Implement pagination for list endpoints
+- Use async/await for I/O operations
+- Consider caching for frequently accessed data
+- Monitor and log performance metrics
+
+## Logging
+- Use structured logging with JSON format
+- Include correlation IDs for request tracing
+- Log at appropriate levels (DEBUG, INFO, WARNING, ERROR)
+- Never log sensitive information
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
