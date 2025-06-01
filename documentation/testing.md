@@ -39,5 +39,4 @@
 │   ├── the other file ...
 ├── conftest.py                 # Global test configuration
 ├── test_main.py                # Main app tests
-└── pytest.ini                 # Pytest configuration
 ```
