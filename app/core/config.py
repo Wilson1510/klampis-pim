@@ -14,6 +14,22 @@ class Settings(BaseSettings):
     def assemble_cors_origins(
         cls, v: Union[str, List[str]]
     ) -> Union[List[str], str]:
+        """Parse and validate CORS origins configuration.
+
+        Handles both string and list inputs:
+        - If input is a string not starting with '[', splits it by commas
+        - If input is a list or JSON string, returns it as-is
+
+        Args:
+            v: Input value which can be either a string or list of origins
+
+        Returns:
+            Union[List[str], str]: Processed list of origins or original value
+
+        Example:
+            >>> assemble_cors_origins("http://localhost,http://example.com")
+            ["http://localhost", "http://example.com"]
+        """
         if isinstance(v, str) and not v.startswith("["):
             return [i.strip() for i in v.split(",")]
         elif isinstance(v, (list, str)):

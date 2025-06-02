@@ -8,7 +8,6 @@ from app.api.v1.routes import api_router
 from app.core.config import settings
 from app.core.exceptions import setup_exception_handlers
 
-"""Create and configure the FastAPI application."""
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
