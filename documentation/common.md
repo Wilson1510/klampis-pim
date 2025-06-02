@@ -1,3 +1,9 @@
+# Basic Requirements
+- Python 3.11
+- FastAPI 0.115.12
+- SQLAlchemy 2.0
+- Pydantic 2.11
+
 # Project Structure
 ```
 app/
