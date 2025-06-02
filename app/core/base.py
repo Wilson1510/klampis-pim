@@ -55,7 +55,7 @@ class Base(FieldValidationMixin):
     def validate_is_active(self, key, value):
         """Validate the is_active field before assigning it"""
         return self.validate_boolean(key, value)
-    
+
     @validates('sequence')
     def validate_sequence(self, key, value):
         """Validate the sequence field before assigning it"""

@@ -12,6 +12,7 @@ from app.core.base import Base
 from app.core.session import get_db
 from httpx import AsyncClient
 from app.main import app
+from httpx import ASGITransport
 # Constants for database connection
 TEST_DB_NAME = "test_db"
 
@@ -133,8 +134,11 @@ async def async_client(db_session) -> AsyncGenerator:
     # Apply the override
     app.dependency_overrides[get_db] = override_get_db
 
-    # Create a client with a specific base_url
-    async with AsyncClient(app=app, base_url="http://test") as ac:
+    # Create a client using ASGITransport for newer httpx versions
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://test"
+    ) as ac:
         yield ac
 
     # Reset the override after the test
