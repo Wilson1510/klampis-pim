@@ -17,7 +17,7 @@ This is a Product Information Management (PIM) system for large supermarkets bui
 - Follow PEP 8 with line length of 88 characters (Black formatter)
 - Use type hints for all function parameters and return values
 - Use descriptive variable and function names in snake_case
-- Use PascalCase and Plural nouns for class names
+- Use PascalCase Plural nouns for class names
 - Use UPPER_CASE for constants
 - Prefer f-strings for string formatting
 - Use docstrings for all public functions, classes, and modules

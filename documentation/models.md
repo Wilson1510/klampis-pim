@@ -13,13 +13,13 @@ Base model:
 │ sequence        │
 └─────────────────┘
 ```
-This model will be inherited to all models in the ERD structure
+This model will be inherited to all models in the ERD structure except Users
 
 ERD structure:
 
 ```
 ┌─────────────────┐
-│      User       │
+│      Users      │
 │─────────────────│
 │ id (PK)         │
 │ username        │
