@@ -61,6 +61,11 @@ class Base(FieldValidationMixin):
         """Validate the sequence field before assigning it"""
         return self.validate_integer(key, value)
 
+    @validates('created_by', 'updated_by')
+    def validate_date_fields(self, key, value):
+        """Validate the created_by and updated_by fields before assigning them"""
+        return self.validate_integer(key, value)
+
     # Generate __tablename__ automatically based on class name
     @declared_attr
     def __tablename__(cls) -> str:

@@ -30,6 +30,7 @@ async def create_system_user():
 
             # Create system user
             system_user = Users(
+                id=settings.SYSTEM_USER_ID,
                 username="system",
                 password="system",
                 name="System User",
