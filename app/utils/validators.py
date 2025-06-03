@@ -1,5 +1,5 @@
 import re
-from datetime import datetime, timezone, timedelta
+from datetime import datetime
 
 
 class FieldValidationMixin:
@@ -94,27 +94,22 @@ class FieldValidationMixin:
 
     def validate_datetime(self, field, value):
         """
-        Validates and standardizes datetime values to format:
-        YYYY-MM-DD HH:MM:SS.ffffff+TZ
-        All datetime inputs will be converted to this standard format.
+        Validates datetime object or string to datetime object.
 
         Returns:
-            Standardized datetime string in format:
-            2025-06-02 23:20:35.661597+08
+            Datetime object
 
         Raises:
             TypeError: If the value is not a datetime or valid string
             ValueError: If the string cannot be parsed as a datetime
         """
-        if value is None:
+        # If already a datetime object, use it directly
+        # But if the value is None, return the actual value as it will be
+        # handled by the database
+        if value is None or isinstance(value, datetime):
             return value
 
-        parsed_datetime = None
-
-        # If already a datetime object, use it directly
-        if isinstance(value, datetime):
-            parsed_datetime = value
-        elif isinstance(value, str):
+        if isinstance(value, str):
             value = value.strip()
             if value == "":
                 raise ValueError("Datetime string cannot be empty")
@@ -137,32 +132,12 @@ class FieldValidationMixin:
 
             for fmt in formats:
                 try:
-                    parsed_datetime = datetime.strptime(value, fmt)
-                    break
+                    return datetime.strptime(value, fmt)
                 except ValueError:
                     continue
+            # If none of the formats work, raise an error
+            raise ValueError(f"Invalid datetime format: {value}")
 
-            if parsed_datetime is None:
-                raise ValueError(
-                    f"Invalid datetime format: '{value}'. "
-                    "Unable to parse as datetime."
-                )
-        else:
-            raise TypeError(
-                f"Value must be a datetime object or string, got {type(value).__name__}"
-            )
-
-        # Ensure timezone is set (default to +08 if no timezone)
-        if parsed_datetime.tzinfo is None:
-            # Set default timezone to +08:00
-            tz_offset = timezone(timedelta(hours=8))
-            parsed_datetime = parsed_datetime.replace(tzinfo=tz_offset)
-
-        # Convert to standard format: YYYY-MM-DD HH:MM:SS.ffffff+TZ
-        # Format timezone as +08 (2 digits)
-        tz_offset_hours = int(parsed_datetime.utcoffset().total_seconds() / 3600)
-        tz_str = f"{tz_offset_hours:+03d}"
-
-        formatted_datetime = parsed_datetime.strftime("%Y-%m-%d %H:%M:%S.%f") + tz_str
-
-        return formatted_datetime
+        raise TypeError(
+            f"Value must be a datetime object or string, got {type(value).__name__}"
+        )
