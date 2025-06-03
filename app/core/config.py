@@ -5,10 +5,10 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    API_V1_PREFIX: str = "/api"
-    SECRET_KEY: str = "dev-secret-key"
+    API_V1_PREFIX: str
+    SECRET_KEY: str
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
-    BACKEND_CORS_ORIGINS: List[str] = []
+    BACKEND_CORS_ORIGINS: List[str]
 
     @field_validator("BACKEND_CORS_ORIGINS", mode="before")
     def assemble_cors_origins(
