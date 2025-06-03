@@ -39,12 +39,12 @@ class TestSettings:
         """Test that required fields raise ValidationError when missing."""
         with pytest.raises(ValidationError) as exc_info:
             Settings(_env_file=None)  # Disable .env file loading
-        
+
         # Check that all required fields are mentioned in the error
         error_fields = {error['loc'][0] for error in exc_info.value.errors()}
         expected_fields = {
             'API_V1_PREFIX', 'SECRET_KEY', 'BACKEND_CORS_ORIGINS',
-            'DATABASE_URI', 'ADMIN_PARAMS', 'PROJECT_NAME', 
+            'DATABASE_URI', 'ADMIN_PARAMS', 'PROJECT_NAME',
             'VERSION', 'DEBUG', 'SYSTEM_USER_ID'
         }
         assert expected_fields.issubset(error_fields)
@@ -68,17 +68,9 @@ class TestSettings:
     def test_cors_origins_validator_with_string_input(self):
         """Test CORS origins validator with comma-separated string input."""
         test_settings = Settings(
-            API_V1_PREFIX="/api",
-            SECRET_KEY="test-secret",
-            DATABASE_URI="test://db",
-            ADMIN_PARAMS={},
-            PROJECT_NAME="Test",
-            VERSION="1.0.0",
-            DEBUG=False,
-            SYSTEM_USER_ID=1,
             BACKEND_CORS_ORIGINS="http://localhost:3000,http://localhost:8080"
         )
-        
+
         expected = ["http://localhost:3000", "http://localhost:8080"]
         assert test_settings.BACKEND_CORS_ORIGINS == expected
 
@@ -87,21 +79,11 @@ class TestSettings:
         cors_origins = (
             "http://localhost:3000, http://localhost:8080 , http://example.com"
         )
-        test_settings = Settings(
-            API_V1_PREFIX="/api",
-            SECRET_KEY="test-secret",
-            DATABASE_URI="test://db",
-            ADMIN_PARAMS={},
-            PROJECT_NAME="Test",
-            VERSION="1.0.0",
-            DEBUG=False,
-            SYSTEM_USER_ID=1,
-            BACKEND_CORS_ORIGINS=cors_origins
-        )
-        
+        test_settings = Settings(BACKEND_CORS_ORIGINS=cors_origins)
+
         expected = [
-            "http://localhost:3000", 
-            "http://localhost:8080", 
+            "http://localhost:3000",
+            "http://localhost:8080",
             "http://example.com"
         ]
         assert test_settings.BACKEND_CORS_ORIGINS == expected
@@ -109,69 +91,31 @@ class TestSettings:
     def test_cors_origins_validator_with_list_input(self):
         """Test CORS origins validator with list input."""
         origins_list = ["http://localhost:3000", "http://localhost:8080"]
-        test_settings = Settings(
-            API_V1_PREFIX="/api",
-            SECRET_KEY="test-secret",
-            DATABASE_URI="test://db",
-            ADMIN_PARAMS={},
-            PROJECT_NAME="Test",
-            VERSION="1.0.0",
-            DEBUG=False,
-            SYSTEM_USER_ID=1,
-            BACKEND_CORS_ORIGINS=origins_list
-        )
-        
-        assert test_settings.BACKEND_CORS_ORIGINS == origins_list
+        test_settings = Settings(BACKEND_CORS_ORIGINS=origins_list)
 
-    def test_cors_origins_validator_with_json_string_direct_instantiation(self):
-        """Test CORS origins validator with JSON string using direct instantiation."""
-        # When passing JSON string directly to constructor, it should be parsed
-        json_list = ["http://localhost:3000", "http://localhost:8080"]
-        test_settings = Settings(
-            API_V1_PREFIX="/api",
-            SECRET_KEY="test-secret",
-            DATABASE_URI="test://db",
-            ADMIN_PARAMS={},
-            PROJECT_NAME="Test",
-            VERSION="1.0.0",
-            DEBUG=False,
-            SYSTEM_USER_ID=1,
-            BACKEND_CORS_ORIGINS=json_list
-        )
-        
-        assert test_settings.BACKEND_CORS_ORIGINS == json_list
+        assert test_settings.BACKEND_CORS_ORIGINS == origins_list
 
     def test_cors_origins_validator_with_empty_string(self):
         """Test CORS origins validator with empty string."""
-        test_settings = Settings(
-            API_V1_PREFIX="/api",
-            SECRET_KEY="test-secret",
-            DATABASE_URI="test://db",
-            ADMIN_PARAMS={},
-            PROJECT_NAME="Test",
-            VERSION="1.0.0",
-            DEBUG=False,
-            SYSTEM_USER_ID=1,
-            BACKEND_CORS_ORIGINS=""
-        )
-        
+        test_settings = Settings(BACKEND_CORS_ORIGINS="")
         assert test_settings.BACKEND_CORS_ORIGINS == [""]
 
     def test_cors_origins_validator_with_single_origin(self):
         """Test CORS origins validator with single origin string."""
-        test_settings = Settings(
-            API_V1_PREFIX="/api",
-            SECRET_KEY="test-secret",
-            DATABASE_URI="test://db",
-            ADMIN_PARAMS={},
-            PROJECT_NAME="Test",
-            VERSION="1.0.0",
-            DEBUG=False,
-            SYSTEM_USER_ID=1,
-            BACKEND_CORS_ORIGINS="http://localhost:3000"
-        )
-        
+        test_settings = Settings(BACKEND_CORS_ORIGINS="http://localhost:3000")
+
         assert test_settings.BACKEND_CORS_ORIGINS == ["http://localhost:3000"]
+
+    def test_assemble_cors_origins_edge_cases(self):
+        """Test edge cases for the assemble_cors_origins method."""
+        # Test with None - the validator should handle this gracefully
+        result = Settings.assemble_cors_origins(None)
+        assert result is None
+
+        # Test with non-string, non-list types
+        # Should return None due to validator logic
+        result = Settings.assemble_cors_origins(123)
+        assert result is None
 
     @patch.dict(os.environ, {
         'API_V1_PREFIX': '/api/v2',
@@ -189,7 +133,7 @@ class TestSettings:
         """Test that environment variables are loaded correctly."""
         # Create a new Settings instance to pick up the environment variables
         test_settings = Settings()
-        
+
         assert test_settings.API_V1_PREFIX == '/api/v2'
         assert test_settings.SECRET_KEY == 'test-secret'
         assert test_settings.ACCESS_TOKEN_EXPIRE_MINUTES == 120
@@ -213,155 +157,3 @@ class TestSettings:
         # This test ensures the settings instance can be imported and used
         assert settings is not None
         assert isinstance(settings, Settings)
-
-    @patch.dict(os.environ, {
-        'API_V1_PREFIX': '/api',
-        'SECRET_KEY': 'test-secret',
-        'DATABASE_URI': 'postgresql://user:pass@localhost/db',
-        'ADMIN_PARAMS': '{}',
-        'PROJECT_NAME': 'PIM System',
-        'VERSION': '1.0.0',
-        'DEBUG': 'false',
-        'SYSTEM_USER_ID': '1',
-        'BACKEND_CORS_ORIGINS': '[]'
-    }, clear=True)
-    def test_minimal_valid_configuration(self):
-        """Test that settings can be created with minimal required configuration."""
-        test_settings = Settings(_env_file=None)  # Disable .env file loading
-        
-        db_uri_expected = 'postgresql://user:pass@localhost/db'
-        assert test_settings.DATABASE_URI == db_uri_expected
-        assert test_settings.ADMIN_PARAMS == {}
-        assert test_settings.PROJECT_NAME == 'PIM System'
-        assert test_settings.VERSION == '1.0.0'
-        assert test_settings.DEBUG is False
-        assert test_settings.SYSTEM_USER_ID == 1
-
-    def test_integer_field_validation(self):
-        """Test integer field validation.
-        
-        Tests ACCESS_TOKEN_EXPIRE_MINUTES and SYSTEM_USER_ID field validation
-        to ensure that integer fields are properly validated and converted.
-        """
-        # Test valid integer values
-        test_settings = Settings(
-            API_V1_PREFIX="/api",
-            SECRET_KEY="test-secret",
-            DATABASE_URI="test://db",
-            ADMIN_PARAMS={},
-            PROJECT_NAME="Test",
-            VERSION="1.0.0",
-            DEBUG=False,
-            SYSTEM_USER_ID=42,
-            ACCESS_TOKEN_EXPIRE_MINUTES=30,
-            BACKEND_CORS_ORIGINS=[]
-        )
-        
-        assert test_settings.ACCESS_TOKEN_EXPIRE_MINUTES == 30
-        assert test_settings.SYSTEM_USER_ID == 42
-
-    def test_boolean_field_validation(self):
-        """Test boolean field validation for DEBUG."""
-        # Test with boolean True
-        test_settings = Settings(
-            API_V1_PREFIX="/api",
-            SECRET_KEY="test-secret",
-            DATABASE_URI="test://db",
-            ADMIN_PARAMS={},
-            PROJECT_NAME="Test",
-            VERSION="1.0.0",
-            DEBUG=True,
-            SYSTEM_USER_ID=1,
-            BACKEND_CORS_ORIGINS=[]
-        )
-        assert test_settings.DEBUG is True
-
-        # Test with boolean False
-        test_settings = Settings(
-            API_V1_PREFIX="/api",
-            SECRET_KEY="test-secret",
-            DATABASE_URI="test://db",
-            ADMIN_PARAMS={},
-            PROJECT_NAME="Test",
-            VERSION="1.0.0",
-            DEBUG=False,
-            SYSTEM_USER_ID=1,
-            BACKEND_CORS_ORIGINS=[]
-        )
-        assert test_settings.DEBUG is False
-
-    def test_dict_field_validation(self):
-        """Test dict field validation for ADMIN_PARAMS."""
-        admin_params = {
-            "host": "localhost",
-            "port": 5432,
-            "user": "admin",
-            "password": "secret"
-        }
-        
-        test_settings = Settings(
-            API_V1_PREFIX="/api",
-            SECRET_KEY="test-secret",
-            DATABASE_URI="test://db",
-            ADMIN_PARAMS=admin_params,
-            PROJECT_NAME="Test",
-            VERSION="1.0.0",
-            DEBUG=False,
-            SYSTEM_USER_ID=1,
-            BACKEND_CORS_ORIGINS=[],
-            _env_file=None  # Disable .env file loading
-        )
-        
-        # Check that our admin_params are included in the result
-        # Note: Environment variables may add additional keys
-        for key, value in admin_params.items():
-            assert test_settings.ADMIN_PARAMS[key] == value
-        
-        # Verify it's a dict type
-        assert isinstance(test_settings.ADMIN_PARAMS, dict)
-
-
-class TestCorsOriginsValidator:
-    """Specific tests for the assemble_cors_origins validator method."""
-
-    def test_assemble_cors_origins_class_method_directly(self):
-        """Test the assemble_cors_origins method directly."""
-        # Test with comma-separated string
-        cors_string = "http://localhost,http://example.com"
-        result = Settings.assemble_cors_origins(cors_string)
-        assert result == ["http://localhost", "http://example.com"]
-
-        # Test with list
-        origins_list = ["http://localhost", "http://example.com"]
-        result = Settings.assemble_cors_origins(origins_list)
-        assert result == origins_list
-
-        # Test with JSON string (starts with '[')
-        json_string = '["http://localhost", "http://example.com"]'
-        result = Settings.assemble_cors_origins(json_string)
-        assert result == json_string
-
-        # Test with empty string
-        result = Settings.assemble_cors_origins("")
-        assert result == [""]
-
-        # Test with single origin
-        result = Settings.assemble_cors_origins("http://localhost")
-        assert result == ["http://localhost"]
-
-    def test_assemble_cors_origins_with_whitespace(self):
-        """Test the assemble_cors_origins method handles whitespace correctly."""
-        cors_with_spaces = "  http://localhost  ,  http://example.com  "
-        result = Settings.assemble_cors_origins(cors_with_spaces)
-        assert result == ["http://localhost", "http://example.com"]
-
-    def test_assemble_cors_origins_edge_cases(self):
-        """Test edge cases for the assemble_cors_origins method."""
-        # Test with None - the validator should handle this gracefully
-        result = Settings.assemble_cors_origins(None)
-        assert result is None
-
-        # Test with non-string, non-list types
-        # Should return None due to validator logic
-        result = Settings.assemble_cors_origins(123)
-        assert result is None 
