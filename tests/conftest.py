@@ -9,6 +9,7 @@ from typing import AsyncGenerator
 
 # Import the SQLAlchemy components from your project
 from app.core.base import Base
+from app.models.user import Users  # Required for foreign key constraints in Base model
 from app.core.session import get_db
 from httpx import AsyncClient
 from app.main import app
@@ -98,7 +99,26 @@ async def db_engine(create_test_database):
 
     # Create all tables
     async with engine.begin() as conn:
+        # Ensure Users model is registered for foreign key constraints
+        _ = Users  # noqa: F841
         await conn.run_sync(Base.metadata.create_all)
+
+    # Create system user after tables are created
+    async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    async with async_session() as session:
+        # Create system user if it doesn't exist
+        system_user = Users(
+            id=settings.SYSTEM_USER_ID,
+            username="system",
+            password="system_password",
+            name="System User",
+            role="SYSTEM",
+            created_by=None,  # System user creates itself
+            updated_by=None,
+            sequence=1
+        )
+        session.add(system_user)
+        await session.commit()
 
     yield engine
 
