@@ -94,7 +94,7 @@ def event_loop():
 async def db_engine(create_test_database):
     """Create and yield the engine, then dispose of it after tests."""
     engine = create_async_engine(
-        settings.DATABASE_URI.replace("pim_data", TEST_DB_NAME), echo=False
+        settings.DATABASE_URI.replace("klampis_pim", TEST_DB_NAME), echo=False
     )
 
     # Create all tables
