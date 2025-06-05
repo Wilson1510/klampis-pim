@@ -19,12 +19,12 @@ class TestSettings:
             "http://localhost:3000",
         ]
         assert test_settings.DATABASE_URI == (
-            "postgresql+asyncpg://postgres:password@localhost:5432/klampis_pim"
+            "postgresql+asyncpg://postgres:yourpassword@localhost:5432/klampis_pim"
         )
         assert test_settings.ADMIN_PARAMS == {
             "database": "postgres",
             "user": "postgres",
-            "password": "password",
+            "password": "yourpassword",
             "host": "localhost",
             "port": "5432"
         }

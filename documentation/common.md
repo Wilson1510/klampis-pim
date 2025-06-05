@@ -31,3 +31,7 @@ app/
 - Default to system user (ID: 1) when no user context is available
 - System user has role "SYSTEM"
 - All data migrations and seeding operations use system user
+
+# Create .env and test_config.py file
+- run `cp env.example .env` and `cp test_config.example tests/core/test_config.py` on your terminal
+- open `.env` and `test_config.py` file. Change word `yourpassword` with your postgres database password
