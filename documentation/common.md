@@ -32,6 +32,12 @@ app/
 - System user has role "SYSTEM"
 - All data migrations and seeding operations use system user
 
-# Create .env and test_config.py file
-- run `cp env.example .env` and `cp test_config.example tests/core/test_config.py` on your terminal
-- open `.env` and `test_config.py` file. Change word `yourpassword` with your postgres database password
+# Create .env, test_config.py, and alembic.ini file
+1. Copy configuration files:
+   ```bash
+   cp env.example .env
+   cp test_config.example tests/core/test_config.py
+   cp alembic.example alembic.ini
+   ```
+   cp for linux, copy for windows
+2. Update database password in all copied files by changing `yourpassword`
