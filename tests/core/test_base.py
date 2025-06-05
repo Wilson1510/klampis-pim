@@ -5,6 +5,7 @@ from sqlalchemy import Column, String, Integer, Text
 
 from app.core.base import Base, JSONBModel
 from app.core.config import settings
+from app.utils.validators import FieldValidationMixin
 
 
 # Test model untuk testing Base functionality
@@ -27,6 +28,7 @@ class TestBaseModel:
         """Test that Base model can be inherited properly."""
         # Verify SampleModel inherits from Base
         assert issubclass(SampleModel, Base)
+        assert issubclass(Base, FieldValidationMixin)
 
         # Verify SampleModel has all expected columns
         expected_columns = {
@@ -37,6 +39,13 @@ class TestBaseModel:
         assert expected_columns.issubset(model_columns)
         assert len(model_columns) == 9
         assert 'invalid_column' not in model_columns
+
+        assert hasattr(SampleModel, 'validate_is_active')
+        assert hasattr(SampleModel, 'validate_sequence')
+        assert hasattr(SampleModel, 'validate_date_fields')
+        assert not hasattr(SampleModel, 'validate_something')
+        assert hasattr(SampleModel, '__tablename__')
+        assert hasattr(SampleModel, 'to_dict')
 
     def test_base_model_fields_configuration(self):
         """Test that Base model fields are configured correctly."""
@@ -106,6 +115,33 @@ class TestBaseModel:
             pass
         assert Product.__tablename__ == "product"
 
+    def test_model_instantiation(self):
+        """Test model instantiation."""
+        instance = SampleModel(name="Test Item")
+
+        # Every default value should be None because it will be set when the
+        # instance is saved to the database
+        assert instance.id is None
+        assert instance.name == "Test Item"
+        assert instance.description is None
+        assert instance.created_at is None
+        assert instance.updated_at is None
+        assert instance.created_by is None
+        assert instance.updated_by is None
+        assert instance.is_active is None
+        assert instance.sequence is None
+
+        assert isinstance(instance, SampleModel)
+        assert isinstance(instance, Base)
+        assert isinstance(instance, FieldValidationMixin)
+
+        assert hasattr(instance, 'validate_is_active')
+        assert hasattr(instance, 'validate_sequence')
+        assert hasattr(instance, 'validate_date_fields')
+        assert not hasattr(instance, 'validate_something')
+        assert hasattr(instance, '__tablename__')
+        assert hasattr(instance, 'to_dict')
+
     async def test_model_instance_creation(self, db_session):
         """Test creating model instances with default values."""
         # Create instance with explicit default values
@@ -118,8 +154,10 @@ class TestBaseModel:
         # Verify values are set correctly
         assert default_instance.id == 1
         assert default_instance.name == "Test Item"
+        assert default_instance.description is None
         assert default_instance.created_at is not None
         assert default_instance.updated_at is not None
+        assert default_instance.created_at == default_instance.updated_at
         assert default_instance.created_by == settings.SYSTEM_USER_ID
         assert default_instance.updated_by == settings.SYSTEM_USER_ID
         assert default_instance.is_active is True
@@ -185,6 +223,7 @@ class TestBaseModel:
 
     async def test_string_representation(self, db_session):
         """Test __str__ and __repr__ methods."""
+        # with id and saved to the database
         instance = SampleModel(id=123, name="Test Item")
         db_session.add(instance)
         await db_session.commit()
@@ -197,18 +236,39 @@ class TestBaseModel:
         repr_str = repr(instance)
         assert repr_str == "SampleModel(id=123)"
 
-    async def test_string_representation_without_id(self, db_session):
-        """Test string representation when id is None."""
-        instance = SampleModel(name="Test Item")
+        # without id and saved to the database
+        instance = SampleModel(name="Test Item 1")
         db_session.add(instance)
         await db_session.commit()  # save the instance to the database
 
+        # Test __str__
         str_repr = str(instance)
         assert str_repr == "SampleModel(id=1)"
 
-        instance2 = SampleModel(name="Test Item 2")
-        str_repr2 = str(instance2)
-        assert str_repr2 == "SampleModel(id=None)"
+        # Test __repr__
+        repr_str = repr(instance)
+        assert repr_str == "SampleModel(id=1)"
+
+        # with id and not saved to the database
+        instance = SampleModel(id=2, name="Test Item 2")
+        db_session.add(instance)
+        await db_session.commit()
+
+        # Test __str__
+        str_repr = str(instance)
+        assert str_repr == "SampleModel(id=2)"
+
+        # Test __repr__
+        repr_str = repr(instance)
+        assert repr_str == "SampleModel(id=2)"
+
+        # without id and not saved to the database
+        instance = SampleModel(name="Test Item 3")
+        str_repr = str(instance)
+        assert str_repr == "SampleModel(id=None)"
+
+        repr_str = repr(instance)
+        assert repr_str == "SampleModel(id=None)"
 
     def test_is_active_validation(self):
         """Test is_active field validation."""
@@ -254,18 +314,6 @@ class TestBaseModel:
         test_datetime = datetime.now()
         instance.created_at = test_datetime
         assert instance.created_at == test_datetime
-
-    def test_field_validation_mixin_integration(self):
-        """Test that FieldValidationMixin is properly integrated."""
-        # Verify Base inherits from FieldValidationMixin
-        from app.utils.validators import FieldValidationMixin
-        assert issubclass(Base, FieldValidationMixin)
-
-        # Verify validation methods are available
-        instance = SampleModel(name="Test Item")
-        assert hasattr(instance, 'validate_boolean')
-        assert hasattr(instance, 'validate_integer')
-        assert hasattr(instance, 'validate_datetime')
 
     def test_model_type_annotation(self):
         """Test ModelType TypeVar is properly defined."""
