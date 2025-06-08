@@ -2,13 +2,14 @@
 Comprehensive tests for the main FastAPI application.
 """
 from unittest.mock import patch
+import asyncio
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from httpx import AsyncClient
 
 from app.main import app
 from app.core.config import settings
-import asyncio
 
 
 class TestAppConfiguration:

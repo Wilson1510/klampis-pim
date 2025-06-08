@@ -1,11 +1,11 @@
-import pytest
 from datetime import datetime
 from unittest.mock import patch
+
 from sqlalchemy import Column, String, Integer, Text
+import pytest
 
 from app.core.base import Base, JSONBModel
 from app.core.config import settings
-from app.utils.validators import FieldValidationMixin
 
 
 # Test model untuk testing Base functionality

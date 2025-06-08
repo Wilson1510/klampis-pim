@@ -1,9 +1,10 @@
-import pytest
 from unittest.mock import patch
+
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import text
+import pytest
 
 from app.core.session import engine, async_session_factory, get_db
 

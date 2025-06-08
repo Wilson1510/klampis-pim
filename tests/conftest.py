@@ -1,19 +1,19 @@
-import pytest
-import psycopg2
+from typing import AsyncGenerator
 import asyncio
+
 from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
-from app.core.config import settings
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
-from typing import AsyncGenerator
-
-# Import the SQLAlchemy components from your project
-from app.core.base import Base
-from app.models.user import Users  # Required for foreign key constraints in Base model
-from app.core.session import get_db
-from httpx import AsyncClient
-from app.main import app
 from httpx import ASGITransport
+from httpx import AsyncClient
+import pytest
+import psycopg2
+
+from app.core.config import settings
+from app.core.base import Base
+from app.models.user import Users
+from app.core.session import get_db
+from app.main import app
 # Constants for database connection
 TEST_DB_NAME = "test_db"
 

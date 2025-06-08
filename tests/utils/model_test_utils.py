@@ -1,10 +1,11 @@
 import uuid
 import datetime
+
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
-import pytest
 from sqlalchemy import exc
 from sqlalchemy.types import Boolean, DateTime, String, Integer
+import pytest
 
 
 def assert_tablename_generation(model_class, expected_tablename=None):
