@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.v1.routes import api_router
 from app.core.config import settings
 from app.core.exceptions import setup_exception_handlers
+from app.core.listeners import validate_all_types_on_save # noqa
 
 app = FastAPI(
     title=settings.PROJECT_NAME,

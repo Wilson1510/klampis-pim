@@ -1,11 +1,9 @@
 from sqlalchemy import Column, Integer, String, ForeignKey
-from sqlalchemy.orm import validates
+
 from app.core.base import Base
 
-from app.utils.validators import FieldValidationMixin
 
-
-class Users(Base, FieldValidationMixin):
+class Users(Base):
     """
     Users model representing system users.
 
@@ -44,23 +42,6 @@ class Users(Base, FieldValidationMixin):
         nullable=True,  # Allow null for system user
         default=None
     )
-
-    @validates('username', 'name')
-    def validate_string_fields(self, key, value):
-        """Validate string fields using the mixin."""
-        return self.validate_string(key, value)
-
-    @validates('is_active')
-    def validate_is_active(self, key, value):
-        """Validate the is_active field before assigning it"""
-        return self.validate_boolean(key, value)
-
-    @validates('role')
-    def validate_role(self, key, value):
-        """Validate role field."""
-        if value not in ["USER", "ADMIN", "SYSTEM", "MANAGER"]:
-            raise ValueError("Invalid role")
-        return value
 
     def __str__(self) -> str:
         """String representation of the user."""
