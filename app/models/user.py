@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, String, ForeignKey
+from sqlalchemy.orm import validates
 
 from app.core.base import Base
 
@@ -42,6 +43,13 @@ class Users(Base):
         nullable=True,  # Allow null for system user
         default=None
     )
+
+    @validates('role')
+    def validate_role(self, key, value):
+        """Validate role field."""
+        if value not in ["USER", "ADMIN", "SYSTEM", "MANAGER"]:
+            raise ValueError("Invalid role")
+        return value
 
     def __str__(self) -> str:
         """String representation of the user."""
