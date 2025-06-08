@@ -174,3 +174,5 @@ cython_debug/
 .pypirc
 alembic.ini
 test_config.py
+debug_file.py
+klampis_key.json
