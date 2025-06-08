@@ -1,7 +1,7 @@
 from datetime import datetime
 import re
 
-from sqlalchemy import event, String, Integer, Boolean, DateTime, Float
+from sqlalchemy import event, String, Integer, Boolean, DateTime, Float, Text
 
 from app.core.base import Base
 
@@ -27,6 +27,9 @@ def validate_all_types_on_save(mapper, connection, target):
 
             if value == "":
                 raise ValueError(f"Column '{column.key}' cannot be empty.")
+
+            if isinstance(column.type, Text):
+                continue
 
             if value[0].isdigit():
                 raise ValueError(f"Column '{column.key}' cannot start with a number.")
