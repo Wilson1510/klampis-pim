@@ -110,7 +110,7 @@ async def db_engine(create_test_database):
         system_user = Users(
             id=settings.SYSTEM_USER_ID,
             username="system",
-            password="system_password",
+            password="systempassword",
             name="System User",
             role="SYSTEM",
             created_by=None,  # System user creates itself
