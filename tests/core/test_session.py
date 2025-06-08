@@ -111,7 +111,9 @@ class TestSessionModule:
         test_uri = "postgresql+asyncpg://test:test@localhost:5432/test_db"
 
         with patch('app.core.config.settings') as mock_settings:
+            # Mock both DATABASE_URI and DEBUG since both are used in session.py
             mock_settings.DATABASE_URI = test_uri
+            mock_settings.DEBUG = False
 
             # Re-import to get new engine with mocked settings
             from importlib import reload
