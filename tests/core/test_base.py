@@ -1,7 +1,7 @@
 from datetime import datetime
 from unittest.mock import patch
 
-from sqlalchemy import Column, String, Integer, Text
+from sqlalchemy import Column, String, Integer, Text, event
 
 from app.core.base import Base
 from app.core.config import settings
@@ -12,6 +12,10 @@ class SampleModelBase(Base):
     """Sample model for Base functionality testing."""
     name = Column(String(100), nullable=False)
     description = Column(Text)
+
+
+# Import listeners after model definition to ensure propagation works
+from app.core.listeners import validate_all_types_on_save  # noqa: E402
 
 
 class TestBaseModel:
@@ -290,3 +294,33 @@ class TestBaseModel:
 
         repr_str = repr(instance)
         assert repr_str == "SampleModelBase(id=None)"
+
+    def test_model_has_listeners(self):
+        """
+        Test checking if a model has event listeners registered.
+
+        Important: event.contains() only checks listeners registered directly
+        on the specific class, not inherited listeners. Child classes will
+        return False even though listeners work through SQLAlchemy inheritance.
+
+        - Base class: Returns True (listeners registered directly)
+        - Child classes: Return False (no direct registration)
+        - Listeners still work on child classes during database operations
+        """
+        # List of events to check
+        events_to_check = [
+            'before_insert', 'before_update', 'before_delete',
+            'after_insert', 'after_update', 'after_delete'
+        ]
+
+        for event_name in events_to_check:
+            has_listener = event.contains(
+                Base, event_name, validate_all_types_on_save
+            )
+
+            if event_name in ['before_insert', 'before_update']:
+                # These should have our validation listener
+                assert has_listener is True
+            else:
+                # These should not have our validation listener
+                assert has_listener is False

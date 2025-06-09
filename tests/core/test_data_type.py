@@ -2,7 +2,6 @@ from datetime import datetime
 
 from sqlalchemy import Column, String, Integer, Boolean, Float, DateTime, Text
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.future import select
 from sqlalchemy.exc import DBAPIError, StatementError
 import pytest
 
@@ -146,26 +145,164 @@ class TestDataType:
 
         await self.create_item(valid_data, invalid_data, "sample_boolean", db_session)
 
-    # async def test_create_item2(self, db_session):
-    #     sample = SampleModelDataType(
-    #         sample_string="test",
-    #         sample_integer=00,
-    #         sample_boolean=False,
-    #         sample_float=123.45,
-    #         sample_datetime="2025-06-02 23:20:35.661597+0419",
-    #         sample_jsonb=('test1', 'test2'),
-    #         sample_text=" 25 "
-    #     )
-    #     print(f"Create Item: {sample.sample_integer}, "
-    #           f"type: {type(sample.sample_integer)}")
+    async def test_float_field_validation(self, db_session):
+        valid_data = [-99999999999.99, 88.14, 2025, 99999999999.99, (88.0)]
+        invalid_data = [
+            [False, TypeError, "Column 'sample_float' must be a float, not a boolean."],
+            ["9999.99", DBAPIError, "(must be real number, not str)"],
+            ["9999", DBAPIError, "(must be real number, not str)"],
+            [[9999.99], DBAPIError, "(must be real number, not list)"],
+            [[9999, 9999, 9999], DBAPIError, "(must be real number, not list)"],
+            [[], DBAPIError, "(must be real number, not list)"],
+            [{9999.99}, DBAPIError, "(must be real number, not set)"],
+            [{9999.99, 9999.99}, DBAPIError, "(must be real number, not set)"],
+            [{9999.99: 9999.99}, DBAPIError, "(must be real number, not dict)"],
+            [{}, DBAPIError, "(must be real number, not dict)"],
+            [(9999.99, 9999.99), DBAPIError, "(must be real number, not tuple)"],
+            [(), DBAPIError, "(must be real number, not tuple)"],
+            [
+                datetime(2025, 6, 8, 18, 19, 37, 718543),
+                DBAPIError,
+                "(must be real number, not datetime.datetime)"
+            ]
+        ]
 
-    #     db_session.add(sample)
-    #     await db_session.commit()
+        await self.create_item(valid_data, invalid_data, "sample_float", db_session)
 
-    #     query = select(SampleModelDataType).where(
-    #         SampleModelDataType.sample_string == "test"
-    #     )
-    #     stmt = await db_session.execute(query)
-    #     item = stmt.scalars().first()
-    #     print(f"Create Item: {item.sample_integer}, "
-    #           f"type: {type(item.sample_integer)}")
+    async def test_datetime_field_validation(self, db_session):
+        valid_data = [
+            datetime(2025, 6, 8, 18, 19, 37, 718543),
+            datetime.now(),
+            (datetime(2025, 6, 8, 18, 19, 37, 718543)),
+            "2025-06-05",
+            "2025-06-05 21:18:52",
+            "2025-06-05 21:18:52.123456+0400",
+            "2023-12-25 14:30:00.123456",
+            "2023-12-25T14:30:00",
+            "2023-12-25T14:30:00Z",
+            "2023-12-25T14:30:00.123456",
+            "2023-12-25T14:30:00.123456Z",
+            "2023-12-25T14:30:00.123456+04:00",
+            "2023-12-25T14:30:00+04:00",
+        ]
+        invalid_data = [
+            [
+                9915,
+                DBAPIError,
+                "(expected a datetime.date or datetime.datetime instance, got 'int')"
+            ],
+            [
+                9679.36,
+                DBAPIError,
+                "(expected a datetime.date or datetime.datetime instance, got 'float')"
+            ],
+            ["test", ValueError, "Invalid datetime format: test"],
+            [
+                True,
+                DBAPIError,
+                "(expected a datetime.date or datetime.datetime instance, got 'bool')"
+            ],
+            [
+                datetime(1, 1, 1, 1, 1, 1, 1),
+                DBAPIError,
+                "\\(\\[Errno 22\\] Invalid argument\\)"
+            ],
+            [
+                [datetime(2025, 1, 4)],
+                DBAPIError,
+                "(expected a datetime.date or datetime.datetime instance, got 'list')"
+            ],
+            [
+                [datetime(2024, 10, 9), datetime(2024, 11, 30)],
+                DBAPIError,
+                "(expected a datetime.date or datetime.datetime instance, got 'list')"
+            ],
+            [
+                [],
+                DBAPIError,
+                "(expected a datetime.date or datetime.datetime instance, got 'list')"
+            ],
+            [
+                {datetime(2024, 8, 21)},
+                DBAPIError,
+                "(expected a datetime.date or datetime.datetime instance, got 'set')"
+            ],
+            [
+                {datetime(2023, 8, 20), datetime(2023, 7, 7)},
+                DBAPIError,
+                "(expected a datetime.date or datetime.datetime instance, got 'set')"
+            ],
+            [
+                {datetime(2022, 7, 5): datetime(2022, 12, 21)},
+                DBAPIError,
+                "(expected a datetime.date or datetime.datetime instance, got 'dict')"
+            ],
+            [
+                {},
+                DBAPIError,
+                "(expected a datetime.date or datetime.datetime instance, got 'dict')"
+            ],
+            [
+                (datetime(2024, 3, 13), datetime(2028, 1, 4)),
+                DBAPIError,
+                "(expected a datetime.date or datetime.datetime instance, got 'tuple')"
+            ],
+            [
+                (),
+                DBAPIError,
+                "(expected a datetime.date or datetime.datetime instance, got 'tuple')"
+            ],
+            ["05-06-2025", ValueError, "Invalid datetime format: 05-06-2025"],
+            ["10:00:14", ValueError, "Invalid datetime format: 10:00:14"],
+            [
+                "2025-06-05 21:18:52.123456+04",
+                ValueError,
+                "Invalid datetime format: 2025-06-05 21:18:52\\.123456\\+04"
+            ],
+            [
+                "2025-06-02 23:20:35+08",
+                ValueError, "Invalid datetime format: 2025-06-02 23:20:35\\+08"
+            ]
+        ]
+
+        await self.create_item(valid_data, invalid_data, "sample_datetime", db_session)
+
+    async def test_jsonb_field_validation(self, db_session):
+        valid_data = [
+            "test", 9999, True, 9999.99, ["test"], ["test1", "test2"], [],
+            {"key": "value"}, {}, {9999: 9999}, {41: "value"}, {False: True},
+            {True: "value"}, {9999.99: 9999.99}, {65.12: "value"}, {"key": "value"},
+            ("test"), ("test1", "test2"), ()
+        ]
+        invalid_data = [
+            [
+                datetime(2025, 6, 9, 21, 59, 23, 994308),
+                StatementError,
+                "Object of type datetime is not JSON serializable"
+            ],
+            [
+                {"test5", "test6"},
+                StatementError,
+                "Object of type set is not JSON serializable"
+            ],
+            [
+                {"test7"},
+                StatementError,
+                "Object of type set is not JSON serializable"
+            ],
+            [
+                {
+                    datetime(2025, 6, 9, 21, 59, 23, 994308):
+                    datetime(2025, 6, 9, 21, 59, 23, 994308)
+                },
+                StatementError,
+                "keys must be str, int, float, bool or None, not datetime.datetime"
+            ],
+            [
+                {datetime(2025, 6, 9, 21, 59, 23, 994308): "value"},
+                StatementError,
+                "keys must be str, int, float, bool or None, not datetime.datetime"
+            ]
+        ]
+
+        await self.create_item(valid_data, invalid_data, "sample_jsonb", db_session)
