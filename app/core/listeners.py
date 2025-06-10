@@ -2,8 +2,11 @@ from datetime import datetime
 import re
 
 from sqlalchemy import event, String, Integer, Boolean, DateTime, Float, Text
+from sqlalchemy.orm.attributes import get_history
 
 from app.core.base import Base
+from app.models.user import Users
+from app.core.security import hash_password
 
 
 def validate_all_types_on_save(mapper, connection, target):
@@ -13,7 +16,24 @@ def validate_all_types_on_save(mapper, connection, target):
     on the 'target' object due to SQLAlchemy doesn't validate the data
     type in some cases.
     """
+    # Get class from target object (e.g., User class)
+    model_class = target.__class__
+
+    # Collect all columns that already have @validates manual validators
+    existing_manual_validates = set()
+
+    # Check for validators in the class and its MRO (Method Resolution Order)
+    for cls in model_class.__mro__:
+        if hasattr(cls, '__mapper__'):
+            # Get all validators from the mapper
+            if hasattr(cls.__mapper__, 'validators'):
+                existing_manual_validates.update(cls.__mapper__.validators.keys())
+
     for column in target.__table__.columns:
+        # Skip columns that have manual validators
+        if column.key in existing_manual_validates:
+            continue
+
         value = getattr(target, column.key)
 
         if value is None:
@@ -108,3 +128,17 @@ def validate_all_types_on_save(mapper, connection, target):
 # This code will be executed when this file is imported.
 event.listen(Base, 'before_insert', validate_all_types_on_save, propagate=True)
 event.listen(Base, 'before_update', validate_all_types_on_save, propagate=True)
+
+
+def hash_new_password_listener(mapper, connection, target):
+    """Listener for hashing password ONLY on User model."""
+    # Check if 'password' field is actually changed to avoid re-hashing
+    if get_history(target, 'password').has_changes():
+        plain_password = target.password
+        if plain_password:
+            target.password = hash_password(plain_password)
+
+
+# Register new listener specifically for Users class
+event.listen(Users, 'before_insert', hash_new_password_listener)
+event.listen(Users, 'before_update', hash_new_password_listener)
