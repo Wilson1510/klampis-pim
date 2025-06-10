@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey
+from sqlalchemy import Column, DateTime, Integer, String, ForeignKey
 from sqlalchemy.orm import validates
 
 from app.core.base import Base
@@ -10,15 +10,7 @@ class Users(Base):
 
     This model stores user authentication and profile information.
     All other models reference this for audit trail purposes.
-
-    Attributes:
-        id: Unique identifier for the user
-        date_joined: Date and time when the user was added to the system
-        username: Unique username for authentication
-        password: Hashed password for authentication
-        name: Display name of the user
-        role: User role determining permissions
-        is_active: Flag indicating if the user is active
+    Passwords are automatically hashed using bcrypt when set.
     """
     username = Column(
         String(20),
@@ -26,9 +18,11 @@ class Users(Base):
         nullable=False,
         index=True
     )
-    password = Column(String(100), nullable=False)
+    email = Column(String(100), unique=True, nullable=False, index=True)
+    password = Column(String(255), nullable=False)  # Increased length for bcrypt hashes
     name = Column(String(50), nullable=False)
     role = Column(String, nullable=False, default="USER")
+    last_login = Column(DateTime(timezone=True), nullable=True)
 
     # Override created_by and updated_by to be nullable for Users table
     created_by = Column(
@@ -43,6 +37,19 @@ class Users(Base):
         nullable=True,  # Allow null for system user
         default=None
     )
+
+    @validates('email')
+    def validate_email(self, key, value):
+        """
+        This validator only runs for the 'email' column.
+        """
+        if not isinstance(value, str):
+            return value
+
+        if '@' not in value:
+            raise ValueError("Invalid email format (must contain '@').")
+
+        return value.lower().strip()
 
     @validates('role')
     def validate_role(self, key, value):
