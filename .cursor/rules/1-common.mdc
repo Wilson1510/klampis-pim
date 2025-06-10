@@ -8,7 +8,7 @@ alwaysApply: true
 ## Project Overview
 This is a Product Information Management (PIM) system for large supermarkets built with:
 - **Backend**: FastAPI with Python 3.11 and pydantic V2
-- **Database**: PostgreSQL with SQLAlchemy ORM
+- **Database**: PostgreSQL with SQLAlchemy 2.0.x ORM
 - **Architecture**: Clean Architecture with Repository Pattern
 
 ## Code Style & Standards
