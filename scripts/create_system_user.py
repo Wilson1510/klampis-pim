@@ -32,6 +32,7 @@ async def create_system_user():
             system_user = Users(
                 id=settings.SYSTEM_USER_ID,
                 username="system",
+                email="system@klampis-pim.local",
                 password="system",
                 name="System User",
                 role="SYSTEM",

@@ -108,8 +108,8 @@ async def db_engine(create_test_database):
     async with async_session() as session:
         # Create system user if it doesn't exist
         system_user = Users(
-            id=settings.SYSTEM_USER_ID,
             username="system",
+            email="system@test.local",
             password="systempassword",
             name="System User",
             role="SYSTEM",
