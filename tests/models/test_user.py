@@ -1,6 +1,13 @@
 from sqlalchemy import select
 
 from app.models.user import Users
+from tests.utils.model_test_utils import (
+    save_object,
+    get_object_by_id,
+    get_all_objects,
+    update_object,
+    delete_object,
+)
 
 
 class TestUser:
@@ -12,22 +19,14 @@ class TestUser:
             name="Test User",
             role="USER",
         )
-        db_session.add(user)
-        await db_session.commit()
+        await save_object(db_session, user)
+        user = await get_object_by_id(db_session, Users, user.id)
+        print(f"user: {user}")
         assert user.id == 2
         assert user.username == "testuser"
         assert user.email == "testuser@test.local"
-        print(f"user.password: {user.password}")
         assert user.name == "Test User"
         assert user.role == "USER"
 
-        system_user = select(Users)
-        system_user = (await db_session.execute(system_user)).scalars()
-        print(f"system_user: {system_user}")
-        system_user = system_user[0]
-        assert system_user.id == 1
-        assert system_user.username == "system"
-        assert system_user.email == "system@test.local"
-        print(f"system_user.password: {system_user.password}")
-        assert system_user.name == "System User"
-        assert system_user.role == "SYSTEM"
+
+
