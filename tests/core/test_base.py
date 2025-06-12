@@ -307,20 +307,23 @@ class TestBaseModel:
         - Child classes: Return False (no direct registration)
         - Listeners still work on child classes during database operations
         """
-        # List of events to check
-        events_to_check = [
-            'before_insert', 'before_update', 'before_delete',
-            'after_insert', 'after_update', 'after_delete'
-        ]
+        # Base class has the listener
+        assert event.contains(Base, 'before_insert', validate_all_types_on_save)
+        assert event.contains(Base, 'before_update', validate_all_types_on_save)
+        assert not event.contains(Base, 'before_delete', validate_all_types_on_save)
 
-        for event_name in events_to_check:
-            has_listener = event.contains(
-                Base, event_name, validate_all_types_on_save
-            )
-
-            if event_name in ['before_insert', 'before_update']:
-                # These should have our validation listener
-                assert has_listener is True
-            else:
-                # These should not have our validation listener
-                assert has_listener is False
+        # SampleModelBase (child class) does not have the listener, only be propagated
+        assert not event.contains(
+            SampleModelBase,
+            'before_insert',
+            validate_all_types_on_save
+        )
+        assert not event.contains(
+            SampleModelBase,
+            'before_update',
+            validate_all_types_on_save
+        )
+        assert not event.contains(
+            SampleModelBase,
+            'before_delete',
+            validate_all_types_on_save)

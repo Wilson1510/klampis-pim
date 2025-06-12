@@ -29,6 +29,9 @@ def validate_all_types_on_save(mapper, connection, target):
             if hasattr(cls.__mapper__, 'validators'):
                 existing_manual_validates.update(cls.__mapper__.validators.keys())
 
+    if 'password' in target.__table__.columns.keys():
+        existing_manual_validates.add('password')
+
     for column in target.__table__.columns:
         # Skip columns that have manual validators
         if column.key in existing_manual_validates:

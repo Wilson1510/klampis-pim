@@ -60,7 +60,7 @@ class Users(Base):
 
     def __str__(self) -> str:
         """String representation of the user."""
-        return f"User(id={self.id}, username='{self.username}', name='{self.name}')"
+        return f"Users(username={self.username}, name={self.name})"
 
     def __repr__(self) -> str:
         """Official string representation of the user."""
