@@ -8,5 +8,7 @@ pydantic-settings==2.9.1
 pytest==8.3.5
 pytest-asyncio==1.0.0
 pytest-cov==6.1.1
+python-jose[cryptography]==3.5.0
+python-multipart==0.0.17
 sqlalchemy==2.0.41
 uvicorn==0.34.3
