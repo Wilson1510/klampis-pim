@@ -7,6 +7,13 @@ from app.models.user import Users
 from app.core.listeners import validate_all_types_on_save, hash_new_password_listener
 from app.core.security import verify_password
 from tests.utils.model_test_utils import assert_tablename_generation
+from tests.utils.model_test_utils import (
+    save_object,
+    get_object_by_id,
+    get_all_objects,
+    update_object,
+    delete_object,
+)
 
 
 class TestUser:
@@ -210,3 +217,12 @@ class TestUser:
         assert model.email == self.test_user1.email
         assert model.name == self.test_user1.name
         assert model.password.startswith("$argon2id$")
+
+        await save_object(db_session, user)
+        user = await get_object_by_id(db_session, Users, user.id)
+        print(f"user: {user}")
+        assert user.id == 2
+        assert user.username == "testuser"
+        assert user.email == "testuser@test.local"
+        assert user.name == "Test User"
+        assert user.role == "USER"

@@ -1,6 +1,7 @@
 import uuid
 import datetime
 
+from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import exc
@@ -114,6 +115,54 @@ def assert_custom_validation(model_class, common_params, target_field):
 
         if expected_error[1]:
             assert str(exc_info.value) == expected_error[1]
+
+
+async def save_object(session, object):
+    """
+    Save an object to the database.
+    """
+    session.add(object)
+    await session.commit()
+    await session.refresh(object)
+    return object
+
+
+async def get_object_by_id(session, model_class, object_id):
+    """
+    Get an object from the database.
+    """
+    result = await session.execute(
+        select(model_class).where(model_class.id == object_id)
+    )
+    return result.scalar_one_or_none()
+
+
+async def get_all_objects(session, model_class):
+    """
+    Get all objects from the database.
+    """
+    result = await session.execute(select(model_class))
+    return result.scalars().all()
+
+
+async def update_object(session, object, **updated_params):
+    """
+    Update an object in the database.
+    """
+    for key, value in updated_params.items():
+        setattr(object, key, value)
+    await session.commit()
+    await session.refresh(object)
+    return object
+
+
+async def delete_object(session, object):
+    """
+    Delete an object from the database.
+    """
+    await session.delete(object)
+    await session.commit()
+    return object
 
 
 async def assert_string_field_length(
