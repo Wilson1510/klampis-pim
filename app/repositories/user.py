@@ -1,8 +1,9 @@
 from .base import CRUDBase
-from ..models.user import User
+from ..models.user import Users
 from ..schemas.user import UserCreate, UserUpdate, User
 
-class CRUDUser(CRUDBase[User, UserCreate, UserUpdate]):
+
+class CRUDUser(CRUDBase[Users, UserCreate, UserUpdate]):
     pass
 
-user = CRUDUser(User)
+user = CRUDUser(Users)

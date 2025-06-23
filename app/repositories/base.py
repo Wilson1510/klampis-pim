@@ -48,12 +48,12 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
             update_data = obj_in
         else:
             # exclude_unset=True agar hanya field yang dikirim yang di-update
-            update_data = obj_in.model_dump(exclude_unset=True) 
-            
+            update_data = obj_in.model_dump(exclude_unset=True)
+
         for field in obj_data:
             if field in update_data:
                 setattr(db_obj, field, update_data[field])
-                
+
         db.add(db_obj)
         db.commit()
         db.refresh(db_obj)
