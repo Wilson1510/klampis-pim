@@ -1,11 +1,8 @@
 import uuid
-import datetime
 
 from sqlalchemy import select
-from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import exc
-from sqlalchemy.types import Boolean, DateTime, String, Integer
+from sqlalchemy.types import Boolean, String, Integer
 import pytest
 
 
@@ -143,17 +140,6 @@ async def get_all_objects(session, model_class):
     """
     result = await session.execute(select(model_class))
     return result.scalars().all()
-
-
-async def update_object(session, object, **updated_params):
-    """
-    Update an object in the database.
-    """
-    for key, value in updated_params.items():
-        setattr(object, key, value)
-    await session.commit()
-    await session.refresh(object)
-    return object
 
 
 async def delete_object(session, object):
