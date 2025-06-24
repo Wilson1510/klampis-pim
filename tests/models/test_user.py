@@ -11,7 +11,6 @@ from tests.utils.model_test_utils import (
     save_object,
     get_object_by_id,
     get_all_objects,
-    update_object,
     delete_object,
 )
 
@@ -31,8 +30,7 @@ class TestUser:
             created_by=1,
             updated_by=1
         )
-        db_session.add(self.test_user1)
-        await db_session.commit()
+        await save_object(db_session, self.test_user1)
 
         # Create a user with a different role
         self.test_user2 = Users(
@@ -44,8 +42,7 @@ class TestUser:
             created_by=1,
             updated_by=1
         )
-        db_session.add(self.test_user2)
-        await db_session.commit()
+        await save_object(db_session, self.test_user2)
 
     def test_inheritance_from_base_model(self):
         """Test that the User model inherits from the Base model"""
@@ -190,39 +187,108 @@ class TestUser:
     @pytest.mark.asyncio
     async def test_create_operation(self, db_session: AsyncSession):
         """Test the create operation"""
-        model = Users(
+        item = Users(
             username="testuser3",
             email="testuser3@test.local",
             name="Test User 3",
             password="testpassword3",
             role="USER"
         )
-        db_session.add(model)
-        await db_session.commit()
+        await save_object(db_session, item)
 
-        assert model.id == 4
-        assert model.username == "testuser3"
-        assert model.email == "testuser3@test.local"
-        assert model.name == "Test User 3"
-        assert model.password.startswith("$argon2id$")
-        assert model.role == "USER"
-        assert model.last_login is None
+        assert item.id == 4
+        assert item.username == "testuser3"
+        assert item.email == "testuser3@test.local"
+        assert item.name == "Test User 3"
+        assert item.password.startswith("$argon2id$")
+        assert item.role == "USER"
+        assert item.last_login is None
 
     @pytest.mark.asyncio
     async def test_get_operation(self, db_session: AsyncSession):
         """Test the get operation"""
-        model = await Users.get_by_id(db_session, self.test_user1.id)
-        assert model.id == self.test_user1.id
-        assert model.username == self.test_user1.username
-        assert model.email == self.test_user1.email
-        assert model.name == self.test_user1.name
-        assert model.password.startswith("$argon2id$")
+        item = await get_object_by_id(db_session, Users, self.test_user1.id)
+        assert item.id == 2
+        assert item.username == "testuser"
+        assert item.email == "testuser@test.local"
+        assert item.name == "Test User"
+        assert item.password.startswith("$argon2id$")
+        assert item.role == "USER"
+        assert item.last_login is None
 
-        await save_object(db_session, user)
-        user = await get_object_by_id(db_session, Users, user.id)
-        print(f"user: {user}")
-        assert user.id == 2
-        assert user.username == "testuser"
-        assert user.email == "testuser@test.local"
-        assert user.name == "Test User"
-        assert user.role == "USER"
+        item = await get_object_by_id(db_session, Users, self.test_user2.id)
+        assert item.id == 3
+        assert item.username == "testuser2"
+        assert item.email == "testuser2@test.local"
+        assert item.name == "Test User 2"
+        assert item.password.startswith("$argon2id$")
+        assert item.role == "ADMIN"
+        assert item.last_login is None
+
+        item = await get_all_objects(db_session, Users)
+        assert len(item) == 3
+
+        assert item[0].id == 1
+        assert item[0].username == "system"
+        assert item[0].email == "system@test.local"
+        assert item[0].name == "System User"
+        assert item[0].password.startswith("$argon2id$")
+        assert item[0].role == "SYSTEM"
+        assert item[0].last_login is None
+        assert item[0].created_by is None
+        assert item[0].updated_by is None
+
+        assert item[1].id == 2
+        assert item[1].username == "testuser"
+        assert item[1].email == "testuser@test.local"
+        assert item[1].name == "Test User"
+        assert item[1].password.startswith("$argon2id$")
+        assert item[1].role == "USER"
+        assert item[1].last_login is None
+
+        assert item[2].id == 3
+        assert item[2].username == "testuser2"
+        assert item[2].email == "testuser2@test.local"
+        assert item[2].name == "Test User 2"
+        assert item[2].password.startswith("$argon2id$")
+        assert item[2].role == "ADMIN"
+        assert item[2].last_login is None
+
+    @pytest.mark.asyncio
+    async def test_update_operation(self, db_session: AsyncSession):
+        """Test the update operation"""
+        item = await get_object_by_id(db_session, Users, self.test_user1.id)
+        item.name = "Updated Test User"
+        item.role = "ADMIN"
+        await save_object(db_session, item)
+
+        assert item.id == 2
+        assert item.username == "testuser"
+        assert item.email == "testuser@test.local"
+        assert item.name == "Updated Test User"
+        assert item.password.startswith("$argon2id$")
+        assert item.role == "ADMIN"
+        assert item.last_login is None
+
+        item.username = "updatedtestuser"
+        item.email = "updated_testuser@test.local"
+        await save_object(db_session, item)
+
+        assert item.id == 2
+        assert item.username == "updatedtestuser"
+        assert item.email == "updated_testuser@test.local"
+        assert item.name == "Updated Test User"
+        assert item.password.startswith("$argon2id$")
+        assert item.role == "ADMIN"
+        assert item.last_login is None
+
+    @pytest.mark.asyncio
+    async def test_delete_operation(self, db_session: AsyncSession):
+        """Test the delete operation"""
+        await delete_object(db_session, self.test_user1)
+
+        item = await get_object_by_id(db_session, Users, self.test_user1.id)
+        assert item is None
+
+        item = await get_all_objects(db_session, Users)
+        assert len(item) == 2
