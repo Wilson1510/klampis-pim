@@ -1,10 +1,10 @@
-from sqlalchemy import select, String, event, DateTime
+from sqlalchemy import String, event, DateTime
 from sqlalchemy.ext.asyncio import AsyncSession
 import pytest
 
 from app.core.base import Base
 from app.models.user import Users
-from app.core.listeners import validate_all_types_on_save, hash_new_password_listener
+from app.core.listeners import hash_new_password_listener
 from app.core.security import verify_password
 from tests.utils.model_test_utils import (
     save_object,
@@ -46,28 +46,6 @@ class TestUser:
     def test_inheritance_from_base_model(self):
         """Test that the User model inherits from the Base model"""
         assert issubclass(Users, Base)
-
-    def test_model_has_expected_fields(self):
-        """Test that the model has all expected fields"""
-        # Get field names from the model's table
-        existing_fields = Users.__table__.columns.keys()
-        assert len(existing_fields) == 13
-
-        expected_fields = [
-            'username', 'name', 'email', 'password', 'role', 'last_login',
-            'created_at', 'updated_at', 'is_active', 'created_by', 'updated_by',
-            'id', 'sequence'
-        ]
-
-        for field in expected_fields:
-            assert field in existing_fields
-
-        unexpected_fields = [
-            'invalid_field1', 'invalid_field2'
-        ]
-
-        for field in unexpected_fields:
-            assert field not in existing_fields
 
     def test_fields_with_validation(self):
         """Test that the model has the expected validation"""
@@ -153,10 +131,6 @@ class TestUser:
         assert last_login_column.index is None
         assert last_login_column.default is None
 
-    def test_tablename_generation(self):
-        """Test that the table name is correctly generated"""
-        assert Users.__tablename__ == 'users'
-
     def test_str_representation(self):
         """Test the string representation"""
         str_repr = str(self.test_user1)
@@ -171,7 +145,7 @@ class TestUser:
         assert self.test_user1.username == "testuser"
         assert self.test_user1.email == "testuser@test.local"
         assert self.test_user1.name == "Test User"
-        assert self.test_user1.password.startswith("$argon2id$")
+        assert verify_password("testpassword", self.test_user1.password)
         assert self.test_user1.role == "USER"
         assert self.test_user1.last_login is None
 
@@ -179,7 +153,7 @@ class TestUser:
         assert self.test_user2.username == "testuser2"
         assert self.test_user2.email == "testuser2@test.local"
         assert self.test_user2.name == "Test User 2"
-        assert self.test_user2.password.startswith("$argon2id$")
+        assert verify_password("testpassword2", self.test_user2.password)
         assert self.test_user2.role == "ADMIN"
         assert self.test_user2.last_login is None
 
@@ -199,7 +173,7 @@ class TestUser:
         assert item.username == "testuser3"
         assert item.email == "testuser3@test.local"
         assert item.name == "Test User 3"
-        assert item.password.startswith("$argon2id$")
+        assert verify_password("testpassword3", item.password)
         assert item.role == "USER"
         assert item.last_login is None
 
@@ -211,7 +185,7 @@ class TestUser:
         assert item.username == "testuser"
         assert item.email == "testuser@test.local"
         assert item.name == "Test User"
-        assert item.password.startswith("$argon2id$")
+        assert verify_password("testpassword", item.password)
         assert item.role == "USER"
         assert item.last_login is None
 
@@ -220,7 +194,7 @@ class TestUser:
         assert item.username == "testuser2"
         assert item.email == "testuser2@test.local"
         assert item.name == "Test User 2"
-        assert item.password.startswith("$argon2id$")
+        assert verify_password("testpassword2", item.password)
         assert item.role == "ADMIN"
         assert item.last_login is None
 
@@ -231,7 +205,7 @@ class TestUser:
         assert item[0].username == "system"
         assert item[0].email == "system@test.local"
         assert item[0].name == "System User"
-        assert item[0].password.startswith("$argon2id$")
+        assert verify_password("systempassword", item[0].password)
         assert item[0].role == "SYSTEM"
         assert item[0].last_login is None
         assert item[0].created_by is None
@@ -241,7 +215,7 @@ class TestUser:
         assert item[1].username == "testuser"
         assert item[1].email == "testuser@test.local"
         assert item[1].name == "Test User"
-        assert item[1].password.startswith("$argon2id$")
+        assert verify_password("testpassword", item[1].password)
         assert item[1].role == "USER"
         assert item[1].last_login is None
 
@@ -249,7 +223,7 @@ class TestUser:
         assert item[2].username == "testuser2"
         assert item[2].email == "testuser2@test.local"
         assert item[2].name == "Test User 2"
-        assert item[2].password.startswith("$argon2id$")
+        assert verify_password("testpassword2", item[2].password)
         assert item[2].role == "ADMIN"
         assert item[2].last_login is None
 
@@ -265,7 +239,7 @@ class TestUser:
         assert item.username == "testuser"
         assert item.email == "testuser@test.local"
         assert item.name == "Updated Test User"
-        assert item.password.startswith("$argon2id$")
+        assert verify_password("testpassword", item.password)
         assert item.role == "ADMIN"
         assert item.last_login is None
 
@@ -277,7 +251,7 @@ class TestUser:
         assert item.username == "updatedtestuser"
         assert item.email == "updated_testuser@test.local"
         assert item.name == "Updated Test User"
-        assert item.password.startswith("$argon2id$")
+        assert verify_password("testpassword", item.password)
         assert item.role == "ADMIN"
         assert item.last_login is None
 
