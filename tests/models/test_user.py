@@ -6,7 +6,6 @@ from app.core.base import Base
 from app.models.user import Users
 from app.core.listeners import validate_all_types_on_save, hash_new_password_listener
 from app.core.security import verify_password
-from tests.utils.model_test_utils import assert_tablename_generation
 from tests.utils.model_test_utils import (
     save_object,
     get_object_by_id,
@@ -156,7 +155,7 @@ class TestUser:
 
     def test_tablename_generation(self):
         """Test that the table name is correctly generated"""
-        assert_tablename_generation(Users)
+        assert Users.__tablename__ == 'users'
 
     def test_str_representation(self):
         """Test the string representation"""
