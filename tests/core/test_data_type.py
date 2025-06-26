@@ -50,7 +50,16 @@ class TestDataType:
             [{}, DBAPIError, "expected str, got dict"],
             [('test1', 'test2'), DBAPIError, "expected str, got tuple"],
             [(), DBAPIError, "expected str, got tuple"],
-            [datetime.now(), DBAPIError, "expected str, got datetime"]
+            [datetime.now(), DBAPIError, "expected str, got datetime"],
+            ["", ValueError, "Column 'sample_string' cannot be empty."],
+            ["   ", ValueError, "Column 'sample_string' cannot be empty."],
+            ["1test", ValueError, "Column 'sample_string' cannot start with a number."],
+            [
+                'test*',
+                ValueError,
+                "Column 'sample_string' can only contain "
+                "alphabet letters, numbers, underscores, and spaces."
+            ],
         ]
 
         await self.create_item(valid_data, invalid_data, "sample_string", db_session)
