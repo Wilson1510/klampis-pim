@@ -5,7 +5,7 @@ import pytest
 
 from app.core.base import Base
 from app.models.user import Users
-from app.core.listeners import hash_new_password_listener
+from app.core.listeners import _hash_new_password_listener
 from app.core.security import verify_password
 from tests.utils.model_test_utils import (
     save_object,
@@ -63,9 +63,9 @@ class TestUser:
 
     def test_has_listeners(self):
         """Test that the model has the expected listeners"""
-        assert event.contains(Users, 'before_insert', hash_new_password_listener)
-        assert event.contains(Users, 'before_update', hash_new_password_listener)
-        assert not event.contains(Users, 'after_insert', hash_new_password_listener)
+        assert event.contains(Users, 'before_insert', _hash_new_password_listener)
+        assert event.contains(Users, 'before_update', _hash_new_password_listener)
+        assert not event.contains(Users, 'after_insert', _hash_new_password_listener)
 
     def test_username_field_properties(self):
         """Test the properties of the username field"""

@@ -5,11 +5,13 @@ from sqlalchemy import event, String, Integer, Boolean, DateTime, Float, Text
 from sqlalchemy.orm.attributes import get_history
 
 from app.core.base import Base
+from app.models.category_type import CategoryTypes
 from app.models.user import Users
 from app.core.security import hash_password
+from slugify import slugify
 
 
-def validate_all_types_on_save(mapper, connection, target):
+def _validate_all_types_on_save(mapper, connection, target):
     """
     Listener that is called before INSERT or UPDATE.
     Additional validation for String, Integer, Boolean, Float, and DateTime types
@@ -127,13 +129,7 @@ def validate_all_types_on_save(mapper, connection, target):
                     raise ValueError(f"Invalid datetime format: {value}")
 
 
-# Register listener directly in this file.
-# This code will be executed when this file is imported.
-event.listen(Base, 'before_insert', validate_all_types_on_save, propagate=True)
-event.listen(Base, 'before_update', validate_all_types_on_save, propagate=True)
-
-
-def hash_new_password_listener(mapper, connection, target):
+def _hash_new_password_listener(mapper, connection, target):
     """Listener for hashing password ONLY on User model."""
     # Check if 'password' field is actually changed to avoid re-hashing
     if get_history(target, 'password').has_changes():
@@ -142,6 +138,28 @@ def hash_new_password_listener(mapper, connection, target):
             target.password = hash_password(plain_password)
 
 
-# Register new listener specifically for Users class
-event.listen(Users, 'before_insert', hash_new_password_listener)
-event.listen(Users, 'before_update', hash_new_password_listener)
+def _set_slug(target, value, oldvalue, initiator):
+    """
+    Event listener to automatically generate slug from name.
+
+    This event fires before insert and update operations to ensure
+    the slug is always generated from the current name value.
+    """
+    if value is None:
+        return
+
+    target.slug = slugify(value)
+
+
+def register_listeners():
+    """
+    Registers all SQLAlchemy event listeners.
+    Call this function once during application startup.
+    """
+    event.listen(Base, 'before_insert', _validate_all_types_on_save, propagate=True)
+    event.listen(Base, 'before_update', _validate_all_types_on_save, propagate=True)
+
+    event.listen(Users, 'before_insert', _hash_new_password_listener)
+    event.listen(Users, 'before_update', _hash_new_password_listener)
+
+    event.listen(CategoryTypes.name, 'set', _set_slug)

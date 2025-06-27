@@ -5,6 +5,7 @@ from sqlalchemy import Column, String, Integer, Text, event
 
 from app.core.base import Base
 from app.core.config import settings
+from app.core.listeners import _validate_all_types_on_save
 
 
 # Test model untuk testing Base functionality
@@ -12,10 +13,6 @@ class SampleModelBase(Base):
     """Sample model for Base functionality testing."""
     name = Column(String(100), nullable=False)
     description = Column(Text)
-
-
-# Import listeners after model definition to ensure propagation works
-from app.core.listeners import validate_all_types_on_save  # noqa: E402
 
 
 class TestBaseModel:
@@ -308,22 +305,22 @@ class TestBaseModel:
         - Listeners still work on child classes during database operations
         """
         # Base class has the listener
-        assert event.contains(Base, 'before_insert', validate_all_types_on_save)
-        assert event.contains(Base, 'before_update', validate_all_types_on_save)
-        assert not event.contains(Base, 'before_delete', validate_all_types_on_save)
+        assert event.contains(Base, 'before_insert', _validate_all_types_on_save)
+        assert event.contains(Base, 'before_update', _validate_all_types_on_save)
+        assert not event.contains(Base, 'before_delete', _validate_all_types_on_save)
 
         # SampleModelBase (child class) does not have the listener, only be propagated
         assert not event.contains(
             SampleModelBase,
             'before_insert',
-            validate_all_types_on_save
+            _validate_all_types_on_save
         )
         assert not event.contains(
             SampleModelBase,
             'before_update',
-            validate_all_types_on_save
+            _validate_all_types_on_save
         )
         assert not event.contains(
             SampleModelBase,
             'before_delete',
-            validate_all_types_on_save)
+            _validate_all_types_on_save)
