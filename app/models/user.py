@@ -49,6 +49,9 @@ class Users(Base):
         if '@' not in value:
             raise ValueError("Invalid email format (must contain '@').")
 
+        if '@' in [value[0], value[-1]]:
+            raise ValueError("Invalid email format (must not start or end with '@').")
+
         return value.lower().strip()
 
     @validates('role')

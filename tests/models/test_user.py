@@ -1,5 +1,6 @@
 from sqlalchemy import String, event, DateTime
 from sqlalchemy.ext.asyncio import AsyncSession
+from datetime import datetime
 import pytest
 
 from app.core.base import Base
@@ -265,3 +266,184 @@ class TestUser:
 
         item = await get_all_objects(db_session, Users)
         assert len(item) == 2
+
+    @pytest.mark.asyncio
+    async def test_create_update_user_not_by_system(self, db_session: AsyncSession):
+        """
+        Test creating and updating user with specific created_by and updated_by values
+        """
+        # Create a user with specific created_by and updated_by values
+        item = Users(
+            username="testuser4",
+            email="testuser4@test.local",
+            name="Test User 4",
+            password="testpassword4",
+            role="USER",
+            created_by=2,  # Created by testuser1
+            updated_by=2   # Updated by testuser1
+        )
+        await save_object(db_session, item)
+
+        # Verify the user was created with correct audit fields
+        assert item.id == 4
+        assert item.username == "testuser4"
+        assert item.email == "testuser4@test.local"
+        assert item.name == "Test User 4"
+        assert verify_password("testpassword4", item.password)
+        assert item.role == "USER"
+        assert item.created_by == 2
+        assert item.updated_by == 2
+        assert item.last_login is None
+
+        # Update the user with a different updated_by value
+        item.name = "Updated Test User 4"
+        item.role = "ADMIN"
+        item.updated_by = 3  # Updated by testuser2
+        await save_object(db_session, item)
+
+        # Verify the user was updated correctly
+        assert item.id == 4
+        assert item.username == "testuser4"
+        assert item.email == "testuser4@test.local"
+        assert item.name == "Updated Test User 4"
+        assert verify_password("testpassword4", item.password)
+        assert item.role == "ADMIN"
+        assert item.created_by == 2  # Should remain unchanged
+        assert item.updated_by == 3  # Should be updated
+        assert item.last_login is None
+
+        # Verify by retrieving from database
+        retrieved_item = await get_object_by_id(db_session, Users, item.id)
+        assert retrieved_item.created_by == 2
+        assert retrieved_item.updated_by == 3
+        assert retrieved_item.name == "Updated Test User 4"
+        assert retrieved_item.role == "ADMIN"
+
+    # Email Validation Tests
+    @pytest.mark.asyncio
+    async def test_email_validation_valid_formats(self, db_session: AsyncSession):
+        """Test email validator with valid email formats by saving to database"""
+        # Test various valid email formats
+        valid_emails = [
+            ("test2@example.com", "test2@example.com"),
+            ("user.name@domain.co.uk", "user.name@domain.co.uk"),
+            ("test+tag@gmail.com", "test+tag@gmail.com"),
+            ("user_123@sub.domain.com", "user_123@sub.domain.com"),
+            ("TEST3@EXAMPLE.COM", "test3@example.com"),
+            # Should be converted to lowercase
+            ("  test4@example.com  ", "test4@example.com"),  # Should be trimmed
+        ]
+
+        for i, (input_email, expected_email) in enumerate(valid_emails, 1):
+            user = Users(
+                username=f"emailtest{i}",
+                email=input_email,
+                name=f"Email Test {i}",
+                password="testpassword",
+                role="USER"
+            )
+            await save_object(db_session, user)
+
+            # Verify email was processed correctly
+            assert user.email == expected_email
+            assert '@' in user.email
+
+    @pytest.mark.asyncio
+    async def test_email_validation_invalid_formats(self, db_session: AsyncSession):
+        """Test email validator with invalid email formats"""
+        # Test invalid email formats
+        invalid_emails = [
+            "invalid-email",
+            "test@",
+            "@example.com",
+            "",
+            "   ",
+        ]
+
+        for i, email in enumerate(invalid_emails, 1):
+            with pytest.raises(ValueError, match="Invalid email format"):
+                Users(
+                    username=f"invalidemail{i}",
+                    email=email,
+                    name=f"Invalid Email {i}",
+                    password="testpassword",
+                    role="USER"
+                )
+            await db_session.rollback()
+
+    # Role Validation Tests
+    @pytest.mark.asyncio
+    async def test_role_validation_valid_roles(self, db_session: AsyncSession):
+        """Test role validator with valid roles by saving to database"""
+        valid_roles = ["USER", "ADMIN", "SYSTEM", "MANAGER"]
+
+        for i, role in enumerate(valid_roles, 1):
+            user = Users(
+                username=f"roletest{i}",
+                email=f"roletest{i}@test.local",
+                name=f"Role Test {i}",
+                password="testpassword",
+                role=role
+            )
+
+            # Verify role was set correctly
+            assert user.role == role
+
+    @pytest.mark.asyncio
+    async def test_role_validation_invalid_roles(self, db_session: AsyncSession):
+        """Test role validator with invalid roles"""
+        invalid_roles = ["INVALID", "user", "admin", "Guest", "SuperAdmin", ""]
+
+        for i, role in enumerate(invalid_roles, 1):
+            with pytest.raises(ValueError, match="Invalid role"):
+                Users(
+                    username=f"invalidrole{i}",
+                    email=f"invalidrole{i}@test.local",
+                    name=f"Invalid Role {i}",
+                    password="testpassword",
+                    role=role
+                )
+            await db_session.rollback()
+
+    @pytest.mark.asyncio
+    async def test_password_update_hashing(self, db_session: AsyncSession):
+        """Test that password is hashed when updated"""
+        # Create user
+        user = Users(
+            username="testpassupdate",
+            email="testpassupdate@test.local",
+            name="Test Pass Update",
+            password="originalpassword",
+            role="USER"
+        )
+        await save_object(db_session, user)
+
+        # Verify original password is hashed
+        original_hash = user.password
+        assert verify_password("originalpassword", original_hash)
+
+        # Update password
+        user.password = "newpassword"
+        await save_object(db_session, user)
+
+        # Verify new password is hashed and different from original
+        new_hash = user.password
+        assert new_hash != original_hash
+        assert verify_password("newpassword", new_hash)
+        assert not verify_password("originalpassword", new_hash)
+
+    @pytest.mark.asyncio
+    async def test_last_login_update(self, db_session: AsyncSession):
+        """Test updating last_login field"""
+        # Get existing user
+        user = await get_object_by_id(db_session, Users, self.test_user1.id)
+        assert user.last_login is None
+
+        # Update last_login
+        login_time = datetime.now()
+        user.last_login = login_time
+        await save_object(db_session, user)
+
+        # Verify last_login was updated
+        updated_user = await get_object_by_id(db_session, Users, user.id)
+        assert updated_user.last_login is not None
