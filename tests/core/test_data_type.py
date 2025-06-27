@@ -53,7 +53,7 @@ class TestDataType:
             [datetime.now(), DBAPIError, "expected str, got datetime"],
             ["", ValueError, "Column 'sample_string' cannot be empty."],
             ["   ", ValueError, "Column 'sample_string' cannot be empty."],
-            ["1test", ValueError, "Column 'sample_string' cannot start with a number."],
+            ["1test", ValueError, "Column 'sample_string' must start with a letter."],
             [
                 'test*',
                 ValueError,

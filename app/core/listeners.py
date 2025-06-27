@@ -54,10 +54,10 @@ def validate_all_types_on_save(mapper, connection, target):
             if isinstance(column.type, Text):
                 continue
 
-            if value[0].isdigit():
-                raise ValueError(f"Column '{column.key}' cannot start with a number.")
+            if not re.match(r'^[A-Za-z]', value[0]):
+                raise ValueError(f"Column '{column.key}' must start with a letter.")
 
-            if not re.match(r'^[A-Za-z0-9\s_]+$', value):
+            if not re.match(r'^[A-Za-z0-9\s_-]+$', value):
                 raise ValueError(
                     f"Column '{column.key}' can only contain "
                     "alphabet letters, numbers, underscores, and spaces."
