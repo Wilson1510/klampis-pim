@@ -1,4 +1,4 @@
-from sqlalchemy import String, event, Text, Integer
+from sqlalchemy import String, event, Text, Integer, CheckConstraint
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 import pytest
@@ -56,6 +56,34 @@ class TestCategory:
         """Test that the model has the expected listeners"""
         assert event.contains(Categories.name, 'set', _set_slug)
         assert not event.contains(Categories, 'set', _set_slug)
+
+    def test_table_args(self):
+        """Test that the table has the expected table args"""
+        table_args = Categories.__table_args__
+
+        # Check that we have exactly 2 constraints
+        assert len(table_args) == 2
+
+        # Check that both are CheckConstraints
+        assert all(isinstance(arg, CheckConstraint) for arg in table_args)
+
+        # Check constraint names and order
+        constraint_names = [arg.name for arg in table_args]
+        expected_names = [
+            'check_category_hierarchy_rule',
+            'check_category_no_self_reference'
+        ]
+        assert constraint_names == expected_names
+
+        # Check constraint SQL text
+        hierarchy_constraint = table_args[0]
+        self_ref_constraint = table_args[1]
+
+        assert str(hierarchy_constraint.sqltext) == (
+            '(parent_id IS NULL AND category_type_id IS NOT NULL) OR '
+            '(parent_id IS NOT NULL AND category_type_id IS NULL)'
+        )
+        assert str(self_ref_constraint.sqltext) == 'id <> parent_id'
 
     def test_name_field_properties(self):
         """Test the properties of the name field"""
@@ -475,7 +503,6 @@ class TestCategory:
             category_type_id=self.test_category_type.id
         )
         await save_object(db_session, category)
-        await db_session.refresh(category, ['category_type'])
 
         # Verify initially has first category_type
         assert category.category_type_id == self.test_category_type.id
@@ -485,7 +512,6 @@ class TestCategory:
         # Update to use different category_type
         category.category_type_id = another_category_type.id
         await save_object(db_session, category)
-        await db_session.refresh(category, ['category_type'])
 
         # Verify category_type relationship is now the other one
         assert category.category_type_id == another_category_type.id
