@@ -149,9 +149,7 @@ class TestCategory:
     def test_str_representation(self):
         """Test the string representation"""
         str_repr = str(self.test_category1)
-        assert str_repr == (
-            "Categories(name=test category 1, slug=test-category-1)"
-        )
+        assert str_repr == "Categories(test category 1)"
 
     @pytest.mark.asyncio
     async def test_init_method(self, db_session: AsyncSession):

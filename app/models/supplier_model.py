@@ -54,7 +54,7 @@ class Suppliers(Base):
 
     def __str__(self) -> str:
         """String representation of the supplier."""
-        return f"Suppliers(name={self.name}, slug={self.slug})"
+        return f"Suppliers({self.name})"
 
     def __repr__(self) -> str:
         """Official string representation of the supplier."""

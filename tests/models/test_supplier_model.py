@@ -132,4 +132,4 @@ class TestSupplier:
     def test_str_representation(self):
         """Test the string representation"""
         str_repr = str(self.test_supplier1)
-        assert str_repr == "Suppliers(name=test supplier 1, slug=test-supplier-1)"
+        assert str_repr == "Suppliers(test supplier 1)"

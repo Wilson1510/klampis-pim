@@ -138,7 +138,7 @@ class TestUser:
         str_repr = str(self.test_user1)
 
         # Should follow the pattern: Users(username=<username>)
-        assert str_repr == "Users(username=testuser, name=Test User)"
+        assert str_repr == "Users(Test User)"
 
     def test_init_method(self):
         """Test the init method"""
