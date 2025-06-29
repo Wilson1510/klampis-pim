@@ -4,7 +4,7 @@ from datetime import datetime
 import pytest
 
 from app.core.base import Base
-from app.models.user import Users
+from app.models.user_model import Users
 from app.core.listeners import _hash_new_password_listener
 from app.core.security import verify_password
 from tests.utils.model_test_utils import (
@@ -95,7 +95,7 @@ class TestUser:
         email_column = Users.__table__.columns.get('email')
         assert email_column is not None
         assert isinstance(email_column.type, String)
-        assert email_column.type.length == 100
+        assert email_column.type.length == 50
         assert email_column.nullable is False
         assert email_column.unique is True
         assert email_column.index is True

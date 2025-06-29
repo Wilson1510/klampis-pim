@@ -11,7 +11,7 @@ import psycopg2
 
 from app.core.config import settings
 from app.core.base import Base
-from app.models.user import Users
+from app.models.user_model import Users
 from app.core.session import get_db
 from app.main import app
 # Constants for database connection
