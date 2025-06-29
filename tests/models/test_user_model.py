@@ -12,6 +12,7 @@ from tests.utils.model_test_utils import (
     get_object_by_id,
     get_all_objects,
     delete_object,
+    count_model_objects
 )
 
 
@@ -177,6 +178,7 @@ class TestUser:
         assert verify_password("testpassword3", item.password)
         assert item.role == "USER"
         assert item.last_login is None
+        assert await count_model_objects(db_session, Users) == 4
 
     @pytest.mark.asyncio
     async def test_get_operation(self, db_session: AsyncSession):
@@ -243,6 +245,7 @@ class TestUser:
         assert verify_password("testpassword", item.password)
         assert item.role == "ADMIN"
         assert item.last_login is None
+        assert await count_model_objects(db_session, Users) == 3
 
         item.username = "updatedtestuser"
         item.email = "updated_testuser@test.local"
@@ -255,6 +258,7 @@ class TestUser:
         assert verify_password("testpassword", item.password)
         assert item.role == "ADMIN"
         assert item.last_login is None
+        assert await count_model_objects(db_session, Users) == 3
 
     @pytest.mark.asyncio
     async def test_delete_operation(self, db_session: AsyncSession):
@@ -263,9 +267,7 @@ class TestUser:
 
         item = await get_object_by_id(db_session, Users, self.test_user1.id)
         assert item is None
-
-        item = await get_all_objects(db_session, Users)
-        assert len(item) == 2
+        assert await count_model_objects(db_session, Users) == 2
 
     @pytest.mark.asyncio
     async def test_create_update_user_not_by_system(self, db_session: AsyncSession):

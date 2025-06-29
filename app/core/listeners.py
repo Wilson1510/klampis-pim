@@ -6,6 +6,7 @@ from sqlalchemy.orm.attributes import get_history
 
 from app.core.base import Base
 from app.models.category_type_model import CategoryTypes
+from app.models.category_model import Categories
 from app.models.user import Users
 from app.core.security import hash_password
 from slugify import slugify
@@ -163,3 +164,4 @@ def register_listeners():
     event.listen(Users, 'before_update', _hash_new_password_listener)
 
     event.listen(CategoryTypes.name, 'set', _set_slug)
+    event.listen(Categories.name, 'set', _set_slug)

@@ -1,4 +1,4 @@
-from sqlalchemy import select
+from sqlalchemy import select, func
 
 
 def assert_relationship(model_class, relationship_name, back_populates):
@@ -54,3 +54,11 @@ async def delete_object(session, object):
     await session.delete(object)
     await session.commit()
     return object
+
+
+async def count_model_objects(session, model_class):
+    """
+    Count the number of objects in the database for a given model class.
+    """
+    result = await session.execute(select(func.count()).select_from(model_class))
+    return result.scalar_one()
