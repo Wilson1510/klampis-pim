@@ -1,4 +1,4 @@
-from sqlalchemy import String, event, DateTime
+from sqlalchemy import String, event
 from sqlalchemy.ext.asyncio import AsyncSession
 import pytest
 
