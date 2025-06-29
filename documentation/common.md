@@ -29,5 +29,15 @@ app/
 - System user with (ID: 1) will be created for all automated operations
 - `created_by` and `updated_by` will be used as non-nullable foreign keys
 - Default to system user (ID: 1) when no user context is available
-- System user has role "SYSTEM" and no password
+- System user has role "SYSTEM"
 - All data migrations and seeding operations use system user
+
+# Create .env, test_config.py, and alembic.ini file
+1. Copy configuration files:
+   ```bash
+   cp env.example .env
+   cp test_config.example tests/core/test_config.py
+   cp alembic.example alembic.ini
+   ```
+   cp for linux, copy for windows
+2. Update database password in all copied files by changing `yourpassword`
