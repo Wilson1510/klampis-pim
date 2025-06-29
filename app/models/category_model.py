@@ -49,8 +49,12 @@ class Categories(Base):
         CheckConstraint(
             '(parent_id IS NULL AND category_type_id IS NOT NULL) OR '
             '(parent_id IS NOT NULL AND category_type_id IS NULL)',
-            name='chk_category_hierarchy_rule'
+            name='check_category_hierarchy_rule'
         ),
+        CheckConstraint(
+            'id <> parent_id',
+            name='check_category_no_self_reference'
+        )
     )
 
     def __str__(self) -> str:
