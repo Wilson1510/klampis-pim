@@ -51,7 +51,7 @@ class TestCategoryType:
         assert isinstance(name_column.type, String)
         assert name_column.type.length == 100
         assert name_column.nullable is False
-        assert name_column.unique is True
+        assert name_column.unique is None
         assert name_column.index is True
         assert name_column.default is None
 

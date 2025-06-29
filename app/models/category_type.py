@@ -1,4 +1,5 @@
 from sqlalchemy import Column, String
+from sqlalchemy.orm import relationship
 
 from app.core.base import Base
 
@@ -11,18 +12,11 @@ class CategoryTypes(Base):
     to categorize different categories. Each category belongs to one category type.
     For example: Electronics, Food, Beverages, etc.
     """
-    name = Column(
-        String(100),
-        unique=True,
-        nullable=False,
-        index=True
-    )
-    slug = Column(
-        String(100),
-        unique=True,
-        nullable=False,
-        index=True
-    )
+    name = Column(String(100), nullable=False, index=True)
+    slug = Column(String(100), unique=True, nullable=False, index=True)
+
+    # Relationships
+    categories = relationship("Categories", back_populates="category_type")
 
     def __str__(self) -> str:
         """String representation of the category type."""
