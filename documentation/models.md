@@ -13,13 +13,13 @@ Base model:
 │ sequence        │
 └─────────────────┘
 ```
-This model will be inherited to all models in the ERD structure
+This model will be inherited to all models in the ERD structure except Users
 
 ERD structure:
 
 ```
 ┌─────────────────┐
-│      User       │
+│      Users      │
 │─────────────────│
 │ id (PK)         │
 │ username        │
@@ -41,35 +41,35 @@ ERD structure:
 │ name            │           │ name            │           │ name            │
 │ slug            │           │ slug            │           │ slug            │
 │ created_at      │           │ description     │           │ description     │
-│ updated_at      │           │ category_type_id│           │ category_id (FK)│
-│ created_by (FK) │           │ created_at      │           │ supplier_id (FK)│
-│ updated_by (FK) │           │ updated_at      │           │ created_at      │
-│ is_active       │           │ created_by (FK) │           │ updated_at      │
-│ sequence        │           │ updated_by (FK) │           │ created_by (FK) │
-└─────────────────┘           │ is_active       │           │ updated_by (FK) │
-                              │ sequence        │           │ is_active       │
-                              └─────────────────┘           │ sequence        │
-                                                            └─────────────────┘
-                                                                     │
-                                                                     │ 1:N
-                                                                     ▼
-                                                            ┌─────────────────┐
-                                                            │      Skus       │
-                                                            │─────────────────│
-                                                            │ id (PK)         │
-                                                            │ name            │
-                                                            │ slug            │
-                                                            │ description     │
-                                                            │ sku_number      │
-                                                            │ attributes (JSON)│
-                                                            │ product_id (FK) │
-                                                            │ created_at      │
-                                                            │ updated_at      │
-                                                            │ created_by (FK) │
-                                                            │ updated_by (FK) │
-                                                            │ is_active       │
-                                                            │ sequence        │
-                                                            └─────────────────┘
+│ updated_at      │           │category_type_id │           │ category_id (FK)│
+│ created_by (FK) │           │     (FK)        │           │ supplier_id (FK)│
+│ updated_by (FK) │           │ parent_id (FK)  │           │ created_at      │
+│ is_active       │           │ created_at      │           │ updated_at      │
+│ sequence        │           │ updated_at      │           │ created_by (FK) │
+└─────────────────┘           │ created_by (FK) │           │ updated_by (FK) │
+                              │ updated_by (FK) │           │ is_active       │
+                              │ is_active       │           │ sequence        │
+                              │ sequence        │           └─────────────────┘
+                              └─────────────────┘                          │
+                                       │                                   │ 1:N
+                                       │ 1:N (self-referencing)            ▼
+                                       ▼                          ┌─────────────────┐
+                              ┌─────────────────┐                 │      Skus       │
+                              │   Categories    │                 │─────────────────│
+                              │   (children)    │                 │ id (PK)         │
+                              │─────────────────│                 │ name            │
+                              │ parent_id (FK)  │                 │ slug            │
+                              └─────────────────┘                 │ description     │
+                                                                  │ sku_number      │
+                                                                  │ attributes (JSON)│
+                                                                  │ product_id (FK) │
+                                                                  │ created_at      │
+                                                                  │ updated_at      │
+                                                                  │ created_by (FK) │
+                                                                  │ updated_by (FK) │
+                                                                  │ is_active       │
+                                                                  │ sequence        │
+                                                                  └─────────────────┘
                                                                      │
                                                                      │ 1:N
                                                                      ▼
@@ -159,7 +159,8 @@ ERD structure:
 
 # Key Relationships Summary:
 - **User** → **All Models** (created_by, updated_by)
-- **CategoryTypes** → **Categories** (1:N)
+- **CategoryTypes** → **Categories** (1:N via category_type_id)
+- **Categories** → **Categories** (1:N self-referencing via parent_id)
 - **Categories** → **Products** (1:N)
 - **Products** → **Skus** (1:N)
 - **Products** ↔ **Attributes** (M:N via Product_Attributes)

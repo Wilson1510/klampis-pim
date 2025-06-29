@@ -8,7 +8,7 @@ alwaysApply: true
 ## Project Overview
 This is a Product Information Management (PIM) system for large supermarkets built with:
 - **Backend**: FastAPI with Python 3.11 and pydantic V2
-- **Database**: PostgreSQL with SQLAlchemy ORM
+- **Database**: PostgreSQL with SQLAlchemy 2.0.x ORM
 - **Architecture**: Clean Architecture with Repository Pattern
 
 ## Code Style & Standards
@@ -17,7 +17,7 @@ This is a Product Information Management (PIM) system for large supermarkets bui
 - Follow PEP 8 with line length of 88 characters (Black formatter)
 - Use type hints for all function parameters and return values
 - Use descriptive variable and function names in snake_case
-- Use PascalCase and Plural nouns for class names
+- Use PascalCase Plural nouns for class names
 - Use UPPER_CASE for constants
 - Prefer f-strings for string formatting
 - Use docstrings for all public functions, classes, and modules
@@ -39,6 +39,24 @@ from sqlalchemy import Column, Integer
 from app.core.config import settings
 from app.models.product import Product
 ```
+
+### File Naming Conventions
+Use consistent naming pattern: `{entity}_{layer/type}.py`
+
+**Examples:**
+- `category_model.py` - Category model
+- `category_type_schema.py` - CategoryType schema
+- `product_endpoint.py` - Product endpoint
+- `sku_service.py` - SKU service
+- `supplier_repository.py` - Supplier repository
+- `test_category_model.py` - Category model tests
+- `test_product_service.py` - Product service tests
+
+**Benefits:**
+- Consistent file organization across all layers
+- Easy to search and locate files by entity or layer
+- Clear identification of file purpose from name
+- Files naturally group by entity when sorted alphabetically
 
 ## Repository Pattern
 - Create repository interfaces for each domain entity

@@ -1,18 +1,19 @@
-import pytest
-import psycopg2
+from typing import AsyncGenerator
 import asyncio
+
 from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
-from app.core.config import settings
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
-from typing import AsyncGenerator
-
-# Import the SQLAlchemy components from your project
-from app.core.base import Base
-from app.core.session import get_db
-from httpx import AsyncClient
-from app.main import app
 from httpx import ASGITransport
+from httpx import AsyncClient
+import pytest
+import psycopg2
+
+from app.core.config import settings
+from app.core.base import Base
+from app.models.user import Users
+from app.core.session import get_db
+from app.main import app
 # Constants for database connection
 TEST_DB_NAME = "test_db"
 
@@ -93,12 +94,31 @@ def event_loop():
 async def db_engine(create_test_database):
     """Create and yield the engine, then dispose of it after tests."""
     engine = create_async_engine(
-        settings.DATABASE_URI.replace("pim_data", TEST_DB_NAME), echo=False
+        settings.DATABASE_URI.replace("klampis_pim", TEST_DB_NAME), echo=False
     )
 
     # Create all tables
     async with engine.begin() as conn:
+        # Ensure Users model is registered for foreign key constraints
+        _ = Users  # noqa: F841
         await conn.run_sync(Base.metadata.create_all)
+
+    # Create system user after tables are created
+    async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    async with async_session() as session:
+        # Create system user if it doesn't exist
+        system_user = Users(
+            username="system",
+            email="system@test.local",
+            password="systempassword",
+            name="System User",
+            role="SYSTEM",
+            created_by=None,  # System user creates itself
+            updated_by=None,
+            sequence=1
+        )
+        session.add(system_user)
+        await session.commit()
 
     yield engine
 
