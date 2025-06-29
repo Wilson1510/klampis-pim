@@ -12,6 +12,7 @@ from tests.utils.model_test_utils import (
     get_object_by_id,
     get_all_objects,
     delete_object,
+    count_model_objects
 )
 
 
@@ -102,6 +103,7 @@ class TestCategoryType:
         assert item.id == 3
         assert item.name == "test category type 3"
         assert item.slug == "test-category-type-3"
+        assert await count_model_objects(db_session, CategoryTypes) == 3
 
         item_with_slug = CategoryTypes(
             name="test category type 4",
@@ -112,6 +114,7 @@ class TestCategoryType:
         assert item_with_slug.name == "test category type 4"
         # slug should be set to the slugified name
         assert item_with_slug.slug == "test-category-type-4"
+        assert await count_model_objects(db_session, CategoryTypes) == 4
 
     @pytest.mark.asyncio
     async def test_get_operation(self, db_session: AsyncSession):
@@ -159,6 +162,7 @@ class TestCategoryType:
         assert item.id == 1
         assert item.name == "updated test category type"
         assert item.slug == "updated-test-category-type"
+        assert await count_model_objects(db_session, CategoryTypes) == 2
 
         item.slug = "updated-slug-category-type"
         await save_object(db_session, item)
@@ -167,6 +171,7 @@ class TestCategoryType:
         assert item.name == "updated test category type"
         # slug keep the same
         assert item.slug == "updated-test-category-type"
+        assert await count_model_objects(db_session, CategoryTypes) == 2
 
     @pytest.mark.asyncio
     async def test_delete_operation(self, db_session: AsyncSession):
@@ -179,11 +184,9 @@ class TestCategoryType:
             self.test_category_type1.id
         )
         assert item is None
+        assert await count_model_objects(db_session, CategoryTypes) == 1
 
-        items = await get_all_objects(db_session, CategoryTypes)
-        assert len(items) == 1
-
-    # Relationship Tests
+    # Relationship Tests (CategoryType -> Categories)
 
     @pytest.mark.asyncio
     async def test_create_category_with_category_type(
@@ -304,7 +307,7 @@ class TestCategoryType:
         with pytest.raises(IntegrityError) as exc_info:
             await save_object(db_session, category)
 
-        assert "chk_category_hierarchy_rule" in str(exc_info.value)
+        assert "check_category_hierarchy_rule" in str(exc_info.value)
 
     @pytest.mark.asyncio
     async def test_orphaned_category_cleanup(self, db_session: AsyncSession):
