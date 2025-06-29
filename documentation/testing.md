@@ -19,19 +19,19 @@
 │   ├── test_exceptions.py
 │   └── test_base.py
 ├── /models                     # Test SQLAlchemy models
-│   ├── test_model_file.py (example)
+│   ├── test_model_name_model.py (example)
 │   ├── the other file ...
 ├── /schemas                    # Test Pydantic schemas
-│   ├── test_schema_file.py (example)
+│   ├── test_model_name_schema.py (example)
 │   ├── the other file ...
 ├── /services                   # Test business logic
-│   ├── test_service_file.py (example)
+│   ├── test_model_name_service.py (example)
 │   ├── the other file ...
 ├── /repositories               # Test data access layer
-│   ├── test_repository_file.py (example)
+│   ├── test_model_name_repository.py (example)
 │   ├── the other file ...
 ├── /utils                      # Test utility functions
-│   ├── test_utils_file.py (example)
+│   ├── test_file_utils.py (example)
 │   ├── the other file ...
 ├── /integration                # Integration tests
 │   ├── test_intergration_file.py (example)
@@ -68,7 +68,7 @@ These tests focus **only on unique features** specific to each model:
 - **Model-specific relationships**
 - **Custom methods and behaviors**
 
-For example, `test_category_type.py` only tests:
+For example, `test_category_type_model.py` only tests:
 - Model initialization and field assignment
 - CRUD operations (Create, Read, Update, Delete) specific to the model
 - Slug generation from name field

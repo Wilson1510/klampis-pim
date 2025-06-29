@@ -5,7 +5,7 @@ from sqlalchemy import event, String, Integer, Boolean, DateTime, Float, Text
 from sqlalchemy.orm.attributes import get_history
 
 from app.core.base import Base
-from app.models.category_type import CategoryTypes
+from app.models.category_type_model import CategoryTypes
 from app.models.user import Users
 from app.core.security import hash_password
 from slugify import slugify

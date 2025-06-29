@@ -40,6 +40,24 @@ from app.core.config import settings
 from app.models.product import Product
 ```
 
+### File Naming Conventions
+Use consistent naming pattern: `{entity}_{layer/type}.py`
+
+**Examples:**
+- `category_model.py` - Category model
+- `category_type_schema.py` - CategoryType schema
+- `product_endpoint.py` - Product endpoint
+- `sku_service.py` - SKU service
+- `supplier_repository.py` - Supplier repository
+- `test_category_model.py` - Category model tests
+- `test_product_service.py` - Product service tests
+
+**Benefits:**
+- Consistent file organization across all layers
+- Easy to search and locate files by entity or layer
+- Clear identification of file purpose from name
+- Files naturally group by entity when sorted alphabetically
+
 ## Repository Pattern
 - Create repository interfaces for each domain entity
 - Implement concrete repositories with SQLAlchemy
