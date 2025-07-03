@@ -59,7 +59,7 @@ class Categories(Base):
 
     def __str__(self) -> str:
         """String representation of the category."""
-        return f"Categories(name={self.name}, slug={self.slug})"
+        return f"Categories({self.name})"
 
     def __repr__(self) -> str:
         """Official string representation of the category."""

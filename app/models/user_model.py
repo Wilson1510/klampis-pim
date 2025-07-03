@@ -18,7 +18,7 @@ class Users(Base):
         nullable=False,
         index=True
     )
-    email = Column(String(100), unique=True, nullable=False, index=True)
+    email = Column(String(50), unique=True, nullable=False, index=True)
     password = Column(String(255), nullable=False)  # Increased length for bcrypt hashes
     name = Column(String(50), nullable=False)
     role = Column(String, nullable=False, default="USER")
@@ -40,9 +40,7 @@ class Users(Base):
 
     @validates('email')
     def validate_email(self, key, value):
-        """
-        This validator only runs for the 'email' column.
-        """
+        """Validate email field."""
         if not isinstance(value, str):
             return value
 
@@ -63,7 +61,7 @@ class Users(Base):
 
     def __str__(self) -> str:
         """String representation of the user."""
-        return f"Users(username={self.username}, name={self.name})"
+        return f"Users({self.name})"
 
     def __repr__(self) -> str:
         """Official string representation of the user."""

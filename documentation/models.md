@@ -34,23 +34,23 @@ ERD structure:
 │ sequence        │
 └─────────────────┘
 
-┌─────────────────┐    1:N    ┌─────────────────┐    1:N    ┌─────────────────┐
-│  CategoryTypes  │◄──────────│   Categories    │◄──────────│    Products     │
-│─────────────────│           │─────────────────│           │─────────────────│
-│ id (PK)         │           │ id (PK)         │           │ id (PK)         │
-│ name            │           │ name            │           │ name            │
-│ slug            │           │ slug            │           │ slug            │
-│ created_at      │           │ description     │           │ description     │
-│ updated_at      │           │category_type_id │           │ category_id (FK)│
-│ created_by (FK) │           │     (FK)        │           │ supplier_id (FK)│
-│ updated_by (FK) │           │ parent_id (FK)  │           │ created_at      │
-│ is_active       │           │ created_at      │           │ updated_at      │
-│ sequence        │           │ updated_at      │           │ created_by (FK) │
-└─────────────────┘           │ created_by (FK) │           │ updated_by (FK) │
-                              │ updated_by (FK) │           │ is_active       │
-                              │ is_active       │           │ sequence        │
-                              │ sequence        │           └─────────────────┘
-                              └─────────────────┘                          │
+┌─────────────────┐    1:N    ┌─────────────────┐    1:N    ┌─────────────────┐    N:1    ┌─────────────────┐
+│  CategoryTypes  │◄──────────│   Categories    │◄──────────│    Products     │──────────►│    Suppliers    │
+│─────────────────│           │─────────────────│           │─────────────────│           │─────────────────│
+│ id (PK)         │           │ id (PK)         │           │ id (PK)         │           │ id (PK)         │
+│ name            │           │ name            │           │ name            │           │ name            │
+│ slug            │           │ slug            │           │ slug            │           │ slug            │
+│ created_at      │           │ description     │           │ description     │           │ company_type    │
+│ updated_at      │           │category_type_id │           │ category_id (FK)│           │ address         │
+│ created_by (FK) │           │     (FK)        │           │ supplier_id (FK)│           │ contact         │
+│ updated_by (FK) │           │ parent_id (FK)  │           │ created_at      │           │ email           │
+│ is_active       │           │ created_at      │           │ updated_at      │           │ created_at      │
+│ sequence        │           │ updated_at      │           │ created_by (FK) │           │ updated_at      │
+└─────────────────┘           │ created_by (FK) │           │ updated_by (FK) │           │ created_by (FK) │
+                              │ updated_by (FK) │           │ is_active       │           │ updated_by (FK) │
+                              │ is_active       │           │ sequence        │           │ is_active       │
+                              │ sequence        │           └─────────────────┘           │ sequence        │
+                              └─────────────────┘                          │              └─────────────────┘
                                        │                                   │ 1:N
                                        │ 1:N (self-referencing)            ▼
                                        ▼                          ┌─────────────────┐
@@ -105,25 +105,9 @@ ERD structure:
                                                             │ sequence        │
                                                             └─────────────────┘
 
-┌─────────────────┐    1:N    ┌─────────────────┐
-│    Suppliers    │◄──────────│    Products     │
-│─────────────────│           │─────────────────│
-│ id (PK)         │           └─────────────────┘
-│ name            │
-│ slug            │
-│ company_type    │
-│ address         │
-│ contact         │
-| email           |
-│ created_at      │
-│ updated_at      │
-│ created_by (FK) │
-│ updated_by (FK) │
-│ is_active       │
-│ sequence        │
-└─────────────────┘
 
-┌─────────────────┐    M:N    ┌─────────────────┐    M:N    ┌─────────────────┐
+
+┌─────────────────┐    1:N    ┌─────────────────┐    1:N    ┌─────────────────┐
 │   Attributes    │◄──────────│Product_Attributes│──────────►│    Products     │
 │─────────────────│           │─────────────────│           │─────────────────│
 │ id (PK)         │           │ id (PK)         │           └─────────────────┘
