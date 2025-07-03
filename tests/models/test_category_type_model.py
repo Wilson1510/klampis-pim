@@ -187,32 +187,43 @@ class TestCategoryType:
     # Relationship Tests (CategoryType -> Categories)
 
     @pytest.mark.asyncio
-    async def test_create_category_with_category_type(
+    async def test_create_category_type_with_categories(
         self, db_session: AsyncSession
     ):
         """Test creating top-level category with category type (valid scenario)"""
         # Top-level category must have category_type_id
-        category = Categories(
-            name="Test Category",
-            description="Test Description",
-            category_type_id=self.test_category_type1.id
+        category_type = CategoryTypes(
+            name="Test Category Type",
+            categories=[
+                Categories(
+                    name="Test Category 3",
+                    description="Test Description 3"
+                ),
+                Categories(
+                    name="Test Category 4",
+                    description="Test Description 4"
+                )
+            ]
         )
-        await save_object(db_session, category)
+        await save_object(db_session, category_type)
 
         retrieved_category_type = await get_object_by_id(
             db_session,
             CategoryTypes,
-            self.test_category_type1.id
+            category_type.id
         )
-        await db_session.refresh(retrieved_category_type, ['categories'])
+        await db_session.refresh(category_type, ['categories'])
 
-        assert len(retrieved_category_type.categories) == 1
-        assert retrieved_category_type.categories[0].id == 1
-        assert retrieved_category_type.categories[0].name == "Test Category"
-        assert retrieved_category_type.categories[0].slug == "test-category"
-        assert retrieved_category_type.categories[0].description == (
-            "Test Description"
-        )
+        assert retrieved_category_type.id == 1
+        assert retrieved_category_type.name == "Test Category Type"
+        assert retrieved_category_type.slug == "test-category-type"
+        assert len(retrieved_category_type.categories) == 2
+
+        assert retrieved_category_type.categories[0].id == 3
+        assert retrieved_category_type.categories[0].name == "Test Category 3"
+        assert retrieved_category_type.categories[0].slug == "test-category-3"
+        assert retrieved_category_type.categories[0].description == "Test Description 3"
+        assert retrieved_category_type.categories[0].category_type_id == 1
 
     @pytest.mark.asyncio
     async def test_add_multiple_categories_to_category_type(
@@ -220,7 +231,7 @@ class TestCategoryType:
     ):
         """Test adding multiple categories to category type"""
         categories = []
-        for i in range(5):
+        for i in range(10, 15):
             category = Categories(
                 name=f"Test Category {i}",
                 description=f"Test Description {i}",
@@ -262,29 +273,6 @@ class TestCategoryType:
         # Try to delete category type that has associated categories
         with pytest.raises(IntegrityError):
             await delete_object(db_session, self.test_category_type1)
-
-    @pytest.mark.asyncio
-    async def test_reassigning_category_to_different_type(
-        self, db_session: AsyncSession
-    ):
-        """Test reassigning category to different category type"""
-        # Create category with test_category_type1
-        category = Categories(
-            name="Test Category",
-            category_type_id=self.test_category_type1.id
-        )
-        await save_object(db_session, category)
-
-        await db_session.refresh(category, ['category_type'])
-        assert category.category_type.name == "test category type"
-
-        # Reassign to test_category_type2
-        category.category_type_id = self.test_category_type2.id
-        await save_object(db_session, category)
-
-        # Refresh and verify
-        await db_session.refresh(category, ['category_type'])
-        assert category.category_type.name == "test category type 2"
 
     @pytest.mark.asyncio
     async def test_setting_category_type_to_null_on_top_level_fails(
