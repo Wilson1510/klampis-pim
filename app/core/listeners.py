@@ -8,6 +8,7 @@ from app.core.base import Base
 from app.models.category_type_model import CategoryTypes
 from app.models.category_model import Categories
 from app.models.supplier_model import Suppliers
+from app.models.product_model import Products
 from app.models.user_model import Users
 from app.core.security import hash_password
 from slugify import slugify
@@ -167,3 +168,4 @@ def register_listeners():
     event.listen(CategoryTypes.name, 'set', _set_slug)
     event.listen(Categories.name, 'set', _set_slug)
     event.listen(Suppliers.name, 'set', _set_slug)
+    event.listen(Products.name, 'set', _set_slug)

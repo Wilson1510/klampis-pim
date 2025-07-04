@@ -43,6 +43,7 @@ class Categories(Base):
         back_populates="children"
     )
     children = relationship("Categories", back_populates="parent")
+    products = relationship("Products", back_populates="category")
 
     # Database constraint to enforce hierarchy rules
     __table_args__ = (
