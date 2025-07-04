@@ -184,7 +184,11 @@ class TestCategoryType:
         assert item is None
         assert await count_model_objects(db_session, CategoryTypes) == 1
 
-    # Relationship Tests (CategoryType -> Categories)
+    """
+    ================================================
+    Relationship Tests (CategoryType -> Categories)
+    ================================================
+    """
 
     @pytest.mark.asyncio
     async def test_create_category_type_with_categories(
@@ -193,7 +197,7 @@ class TestCategoryType:
         """Test creating top-level category with category type (valid scenario)"""
         # Top-level category must have category_type_id
         category_type = CategoryTypes(
-            name="Test Category Type",
+            name="Test Category Type 1",
             categories=[
                 Categories(
                     name="Test Category 3",
@@ -214,16 +218,16 @@ class TestCategoryType:
         )
         await db_session.refresh(category_type, ['categories'])
 
-        assert retrieved_category_type.id == 1
-        assert retrieved_category_type.name == "Test Category Type"
-        assert retrieved_category_type.slug == "test-category-type"
+        assert retrieved_category_type.id == 3
+        assert retrieved_category_type.name == "Test Category Type 1"
+        assert retrieved_category_type.slug == "test-category-type-1"
         assert len(retrieved_category_type.categories) == 2
 
-        assert retrieved_category_type.categories[0].id == 3
+        assert retrieved_category_type.categories[0].id == 1
         assert retrieved_category_type.categories[0].name == "Test Category 3"
         assert retrieved_category_type.categories[0].slug == "test-category-3"
         assert retrieved_category_type.categories[0].description == "Test Description 3"
-        assert retrieved_category_type.categories[0].category_type_id == 1
+        assert retrieved_category_type.categories[0].category_type_id == 3
 
     @pytest.mark.asyncio
     async def test_add_multiple_categories_to_category_type(
@@ -231,7 +235,7 @@ class TestCategoryType:
     ):
         """Test adding multiple categories to category type"""
         categories = []
-        for i in range(10, 15):
+        for i in range(5):
             category = Categories(
                 name=f"Test Category {i}",
                 description=f"Test Description {i}",
