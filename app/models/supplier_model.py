@@ -1,5 +1,5 @@
 from sqlalchemy import Column, String, Text
-from sqlalchemy.orm import validates
+from sqlalchemy.orm import validates, relationship
 
 from app.core.base import Base
 
@@ -18,6 +18,9 @@ class Suppliers(Base):
     address = Column(Text, nullable=True)
     contact = Column(String(13), unique=True, nullable=False, index=True)
     email = Column(String(50), unique=True, nullable=False, index=True)
+
+    # Relationships
+    products = relationship("Products", back_populates="supplier")
 
     @validates('contact')
     def validate_contact(self, key, value):
