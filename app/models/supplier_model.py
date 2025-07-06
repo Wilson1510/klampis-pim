@@ -1,7 +1,16 @@
-from sqlalchemy import Column, String, Text
+import enum
+
+from sqlalchemy import Column, Enum, String, Text
 from sqlalchemy.orm import validates, relationship
 
 from app.core.base import Base
+
+
+class CompanyType(str, enum.Enum):
+    INDIVIDUAL = "INDIVIDUAL"
+    PT = "PT"
+    CV = "CV"
+    UD = "UD"
 
 
 class Suppliers(Base):
@@ -14,7 +23,7 @@ class Suppliers(Base):
     """
     name = Column(String(100), nullable=False, index=True)
     slug = Column(String(100), unique=True, nullable=False, index=True)
-    company_type = Column(String(50), nullable=False)
+    company_type = Column(Enum(CompanyType), nullable=False)
     address = Column(Text, nullable=True)
     contact = Column(String(13), unique=True, nullable=False, index=True)
     email = Column(String(50), unique=True, nullable=False, index=True)
@@ -45,15 +54,6 @@ class Suppliers(Base):
             raise ValueError("Invalid email format (must not start or end with '@').")
 
         return value.lower().strip()
-
-    @validates('company_type')
-    def validate_company_type(self, key, value):
-        """Validate company_type field."""
-        if not isinstance(value, str):
-            return value
-        if value.upper().strip() not in ["INDIVIDUAL", "PT", "CV", "UD"]:
-            raise ValueError("Invalid company type")
-        return value.upper().strip()
 
     def __str__(self) -> str:
         """String representation of the supplier."""

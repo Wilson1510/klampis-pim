@@ -1,10 +1,10 @@
-from sqlalchemy import String, Text, event, select
+from sqlalchemy import String, Text, event, select, Enum
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 import pytest
 
 from app.core.base import Base
-from app.models.supplier_model import Suppliers
+from app.models.supplier_model import Suppliers, CompanyType
 from app.models.product_model import Products
 from app.models.category_model import Categories
 from app.models.category_type_model import CategoryTypes
@@ -51,15 +51,13 @@ class TestSupplier:
         """Test that the fields have the expected validation"""
         assert hasattr(Suppliers, 'validate_contact')
         assert hasattr(Suppliers, 'validate_email')
-        assert hasattr(Suppliers, 'validate_company_type')
         assert not hasattr(Suppliers, 'validate_name')
 
         assert 'contact' in Suppliers.__mapper__.validators
         assert 'email' in Suppliers.__mapper__.validators
-        assert 'company_type' in Suppliers.__mapper__.validators
         assert 'name' not in Suppliers.__mapper__.validators
 
-        assert len(Suppliers.__mapper__.validators) == 3
+        assert len(Suppliers.__mapper__.validators) == 2
 
     def test_has_listeners(self):
         """Test that the model has the expected listeners"""
@@ -92,8 +90,8 @@ class TestSupplier:
         """Test the properties of the company_type field"""
         company_type_column = Suppliers.__table__.columns.get('company_type')
         assert company_type_column is not None
-        assert isinstance(company_type_column.type, String)
-        assert company_type_column.type.length == 50
+        assert isinstance(company_type_column.type, Enum)
+        assert company_type_column.type.enum_class == CompanyType
         assert company_type_column.nullable is False
         assert company_type_column.unique is None
         assert company_type_column.index is None
@@ -365,50 +363,6 @@ class TestSupplier:
                     address="test address",
                     contact=f"0812345678{str(i+10).zfill(2)}",
                     email=email
-                )
-            await db_session.rollback()
-
-    @pytest.mark.asyncio
-    async def test_valid_company_type_validation(self, db_session: AsyncSession):
-        """Test valid company_type validation"""
-        valid_types = ["INDIVIDUAL", "PT", "CV", "UD"]
-
-        for i, company_type in enumerate(valid_types):
-            supplier = Suppliers(
-                name=f"test company type {company_type.lower()}",
-                company_type=company_type.lower(),  # Test lowercase input
-                address="test address",
-                contact=f"0812345678{str(i+10).zfill(2)}",
-                email=f"test{company_type.lower()}@example.com"
-            )
-            await save_object(db_session, supplier)
-            # Company type should be uppercased and trimmed
-            assert supplier.company_type == company_type
-
-        # Test with spaces
-        supplier_with_spaces = Suppliers(
-            name="test company type with spaces",
-            company_type="  pt  ",
-            address="test address",
-            contact="081234567814",
-            email="testspaces@example.com"
-        )
-        await save_object(db_session, supplier_with_spaces)
-        assert supplier_with_spaces.company_type == "PT"
-
-    @pytest.mark.asyncio
-    async def test_invalid_company_type_validation(self, db_session: AsyncSession):
-        """Test invalid company_type validation"""
-        # Invalid company type should raise ValueError
-        invalid_types = ["LLC", "CORP", "123", "&^%$", ""]
-        for i, company_type in enumerate(invalid_types):
-            with pytest.raises(ValueError, match="Invalid company type"):
-                Suppliers(
-                    name=f"test invalid company type {i}",
-                    company_type=company_type,
-                    address="test address",
-                    contact=f"0812345678{str(i+10).zfill(2)}",
-                    email=f"testinvalid{i}@example.com"
                 )
             await db_session.rollback()
 

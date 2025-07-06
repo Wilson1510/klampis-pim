@@ -1,11 +1,18 @@
+import enum
 from datetime import datetime
 
-from sqlalchemy import Column, String, Integer, Boolean, Float, DateTime, Text
+from sqlalchemy import Column, String, Integer, Boolean, Float, DateTime, Text, Enum
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.exc import DBAPIError, StatementError
 import pytest
 
 from app.core.base import Base
+
+
+class SampleEnum(str, enum.Enum):
+    FIRST = "FIRST"
+    SECOND = "SECOND"
+    THIRD = "THIRD"
 
 
 class SampleModelDataType(Base):
@@ -17,6 +24,7 @@ class SampleModelDataType(Base):
     sample_datetime = Column(DateTime(timezone=True))
     sample_jsonb = Column(JSONB)
     sample_text = Column(Text)
+    sample_enum = Column(Enum(SampleEnum))
 
 
 class TestDataType:
@@ -315,3 +323,75 @@ class TestDataType:
         ]
 
         await self.create_item(valid_data, invalid_data, "sample_jsonb", db_session)
+
+    async def test_enum_field_validation(self, db_session):
+        valid_data = [
+            SampleEnum.FIRST, "FIRST",
+            SampleEnum.SECOND, "SECOND",
+            SampleEnum.THIRD, "THIRD",
+            "   THIRD   ",
+            (SampleEnum.FIRST),
+        ]
+        invalid_data = [
+            [
+                "second", DBAPIError,
+                "nilai masukan tidak valid untuk enum sampleenum : « second »"
+            ],
+            [
+                "aaaaaaaaa", DBAPIError,
+                "nilai masukan tidak valid untuk enum sampleenum : « aaaaaaaaa »"
+            ],
+            [
+                "aaa", DBAPIError,
+                "nilai masukan tidak valid untuk enum sampleenum : « aaa »"
+            ],
+            [
+                123, StatementError,
+                "'123' is not among the defined enum values. Enum name: "
+                "sampleenum. Possible values: FIRST, SECOND, THIRD"
+            ],
+            [
+                12.3, StatementError,
+                "'12.3' is not among the defined enum values. Enum name: "
+                "sampleenum. Possible values: FIRST, SECOND, THIRD"
+            ],
+            [
+                True, StatementError,
+                "'True' is not among the defined enum values. Enum name: "
+                "sampleenum. Possible values: FIRST, SECOND, THIRD"
+            ],
+            [
+                datetime(2025, 7, 5, 8, 24, 30, 157344), StatementError,
+                "'2025-07-05 08:24:30.157344' is not among the defined enum "
+                "values. Enum name: sampleenum. Possible values: FIRST, "
+                "SECOND, THIRD"
+            ],
+            [[SampleEnum.FIRST], StatementError, "unhashable type: 'list'"],
+            [[], StatementError, "unhashable type: 'list'"],
+            [
+                [SampleEnum.SECOND, SampleEnum.THIRD], StatementError,
+                "unhashable type: 'list'"
+            ],
+            [{SampleEnum.FIRST}, StatementError, "unhashable type: 'set'"],
+            [
+                {SampleEnum.SECOND, SampleEnum.THIRD}, StatementError,
+                "unhashable type: 'set'"
+            ],
+            [{}, StatementError, "unhashable type: 'dict'"],
+            [
+                {SampleEnum.FIRST: SampleEnum.SECOND}, StatementError,
+                "unhashable type: 'dict'"
+            ],
+            [
+                (SampleEnum.SECOND, SampleEnum.THIRD), StatementError,
+                "is not among the defined enum values. Enum name: "
+                "sampleenum. Possible values: FIRST, SECOND, THIRD"
+            ],
+            [
+                (), StatementError,
+                "is not among the defined enum values. Enum name: "
+                "sampleenum. Possible values: FIRST, SECOND, THIRD"
+            ],
+        ]
+
+        await self.create_item(valid_data, invalid_data, "sample_enum", db_session)

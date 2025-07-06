@@ -1,7 +1,16 @@
-from sqlalchemy import Column, DateTime, Integer, String, ForeignKey
+import enum
+
+from sqlalchemy import Column, DateTime, Integer, String, ForeignKey, Enum
 from sqlalchemy.orm import validates
 
 from app.core.base import Base
+
+
+class Role(str, enum.Enum):
+    USER = "USER"
+    ADMIN = "ADMIN"
+    SYSTEM = "SYSTEM"
+    MANAGER = "MANAGER"
 
 
 class Users(Base):
@@ -21,7 +30,7 @@ class Users(Base):
     email = Column(String(50), unique=True, nullable=False, index=True)
     password = Column(String(255), nullable=False)  # Increased length for bcrypt hashes
     name = Column(String(50), nullable=False)
-    role = Column(String, nullable=False, default="USER")
+    role = Column(Enum(Role), nullable=False, default=Role.USER)
     last_login = Column(DateTime(timezone=True), nullable=True)
 
     # Override created_by and updated_by to be nullable for Users table
@@ -51,13 +60,6 @@ class Users(Base):
             raise ValueError("Invalid email format (must not start or end with '@').")
 
         return value.lower().strip()
-
-    @validates('role')
-    def validate_role(self, key, value):
-        """Validate role field."""
-        if value not in ["USER", "ADMIN", "SYSTEM", "MANAGER"]:
-            raise ValueError("Invalid role")
-        return value
 
     def __str__(self) -> str:
         """String representation of the user."""
