@@ -9,8 +9,8 @@ class Products(Base):
     Products model representing products in the system.
 
     This model stores product information and establishes relationships
-    with categories, suppliers, SKUs, and attributes. Each product belongs
-    to one category and one supplier, but can have multiple SKUs and attributes.
+    with categories, suppliers, and skus. Each product belongs
+    to one category and one supplier, but can have multiple skus.
     """
     name = Column(String(100), nullable=False, index=True)
     slug = Column(String(100), unique=True, nullable=False, index=True)
