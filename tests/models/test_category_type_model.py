@@ -191,7 +191,7 @@ class TestCategoryType:
 
     """
     ================================================
-    Relationship Tests (CategoryType -> Categories)
+    Relationship Tests (CategoryTypes -> Categories)
     ================================================
     """
 

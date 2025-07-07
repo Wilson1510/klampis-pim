@@ -373,7 +373,7 @@ class TestSupplier:
 
     """
     ================================================
-    Relationship Tests (Supplier -> Products)
+    Relationship Tests (Suppliers -> Products)
     ================================================
     """
 
