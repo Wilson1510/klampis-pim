@@ -482,6 +482,7 @@ class TestSupplier:
         # Try to delete supplier that has associated products
         with pytest.raises(IntegrityError):
             await delete_object(db_session, self.test_supplier1)
+        await db_session.rollback()
 
     @pytest.mark.asyncio
     async def test_setting_supplier_id_to_null_fails(
@@ -501,6 +502,7 @@ class TestSupplier:
 
         with pytest.raises(IntegrityError):
             await save_object(db_session, product)
+        await db_session.rollback()
 
     @pytest.mark.asyncio
     async def test_orphaned_product_cleanup(

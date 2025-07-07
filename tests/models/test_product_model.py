@@ -308,6 +308,7 @@ class TestProduct:
         )
         with pytest.raises(IntegrityError):
             await save_object(db_session, item)
+        await db_session.rollback()
 
     @pytest.mark.asyncio
     async def test_update_product_to_different_category(
@@ -359,6 +360,7 @@ class TestProduct:
 
         with pytest.raises(IntegrityError):
             await save_object(db_session, product)
+        await db_session.rollback()
 
     @pytest.mark.asyncio
     async def test_update_product_with_invalid_category_id(
@@ -378,6 +380,7 @@ class TestProduct:
 
         with pytest.raises(IntegrityError):
             await save_object(db_session, product)
+        await db_session.rollback()
 
     @pytest.mark.asyncio
     async def test_delete_product_with_category_relationship(
@@ -451,6 +454,7 @@ class TestProduct:
         )
         with pytest.raises(IntegrityError):
             await save_object(db_session, item)
+        await db_session.rollback()
 
     @pytest.mark.asyncio
     async def test_update_product_to_different_supplier(
@@ -503,6 +507,7 @@ class TestProduct:
 
         with pytest.raises(IntegrityError):
             await save_object(db_session, product)
+        await db_session.rollback()
 
     @pytest.mark.asyncio
     async def test_update_product_with_invalid_supplier_id(
@@ -522,6 +527,7 @@ class TestProduct:
 
         with pytest.raises(IntegrityError):
             await save_object(db_session, product)
+        await db_session.rollback()
 
     @pytest.mark.asyncio
     async def test_delete_product_with_supplier_relationship(

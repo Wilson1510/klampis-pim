@@ -321,6 +321,7 @@ class TestSku:
         )
         with pytest.raises(IntegrityError):
             await save_object(db_session, item)
+        await db_session.rollback()
 
     @pytest.mark.asyncio
     async def test_update_sku_to_different_product(
@@ -371,6 +372,7 @@ class TestSku:
 
         with pytest.raises(IntegrityError):
             await save_object(db_session, sku)
+        await db_session.rollback()
 
     @pytest.mark.asyncio
     async def test_update_sku_with_invalid_product_id(
@@ -389,6 +391,7 @@ class TestSku:
 
         with pytest.raises(IntegrityError):
             await save_object(db_session, sku)
+        await db_session.rollback()
 
     @pytest.mark.asyncio
     async def test_delete_sku_with_product_relationship(

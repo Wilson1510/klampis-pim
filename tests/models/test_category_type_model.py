@@ -277,6 +277,7 @@ class TestCategoryType:
         # Try to delete category type that has associated categories
         with pytest.raises(IntegrityError):
             await delete_object(db_session, self.test_category_type1)
+        await db_session.rollback()
 
     @pytest.mark.asyncio
     async def test_setting_category_type_to_null_on_top_level_fails(
@@ -296,6 +297,7 @@ class TestCategoryType:
 
         with pytest.raises(IntegrityError) as exc_info:
             await save_object(db_session, category)
+        await db_session.rollback()
 
         assert "check_category_hierarchy_rule" in str(exc_info.value)
 

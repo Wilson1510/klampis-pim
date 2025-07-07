@@ -338,6 +338,7 @@ class TestCategory:
         # Should fail with IntegrityError due to constraint violation
         with pytest.raises(IntegrityError):
             await save_object(db_session, category)
+        await db_session.rollback()
 
     @pytest.mark.asyncio
     async def test_invalid_both_not_null_constraint(self, db_session: AsyncSession):
@@ -352,6 +353,7 @@ class TestCategory:
         # Should fail with IntegrityError due to constraint violation
         with pytest.raises(IntegrityError):
             await save_object(db_session, category)
+        await db_session.rollback()
 
     @pytest.mark.asyncio
     async def test_update_violate_constraint_top_level_to_invalid(
@@ -373,6 +375,7 @@ class TestCategory:
 
         with pytest.raises(IntegrityError):
             await save_object(db_session, category)
+        await db_session.rollback()
 
     @pytest.mark.asyncio
     async def test_update_violate_constraint_child_to_invalid(
@@ -394,6 +397,7 @@ class TestCategory:
 
         with pytest.raises(IntegrityError):
             await save_object(db_session, category)
+        await db_session.rollback()
 
     @pytest.mark.asyncio
     async def test_valid_update_top_level_to_child(self, db_session: AsyncSession):
@@ -455,6 +459,7 @@ class TestCategory:
         # Should fail with IntegrityError due to self-reference constraint violation
         with pytest.raises(IntegrityError):
             await save_object(db_session, category)
+        await db_session.rollback()
 
     """
     ================================================
@@ -537,6 +542,7 @@ class TestCategory:
 
         with pytest.raises(IntegrityError):
             await save_object(db_session, category)
+        await db_session.rollback()
 
     @pytest.mark.asyncio
     async def test_update_category_with_invalid_category_type_id(
@@ -555,6 +561,7 @@ class TestCategory:
 
         with pytest.raises(IntegrityError):
             await save_object(db_session, category)
+        await db_session.rollback()
 
     @pytest.mark.asyncio
     async def test_delete_category_with_category_type_relationship(
@@ -736,6 +743,7 @@ class TestCategory:
 
         with pytest.raises(IntegrityError):
             await save_object(db_session, category)
+        await db_session.rollback()
 
     @pytest.mark.asyncio
     async def test_update_category_with_invalid_parent_id(
@@ -756,6 +764,7 @@ class TestCategory:
 
         with pytest.raises(IntegrityError):
             await save_object(db_session, category)
+        await db_session.rollback()
 
     @pytest.mark.asyncio
     async def test_delete_category_with_parent_relationship(
@@ -819,6 +828,7 @@ class TestCategory:
         # Should raise IntegrityError
         with pytest.raises(IntegrityError):
             await delete_object(db_session, parent)
+        await db_session.rollback()
 
     """
     ================================================
@@ -930,6 +940,7 @@ class TestCategory:
         # Try to delete category that has associated products
         with pytest.raises(IntegrityError):
             await delete_object(db_session, self.test_category1)
+        await db_session.rollback()
 
     @pytest.mark.asyncio
     async def test_setting_category_id_to_null_fails(
@@ -949,6 +960,7 @@ class TestCategory:
 
         with pytest.raises(IntegrityError):
             await save_object(db_session, product)
+        await db_session.rollback()
 
     @pytest.mark.asyncio
     async def test_orphaned_product_cleanup(
