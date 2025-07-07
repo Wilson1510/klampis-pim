@@ -1,4 +1,4 @@
-from sqlalchemy import String, event, Text, Integer
+from sqlalchemy import String, event, Text, Integer, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
 import pytest
@@ -7,6 +7,7 @@ from app.core.base import Base
 from app.models.category_type_model import CategoryTypes
 from app.models.category_model import Categories
 from app.models.product_model import Products
+from app.models.sku_model import Skus
 from app.models.supplier_model import Suppliers
 from app.core.listeners import _set_slug
 from tests.utils.model_test_utils import (
@@ -560,3 +561,177 @@ class TestProduct:
         assert supplier is not None
         assert supplier.name == "Test Supplier"
         assert supplier.products == [self.test_product1, self.test_product2]
+
+    """
+    ================================================
+    Relationship Tests (Products -> Skus)
+    ================================================
+    """
+
+    @pytest.mark.asyncio
+    async def test_create_product_with_skus(
+        self, db_session: AsyncSession
+    ):
+        """Test creating a product with multiple SKUs"""
+        product = Products(
+            name="Test Product with Skus",
+            description="A product with several skus",
+            category_id=self.test_category.id,
+            supplier_id=self.test_supplier.id,
+            skus=[
+                Skus(name="SKU Red", description="Red variant"),
+                Skus(name="SKU Blue", description="Blue variant")
+            ]
+        )
+        await save_object(db_session, product)
+
+        retrieved_product = await get_object_by_id(
+            db_session, Products, product.id
+        )
+        await db_session.refresh(retrieved_product, ['skus'])
+
+        assert retrieved_product.id == 3
+        assert retrieved_product.name == "Test Product with Skus"
+        assert len(retrieved_product.skus) == 2
+        assert retrieved_product.skus[0].name == "SKU Red"
+        assert retrieved_product.skus[0].slug == "sku-red"
+        assert retrieved_product.skus[0].description == "Red variant"
+        assert retrieved_product.skus[0].sku_number is not None
+        assert retrieved_product.skus[1].name == "SKU Blue"
+        assert retrieved_product.skus[1].slug == "sku-blue"
+        assert retrieved_product.skus[1].description == "Blue variant"
+        assert retrieved_product.skus[1].sku_number is not None
+
+    @pytest.mark.asyncio
+    async def test_add_multiple_skus_to_product(
+        self, db_session: AsyncSession
+    ):
+        """Test adding multiple skus to an existing product"""
+        product = self.test_product1
+
+        # Add skus
+        skus = []
+        for i in range(5):
+            sku = Skus(
+                name=f"New SKU {i}",
+                description=f"Description for new SKU {i}",
+                product_id=product.id
+            )
+            await save_object(db_session, sku)
+            skus.append(sku)
+
+        retrieved_product = await get_object_by_id(
+            db_session, Products, product.id
+        )
+        await db_session.refresh(retrieved_product, ['skus'])
+
+        for i in range(5):
+            assert retrieved_product.skus[i].name == f"New SKU {i}"
+            assert retrieved_product.skus[i].slug == f"new-sku-{i}"
+            assert retrieved_product.skus[i].description == (
+                f"Description for new SKU {i}"
+            )
+            assert retrieved_product.skus[i].sku_number is not None
+            assert retrieved_product.skus[i].product_id == product.id
+
+    @pytest.mark.asyncio
+    async def test_product_deletion_with_skus(
+        self, db_session: AsyncSession
+    ):
+        """Test that deleting a product with associated skus fails"""
+        # Create a sku associated with the product
+        sku = Skus(
+            name="SKU for delete test",
+            product_id=self.test_product1.id
+        )
+        await save_object(db_session, sku)
+
+        # Attempt to delete the product
+        with pytest.raises(IntegrityError):
+            await delete_object(db_session, self.test_product1)
+
+        await db_session.rollback()
+
+    @pytest.mark.asyncio
+    async def test_setting_product_id_to_null_fails(
+        self, db_session: AsyncSession
+    ):
+        """Test that setting a SKU's product_id to None fails"""
+        # Create a valid sku
+        sku = Skus(
+            name="SKU for null test",
+            product_id=self.test_product1.id
+        )
+        await save_object(db_session, sku)
+
+        # Try to set product_id to None
+        sku.product_id = None
+        with pytest.raises(IntegrityError):
+            await save_object(db_session, sku)
+
+        await db_session.rollback()
+
+    @pytest.mark.asyncio
+    async def test_orphaned_sku_cleanup(
+        self, db_session: AsyncSession
+    ):
+        """Test handling of SKUs when their product is deleted"""
+        # Create a temporary product
+        temp_product = Products(
+            name="Temporary Product for SKU test",
+            category_id=self.test_category.id,
+            supplier_id=self.test_supplier.id
+        )
+        await save_object(db_session, temp_product)
+
+        # Create a SKU associated with the temp product
+        temp_sku = Skus(
+            name="Temporary SKU",
+            product_id=temp_product.id
+        )
+        await save_object(db_session, temp_sku)
+
+        # Try to delete the product (should fail)
+        with pytest.raises(IntegrityError):
+            await delete_object(db_session, temp_product)
+        await db_session.rollback()
+
+        # To delete properly, first delete the SKU
+        await delete_object(db_session, temp_sku)
+
+        # Now the product can be deleted
+        await delete_object(db_session, temp_product)
+
+        deleted_sku = await get_object_by_id(db_session, Skus, temp_sku.id)
+        deleted_product = await get_object_by_id(db_session, Products, temp_product.id)
+
+        assert deleted_sku is None
+        assert deleted_product is None
+
+    @pytest.mark.asyncio
+    async def test_query_product_by_skus(
+        self, db_session: AsyncSession
+    ):
+        """Test querying a product by one of its skus"""
+        # Create a sku for test_product1
+        sku1 = Skus(
+            name="Query SKU 1",
+            product_id=self.test_product1.id
+        )
+        await save_object(db_session, sku1)
+
+        # Create a sku for test_product2
+        sku2 = Skus(
+            name="Query SKU 2",
+            product_id=self.test_product2.id
+        )
+        await save_object(db_session, sku2)
+
+        # Query product by sku name
+        stmt = select(Products).join(Skus).where(Skus.name == "Query SKU 1")
+        result = await db_session.execute(stmt)
+        product = result.scalar_one_or_none()
+
+        assert product is not None
+        assert product.id == self.test_product1.id
+        assert product.name == "test product 1"

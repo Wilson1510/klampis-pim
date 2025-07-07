@@ -32,6 +32,8 @@ class Products(Base):
     category = relationship("Categories", back_populates="products")
     supplier = relationship("Suppliers", back_populates="products")
 
+    skus = relationship("Skus", back_populates="product")
+
     def __str__(self) -> str:
         """String representation of the product."""
         return f"Products({self.name})"
