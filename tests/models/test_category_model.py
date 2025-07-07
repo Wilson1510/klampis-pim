@@ -147,6 +147,8 @@ class TestCategory:
         """Test the relationships with other models"""
         assert_relationship(Categories, "category_type", "categories")
         assert_relationship(Categories, "parent", "children")
+        assert_relationship(Categories, "children", "parent")
+        assert_relationship(Categories, "products", "category")
 
     def test_str_representation(self):
         """Test the string representation"""

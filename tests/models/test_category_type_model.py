@@ -12,7 +12,8 @@ from tests.utils.model_test_utils import (
     get_object_by_id,
     get_all_objects,
     delete_object,
-    count_model_objects
+    count_model_objects,
+    assert_relationship
 )
 
 
@@ -68,6 +69,10 @@ class TestCategoryType:
         assert slug_column.unique is True
         assert slug_column.index is True
         assert slug_column.default is None
+
+    def test_relationships_with_other_models(self):
+        """Test the relationships with other models"""
+        assert_relationship(CategoryTypes, "categories", "category_type")
 
     def test_str_representation(self):
         """Test the string representation"""

@@ -140,6 +140,7 @@ class TestProduct:
         """Test the relationships with other models"""
         assert_relationship(Products, "category", "products")
         assert_relationship(Products, "supplier", "products")
+        assert_relationship(Products, "skus", "product")
 
     def test_str_representation(self):
         """Test the string representation"""

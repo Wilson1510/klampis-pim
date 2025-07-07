@@ -14,7 +14,8 @@ from tests.utils.model_test_utils import (
     get_object_by_id,
     get_all_objects,
     delete_object,
-    count_model_objects
+    count_model_objects,
+    assert_relationship
 )
 
 
@@ -128,6 +129,10 @@ class TestSupplier:
         assert email_column.unique is True
         assert email_column.index is True
         assert email_column.default is None
+
+    def test_relationships_with_other_models(self):
+        """Test the relationships with other models"""
+        assert_relationship(Suppliers, "products", "supplier")
 
     def test_str_representation(self):
         """Test the string representation"""
