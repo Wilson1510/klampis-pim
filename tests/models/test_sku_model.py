@@ -291,6 +291,62 @@ class TestSku:
 
     """
     ================================================
+    Validation Tests
+    ================================================
+    """
+
+    @pytest.mark.asyncio
+    async def test_valid_sku_number_validation(self, db_session: AsyncSession):
+        """Test valid sku_number validation"""
+        valid_sku_numbers = [
+            "ABCDEF1234",
+            "1234567890",
+            "A1B2C3D4E5",
+            "FFFFFFFFFF"
+        ]
+        for i, sku_num in enumerate(valid_sku_numbers):
+            sku = Skus(
+                name=f"Valid SKU {i}",
+                product_id=self.test_product.id,
+                sku_number=sku_num
+            )
+            await save_object(db_session, sku)
+            assert sku.sku_number == sku_num
+
+    @pytest.mark.asyncio
+    async def test_invalid_sku_number_validation(self, db_session: AsyncSession):
+        """Test invalid sku_number validation"""
+        product_id = self.test_product.id
+        # Test for length
+        invalid_length_skus = ["12345", "12345678901"]
+        for sku_num in invalid_length_skus:
+            with pytest.raises(
+                ValueError,
+                match="SKU number must be exactly 10 characters long."
+            ):
+                Skus(
+                    name="Invalid Length SKU",
+                    product_id=product_id,
+                    sku_number=sku_num
+                )
+            await db_session.rollback()
+
+        # Test for invalid characters
+        invalid_char_skus = ["GHIJKLM123", "ABC-123-DE"]
+        for sku_num in invalid_char_skus:
+            with pytest.raises(
+                ValueError,
+                match="SKU number must only contain 0-9 or A-F characters."
+            ):
+                Skus(
+                    name="Invalid Char SKU",
+                    product_id=product_id,
+                    sku_number=sku_num
+                )
+            await db_session.rollback()
+
+    """
+    ================================================
     Relationship Tests (Skus -> Products)
     ================================================
     """
