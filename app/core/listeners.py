@@ -11,6 +11,8 @@ from app.models.supplier_model import Suppliers
 from app.models.product_model import Products
 from app.models.sku_model import Skus
 from app.models.user_model import Users
+from app.models.attribute_model import Attributes
+from app.models.attribute_set_model import AttributeSets
 from app.core.security import hash_password
 from slugify import slugify
 
@@ -155,6 +157,17 @@ def _set_slug(target, value, oldvalue, initiator):
     target.slug = slugify(value)
 
 
+def _set_code(target, value, oldvalue, initiator):
+    """
+    Event listener to automatically generate code from name.
+
+    The code is generated from the name by slugifying it and converting it to uppercase.
+    """
+    if value is None:
+        return
+    target.code = slugify(value).upper()
+
+
 def register_listeners():
     """
     Registers all SQLAlchemy event listeners.
@@ -171,3 +184,6 @@ def register_listeners():
     event.listen(Suppliers.name, 'set', _set_slug)
     event.listen(Products.name, 'set', _set_slug)
     event.listen(Skus.name, 'set', _set_slug)
+    event.listen(AttributeSets.name, 'set', _set_slug)
+
+    event.listen(Attributes.name, 'set', _set_code)

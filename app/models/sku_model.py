@@ -36,6 +36,10 @@ class Skus(Base):
 
     # Relationships
     product = relationship("Products", back_populates="skus")
+    sku_attribute_values = relationship(
+        "SkuAttributeValue",
+        back_populates="sku"
+    )
 
     @validates('sku_number')
     def validate_sku_number(self, key, value):
