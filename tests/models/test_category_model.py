@@ -161,6 +161,9 @@ class TestCategory:
         await db_session.refresh(self.test_category1, ['children'])
         await db_session.refresh(self.test_category2, ['children'])
 
+        await db_session.refresh(self.test_category1, ['products'])
+        await db_session.refresh(self.test_category2, ['products'])
+
         assert self.test_category1.id == 1
         assert self.test_category1.name == "test category 1"
         assert self.test_category1.slug == "test-category-1"
@@ -170,6 +173,7 @@ class TestCategory:
         assert self.test_category1.parent_id is None
         assert self.test_category1.parent is None
         assert self.test_category1.children == [self.test_category2]
+        assert self.test_category1.products == []
 
         assert self.test_category2.id == 2
         assert self.test_category2.name == "test category 2"
@@ -180,6 +184,7 @@ class TestCategory:
         assert self.test_category2.parent_id == self.test_category1.id
         assert self.test_category2.parent == self.test_category1
         assert self.test_category2.children == []
+        assert self.test_category2.products == []
 
     @pytest.mark.asyncio
     async def test_create_operation(self, db_session: AsyncSession):

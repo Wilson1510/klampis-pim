@@ -221,7 +221,7 @@ class TestCategoryType:
             CategoryTypes,
             category_type.id
         )
-        await db_session.refresh(category_type, ['categories'])
+        await db_session.refresh(retrieved_category_type, ['categories'])
 
         assert retrieved_category_type.id == 3
         assert retrieved_category_type.name == "Test Category Type 1"

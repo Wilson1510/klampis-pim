@@ -142,6 +142,9 @@ class TestSupplier:
     @pytest.mark.asyncio
     async def test_init_method(self, db_session: AsyncSession):
         """Test the init method"""
+        await db_session.refresh(self.test_supplier1, ['products'])
+        await db_session.refresh(self.test_supplier2, ['products'])
+
         assert self.test_supplier1.id == 1
         assert self.test_supplier1.name == "test supplier 1"
         assert self.test_supplier1.slug == "test-supplier-1"
@@ -149,6 +152,7 @@ class TestSupplier:
         assert self.test_supplier1.address == "test address 1"
         assert self.test_supplier1.contact == "081234567890"
         assert self.test_supplier1.email == "test1@example.com"
+        assert self.test_supplier1.products == []
 
         assert self.test_supplier2.id == 2
         assert self.test_supplier2.name == "test supplier 2"
@@ -157,6 +161,7 @@ class TestSupplier:
         assert self.test_supplier2.address == "test address 2"
         assert self.test_supplier2.contact == "081234567891"
         assert self.test_supplier2.email == "test2@example.com"
+        assert self.test_supplier2.products == []
 
     @pytest.mark.asyncio
     async def test_create_operation(self, db_session: AsyncSession):
