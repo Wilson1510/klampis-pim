@@ -687,6 +687,41 @@ class TestProduct:
             assert retrieved_product.skus[i].product_id == product.id
 
     @pytest.mark.asyncio
+    async def test_update_products_skus(
+        self, db_session: AsyncSession
+    ):
+        """Test updating a product's skus"""
+        product = await get_object_by_id(
+            db_session,
+            Products,
+            self.test_product1.id
+        )
+        await db_session.refresh(product, ['skus'])
+        assert len(product.skus) == 0
+
+        product.skus = [
+            Skus(name="Test SKU 1"),
+            Skus(name="Test SKU 2")
+        ]
+        await save_object(db_session, product)
+        await db_session.refresh(product, ['skus'])
+        assert len(product.skus) == 2
+        assert product.skus[0].name == "Test SKU 1"
+        assert product.skus[1].name == "Test SKU 2"
+
+        product.skus = [
+            Skus(name="Test SKU 3"),
+            Skus(name="Test SKU 4"),
+            Skus(name="Test SKU 5")
+        ]
+
+        # should fail because test SKU 1 and test SKU 2 will lose their
+        # product_id
+        with pytest.raises(IntegrityError):
+            await save_object(db_session, product)
+        await db_session.rollback()
+
+    @pytest.mark.asyncio
     async def test_product_deletion_with_skus(
         self, db_session: AsyncSession
     ):

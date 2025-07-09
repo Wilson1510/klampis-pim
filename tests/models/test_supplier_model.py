@@ -477,6 +477,41 @@ class TestSupplier:
                 self.test_category.id)
 
     @pytest.mark.asyncio
+    async def test_update_suppliers_products(
+        self, db_session: AsyncSession, setup_category
+    ):
+        """Test updating a supplier's products"""
+        supplier = await get_object_by_id(
+            db_session,
+            Suppliers,
+            self.test_supplier1.id
+        )
+        await db_session.refresh(supplier, ['products'])
+        assert len(supplier.products) == 0
+
+        supplier.products = [
+            Products(name="Test Product 1", category_id=self.test_category.id),
+            Products(name="Test Product 2", category_id=self.test_category.id)
+        ]
+        await save_object(db_session, supplier)
+        await db_session.refresh(supplier, ['products'])
+        assert len(supplier.products) == 2
+        assert supplier.products[0].name == "Test Product 1"
+        assert supplier.products[1].name == "Test Product 2"
+
+        supplier.products = [
+            Products(name="Test Product 3", category_id=self.test_category.id),
+            Products(name="Test Product 4", category_id=self.test_category.id),
+            Products(name="Test Product 5", category_id=self.test_category.id)
+        ]
+
+        # should fail because test product 1 and test product 2 will lose their
+        # supplier_id
+        with pytest.raises(IntegrityError):
+            await save_object(db_session, supplier)
+        await db_session.rollback()
+
+    @pytest.mark.asyncio
     async def test_supplier_deletion_with_products(
         self, db_session: AsyncSession, setup_category
     ):

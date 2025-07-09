@@ -266,6 +266,41 @@ class TestCategoryType:
             )
 
     @pytest.mark.asyncio
+    async def test_update_category_types_categories(
+        self, db_session: AsyncSession
+    ):
+        """Test updating the category type's categories"""
+        category_type = await get_object_by_id(
+            db_session,
+            CategoryTypes,
+            self.test_category_type1.id
+        )
+        await db_session.refresh(category_type, ['categories'])
+        assert len(category_type.categories) == 0
+
+        category_type.categories = [
+            Categories(name="Test Category 1"),
+            Categories(name="Test Category 2")
+        ]
+        await save_object(db_session, category_type)
+        await db_session.refresh(category_type, ['categories'])
+        assert len(category_type.categories) == 2
+        assert category_type.categories[0].name == "Test Category 1"
+        assert category_type.categories[1].name == "Test Category 2"
+
+        category_type.categories = [
+            Categories(name="Test Category 3"),
+            Categories(name="Test Category 4"),
+            Categories(name="Test Category 5")
+        ]
+
+        # should fail because Test Category 1 and Test Category 2 will lose their
+        # category_type_id
+        with pytest.raises(IntegrityError):
+            await save_object(db_session, category_type)
+        await db_session.rollback()
+
+    @pytest.mark.asyncio
     async def test_category_type_deletion_with_categories(
         self, db_session: AsyncSession
     ):

@@ -818,6 +818,31 @@ class TestCategory:
         assert "check_category_hierarchy_rule" in str(exc_info.value)
 
     @pytest.mark.asyncio
+    async def test_update_categories_children(
+        self, db_session: AsyncSession
+    ):
+        """Test updating a category's children"""
+        category = await get_object_by_id(
+            db_session,
+            Categories,
+            self.test_category1.id
+        )
+        await db_session.refresh(category, ['children'])
+        assert len(category.children) == 1
+        assert category.children[0].name == "test category 2"
+
+        # should fail because test category 2 will lose its parent_id
+        # and does not have category_type_id
+        category.children = [
+            Categories(name="test category 3"),
+            Categories(name="test category 4")
+        ]
+
+        with pytest.raises(IntegrityError):
+            await save_object(db_session, category)
+        await db_session.rollback()
+
+    @pytest.mark.asyncio
     async def test_delete_category_with_parent_relationship(
         self, db_session: AsyncSession
     ):
@@ -974,6 +999,41 @@ class TestCategory:
             assert retrieved_category.products[i].slug == f"test-product-{i}"
             assert retrieved_category.products[i].description == f"Test Description {i}"
             assert retrieved_category.products[i].supplier_id == self.test_supplier.id
+
+    @pytest.mark.asyncio
+    async def test_update_categories_products(
+        self, db_session: AsyncSession, setup_supplier
+    ):
+        """Test updating a category's products"""
+        category = await get_object_by_id(
+            db_session,
+            Categories,
+            self.test_category1.id
+        )
+        await db_session.refresh(category, ['products'])
+        assert len(category.products) == 0
+
+        category.products = [
+            Products(name="test product 1", supplier_id=self.test_supplier.id),
+            Products(name="test product 2", supplier_id=self.test_supplier.id)
+        ]
+        await save_object(db_session, category)
+        await db_session.refresh(category, ['products'])
+        assert len(category.products) == 2
+        assert category.products[0].name == "test product 1"
+        assert category.products[1].name == "test product 2"
+
+        category.products = [
+            Products(name="test product 3", supplier_id=self.test_supplier.id),
+            Products(name="test product 4", supplier_id=self.test_supplier.id),
+            Products(name="test product 5", supplier_id=self.test_supplier.id)
+        ]
+
+        # should fail because test product 1 and test product 2 will lose their
+        # category_id
+        with pytest.raises(IntegrityError):
+            await save_object(db_session, category)
+        await db_session.rollback()
 
     @pytest.mark.asyncio
     async def test_category_deletion_with_products(
