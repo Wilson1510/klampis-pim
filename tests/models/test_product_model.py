@@ -389,6 +389,26 @@ class TestProduct:
         await db_session.rollback()
 
     @pytest.mark.asyncio
+    async def test_setting_category_id_to_null_fails(
+        self, db_session: AsyncSession
+    ):
+        """Test that setting category_id to NULL fails"""
+        # Create valid product
+        product = Products(
+            name="Test Product Null",
+            category_id=self.test_category.id,
+            supplier_id=self.test_supplier.id
+        )
+        await save_object(db_session, product)
+
+        # Try to set category_id to NULL (should fail constraint)
+        product.category_id = None
+
+        with pytest.raises(IntegrityError):
+            await save_object(db_session, product)
+        await db_session.rollback()
+
+    @pytest.mark.asyncio
     async def test_delete_product_with_category_relationship(
         self, db_session: AsyncSession
     ):
@@ -536,6 +556,26 @@ class TestProduct:
         await db_session.rollback()
 
     @pytest.mark.asyncio
+    async def test_setting_supplier_id_to_null_fails(
+        self, db_session: AsyncSession
+    ):
+        """Test that setting supplier_id to NULL fails"""
+        # Create valid product
+        product = Products(
+            name="Test Product Null",
+            category_id=self.test_category.id,
+            supplier_id=self.test_supplier.id
+        )
+        await save_object(db_session, product)
+
+        # Try to set supplier_id to NULL (should fail constraint)
+        product.supplier_id = None
+
+        with pytest.raises(IntegrityError):
+            await save_object(db_session, product)
+        await db_session.rollback()
+
+    @pytest.mark.asyncio
     async def test_delete_product_with_supplier_relationship(
         self, db_session: AsyncSession
     ):
@@ -661,25 +701,6 @@ class TestProduct:
         # Attempt to delete the product
         with pytest.raises(IntegrityError):
             await delete_object(db_session, self.test_product1)
-
-        await db_session.rollback()
-
-    @pytest.mark.asyncio
-    async def test_setting_product_id_to_null_fails(
-        self, db_session: AsyncSession
-    ):
-        """Test that setting a SKU's product_id to None fails"""
-        # Create a valid sku
-        sku = Skus(
-            name="SKU for null test",
-            product_id=self.test_product1.id
-        )
-        await save_object(db_session, sku)
-
-        # Try to set product_id to None
-        sku.product_id = None
-        with pytest.raises(IntegrityError):
-            await save_object(db_session, sku)
 
         await db_session.rollback()
 

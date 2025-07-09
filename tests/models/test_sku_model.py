@@ -450,6 +450,25 @@ class TestSku:
         await db_session.rollback()
 
     @pytest.mark.asyncio
+    async def test_setting_product_id_to_null_fails(
+        self, db_session: AsyncSession
+    ):
+        """Test that setting a SKU's product_id to None fails"""
+        # Create a valid sku
+        sku = Skus(
+            name="SKU for null test",
+            product_id=self.test_product.id
+        )
+        await save_object(db_session, sku)
+
+        # Try to set product_id to None
+        sku.product_id = None
+        with pytest.raises(IntegrityError):
+            await save_object(db_session, sku)
+
+        await db_session.rollback()
+
+    @pytest.mark.asyncio
     async def test_delete_sku_with_product_relationship(
         self, db_session: AsyncSession
     ):

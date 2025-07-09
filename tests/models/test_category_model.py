@@ -994,26 +994,6 @@ class TestCategory:
         await db_session.rollback()
 
     @pytest.mark.asyncio
-    async def test_setting_category_id_to_null_fails(
-        self, db_session: AsyncSession, setup_supplier
-    ):
-        """Test that setting category_id to NULL fails"""
-        # Create valid product
-        product = Products(
-            name="Test Product Null",
-            category_id=self.test_category1.id,
-            supplier_id=self.test_supplier.id
-        )
-        await save_object(db_session, product)
-
-        # Try to set category_id to NULL (should fail constraint)
-        product.category_id = None
-
-        with pytest.raises(IntegrityError):
-            await save_object(db_session, product)
-        await db_session.rollback()
-
-    @pytest.mark.asyncio
     async def test_orphaned_product_cleanup(
         self, db_session: AsyncSession, setup_supplier
     ):
