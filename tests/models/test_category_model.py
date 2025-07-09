@@ -1,4 +1,4 @@
-from sqlalchemy import String, event, Text, Integer, CheckConstraint
+from sqlalchemy import String, event, Text, Integer, CheckConstraint, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 import pytest
@@ -6,6 +6,8 @@ import pytest
 from app.core.base import Base
 from app.models.category_type_model import CategoryTypes
 from app.models.category_model import Categories
+from app.models.product_model import Products
+from app.models.supplier_model import Suppliers
 from app.core.listeners import _set_slug
 from tests.utils.model_test_utils import (
     save_object,
@@ -145,6 +147,8 @@ class TestCategory:
         """Test the relationships with other models"""
         assert_relationship(Categories, "category_type", "categories")
         assert_relationship(Categories, "parent", "children")
+        assert_relationship(Categories, "children", "parent")
+        assert_relationship(Categories, "products", "category")
 
     def test_str_representation(self):
         """Test the string representation"""
@@ -157,6 +161,9 @@ class TestCategory:
         await db_session.refresh(self.test_category1, ['children'])
         await db_session.refresh(self.test_category2, ['children'])
 
+        await db_session.refresh(self.test_category1, ['products'])
+        await db_session.refresh(self.test_category2, ['products'])
+
         assert self.test_category1.id == 1
         assert self.test_category1.name == "test category 1"
         assert self.test_category1.slug == "test-category-1"
@@ -166,6 +173,7 @@ class TestCategory:
         assert self.test_category1.parent_id is None
         assert self.test_category1.parent is None
         assert self.test_category1.children == [self.test_category2]
+        assert self.test_category1.products == []
 
         assert self.test_category2.id == 2
         assert self.test_category2.name == "test category 2"
@@ -176,6 +184,7 @@ class TestCategory:
         assert self.test_category2.parent_id == self.test_category1.id
         assert self.test_category2.parent == self.test_category1
         assert self.test_category2.children == []
+        assert self.test_category2.products == []
 
     @pytest.mark.asyncio
     async def test_create_operation(self, db_session: AsyncSession):
@@ -283,7 +292,11 @@ class TestCategory:
         assert item is None
         assert await count_model_objects(db_session, Categories) == 1
 
-    # Database Constraint Tests (__table_args__)
+    """
+    ================================================
+    Database Constraint Tests (__table_args__)
+    ================================================
+    """
 
     @pytest.mark.asyncio
     async def test_valid_top_level_category_constraint(
@@ -332,6 +345,7 @@ class TestCategory:
         # Should fail with IntegrityError due to constraint violation
         with pytest.raises(IntegrityError):
             await save_object(db_session, category)
+        await db_session.rollback()
 
     @pytest.mark.asyncio
     async def test_invalid_both_not_null_constraint(self, db_session: AsyncSession):
@@ -346,6 +360,7 @@ class TestCategory:
         # Should fail with IntegrityError due to constraint violation
         with pytest.raises(IntegrityError):
             await save_object(db_session, category)
+        await db_session.rollback()
 
     @pytest.mark.asyncio
     async def test_update_violate_constraint_top_level_to_invalid(
@@ -367,6 +382,7 @@ class TestCategory:
 
         with pytest.raises(IntegrityError):
             await save_object(db_session, category)
+        await db_session.rollback()
 
     @pytest.mark.asyncio
     async def test_update_violate_constraint_child_to_invalid(
@@ -388,6 +404,7 @@ class TestCategory:
 
         with pytest.raises(IntegrityError):
             await save_object(db_session, category)
+        await db_session.rollback()
 
     @pytest.mark.asyncio
     async def test_valid_update_top_level_to_child(self, db_session: AsyncSession):
@@ -449,8 +466,13 @@ class TestCategory:
         # Should fail with IntegrityError due to self-reference constraint violation
         with pytest.raises(IntegrityError):
             await save_object(db_session, category)
+        await db_session.rollback()
 
-    # Relationship Tests (Categories -> CategoryTypes)
+    """
+    ================================================
+    Relationship Tests (Categories -> CategoryTypes)
+    ================================================
+    """
 
     @pytest.mark.asyncio
     async def test_category_with_category_type_relationship(
@@ -462,7 +484,6 @@ class TestCategory:
             Categories,
             self.test_category1.id
         )
-        await db_session.refresh(retrieved_category, ['category_type'])
 
         assert retrieved_category.category_type_id == self.test_category_type.id
         assert retrieved_category.category_type == self.test_category_type
@@ -478,7 +499,6 @@ class TestCategory:
             Categories,
             self.test_category2.id
         )
-        await db_session.refresh(retrieved_category, ['category_type'])
 
         assert retrieved_category.category_type_id is None
         assert retrieved_category.category_type is None
@@ -529,6 +549,7 @@ class TestCategory:
 
         with pytest.raises(IntegrityError):
             await save_object(db_session, category)
+        await db_session.rollback()
 
     @pytest.mark.asyncio
     async def test_update_category_with_invalid_category_type_id(
@@ -547,6 +568,7 @@ class TestCategory:
 
         with pytest.raises(IntegrityError):
             await save_object(db_session, category)
+        await db_session.rollback()
 
     @pytest.mark.asyncio
     async def test_delete_category_with_category_type_relationship(
@@ -586,7 +608,11 @@ class TestCategory:
         assert category_type.name == "test category type"
         assert category_type.categories == [self.test_category1]
 
-    # Relationship Tests (Categories -> Categories)
+    """
+    ================================================
+    Relationship Tests (Categories -> Categories)
+    ================================================
+    """
 
     @pytest.mark.asyncio
     async def test_category_with_parent_relationship(self, db_session: AsyncSession):
@@ -596,7 +622,6 @@ class TestCategory:
             Categories,
             self.test_category2.id
         )
-        await db_session.refresh(retrieved_category, ['parent'])
 
         assert retrieved_category.parent_id == self.test_category1.id
         assert retrieved_category.parent == self.test_category1
@@ -612,7 +637,6 @@ class TestCategory:
             Categories,
             self.test_category1.id
         )
-        await db_session.refresh(retrieved_category, ['parent'])
 
         assert retrieved_category.parent_id is None
         assert retrieved_category.parent is None
@@ -726,6 +750,7 @@ class TestCategory:
 
         with pytest.raises(IntegrityError):
             await save_object(db_session, category)
+        await db_session.rollback()
 
     @pytest.mark.asyncio
     async def test_update_category_with_invalid_parent_id(
@@ -746,6 +771,7 @@ class TestCategory:
 
         with pytest.raises(IntegrityError):
             await save_object(db_session, category)
+        await db_session.rollback()
 
     @pytest.mark.asyncio
     async def test_delete_category_with_parent_relationship(
@@ -809,3 +835,210 @@ class TestCategory:
         # Should raise IntegrityError
         with pytest.raises(IntegrityError):
             await delete_object(db_session, parent)
+        await db_session.rollback()
+
+    """
+    ================================================
+    Relationship Tests (Categories -> Products)
+    ================================================
+    """
+
+    @pytest.fixture
+    async def setup_supplier(self, db_session: AsyncSession):
+        """Setup supplier for product tests"""
+        if not hasattr(self, 'test_supplier'):
+            self.test_supplier = Suppliers(
+                name="Test Supplier Default",
+                company_type="PT",
+                contact="1234567890123",
+                email="default@supplier.com"
+            )
+            await save_object(db_session, self.test_supplier)
+
+    @pytest.mark.asyncio
+    async def test_create_category_with_products(
+        self, db_session: AsyncSession, setup_supplier
+    ):
+        """Test creating category with products (valid scenario)"""
+        category = Categories(
+            name="Test Category with Products",
+            description="Test Description with Products",
+            category_type_id=self.test_category_type.id,
+            products=[
+                Products(
+                    name="Test Product 1",
+                    description="Test Description 1",
+                    supplier_id=self.test_supplier.id
+                ),
+                Products(
+                    name="Test Product 2",
+                    description="Test Description 2",
+                    supplier_id=self.test_supplier.id
+                )
+            ]
+        )
+        await save_object(db_session, category)
+
+        retrieved_category = await get_object_by_id(
+            db_session,
+            Categories,
+            category.id
+        )
+        await db_session.refresh(retrieved_category, ['products'])
+
+        assert retrieved_category.id == 3
+        assert retrieved_category.name == "Test Category with Products"
+        assert retrieved_category.description == "Test Description with Products"
+        assert len(retrieved_category.products) == 2
+        assert retrieved_category.products[0].name == "Test Product 1"
+        assert retrieved_category.products[0].description == "Test Description 1"
+        assert retrieved_category.products[0].slug == "test-product-1"
+        assert retrieved_category.products[0].supplier_id == self.test_supplier.id
+
+        assert retrieved_category.products[1].name == "Test Product 2"
+        assert retrieved_category.products[1].description == "Test Description 2"
+        assert retrieved_category.products[1].slug == "test-product-2"
+        assert retrieved_category.products[1].supplier_id == self.test_supplier.id
+
+    @pytest.mark.asyncio
+    async def test_add_multiple_products_to_category(
+        self, db_session: AsyncSession, setup_supplier
+    ):
+        """Test adding multiple products to category"""
+        products = []
+        for i in range(5):
+            product = Products(
+                name=f"Test Product {i}",
+                description=f"Test Description {i}",
+                category_id=self.test_category1.id,
+                supplier_id=self.test_supplier.id
+            )
+            await save_object(db_session, product)
+            products.append(product)
+
+        retrieved_category = await get_object_by_id(
+            db_session,
+            Categories,
+            self.test_category1.id
+        )
+        await db_session.refresh(retrieved_category, ['products'])
+
+        assert len(retrieved_category.products) == 5
+        for i in range(5):
+            assert retrieved_category.products[i].id == i + 1
+            assert retrieved_category.products[i].name == f"Test Product {i}"
+            assert retrieved_category.products[i].slug == f"test-product-{i}"
+            assert retrieved_category.products[i].description == f"Test Description {i}"
+            assert retrieved_category.products[i].supplier_id == self.test_supplier.id
+
+    @pytest.mark.asyncio
+    async def test_category_deletion_with_products(
+        self, db_session: AsyncSession, setup_supplier
+    ):
+        """Test what happens when trying to delete category with associated products"""
+        # Create product associated with the category
+        product = Products(
+            name="Test Product Delete",
+            category_id=self.test_category1.id,
+            supplier_id=self.test_supplier.id
+        )
+        await save_object(db_session, product)
+
+        # Try to delete category that has associated products
+        with pytest.raises(IntegrityError):
+            await delete_object(db_session, self.test_category1)
+        await db_session.rollback()
+
+    @pytest.mark.asyncio
+    async def test_setting_category_id_to_null_fails(
+        self, db_session: AsyncSession, setup_supplier
+    ):
+        """Test that setting category_id to NULL fails"""
+        # Create valid product
+        product = Products(
+            name="Test Product Null",
+            category_id=self.test_category1.id,
+            supplier_id=self.test_supplier.id
+        )
+        await save_object(db_session, product)
+
+        # Try to set category_id to NULL (should fail constraint)
+        product.category_id = None
+
+        with pytest.raises(IntegrityError):
+            await save_object(db_session, product)
+        await db_session.rollback()
+
+    @pytest.mark.asyncio
+    async def test_orphaned_product_cleanup(
+        self, db_session: AsyncSession, setup_supplier
+    ):
+        """Test handling of products when their category is deleted"""
+        # Create temporary category
+        temp_category = Categories(
+            name="Temporary Category",
+            description="Temporary description",
+            category_type_id=self.test_category_type.id
+        )
+        await save_object(db_session, temp_category)
+
+        # Create product associated with temp category
+        temp_product = Products(
+            name="Temporary Product",
+            category_id=temp_category.id,
+            supplier_id=self.test_supplier.id
+        )
+        await save_object(db_session, temp_product)
+
+        # Try to delete the category (should fail due to foreign key)
+        with pytest.raises(IntegrityError):
+            await delete_object(db_session, temp_category)
+        await db_session.rollback()
+
+        # To properly delete, first remove the product
+        await delete_object(db_session, temp_product)
+
+        # Now category can be deleted
+        await delete_object(db_session, temp_category)
+
+        # Verify both are deleted
+        deleted_product = await get_object_by_id(
+            db_session, Products, temp_product.id
+        )
+        deleted_category = await get_object_by_id(
+            db_session, Categories, temp_category.id
+        )
+
+        assert deleted_product is None
+        assert deleted_category is None
+
+    @pytest.mark.asyncio
+    async def test_query_category_by_products(
+        self, db_session: AsyncSession, setup_supplier
+    ):
+        """Test querying category by products"""
+        # Create products associated with different categories
+        product1 = Products(
+            name="Query Product 1",
+            category_id=self.test_category1.id,
+            supplier_id=self.test_supplier.id
+        )
+        await save_object(db_session, product1)
+
+        product2 = Products(
+            name="Query Product 2",
+            category_id=self.test_category2.id,
+            supplier_id=self.test_supplier.id
+        )
+        await save_object(db_session, product2)
+
+        # Query category by products using raw SQL
+        stmt = select(Categories).join(Products).where(
+            Products.name == "Query Product 1"
+        )
+        result = await db_session.execute(stmt)
+        category = result.scalar_one_or_none()
+
+        assert category.id == self.test_category1.id
+        assert category.name == "test category 1"
+        assert category.slug == "test-category-1"

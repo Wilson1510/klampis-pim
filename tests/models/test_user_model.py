@@ -1,10 +1,10 @@
-from sqlalchemy import String, event, DateTime
+from sqlalchemy import String, event, DateTime, Enum
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime
 import pytest
 
 from app.core.base import Base
-from app.models.user_model import Users
+from app.models.user_model import Users, Role
 from app.core.listeners import _hash_new_password_listener
 from app.core.security import verify_password
 from tests.utils.model_test_utils import (
@@ -52,13 +52,11 @@ class TestUser:
     def test_fields_with_validation(self):
         """Test that the model has the expected validation"""
         assert hasattr(Users, 'validate_email')
-        assert hasattr(Users, 'validate_role')
         assert not hasattr(Users, 'validate_last_login')
         assert not hasattr(Users, 'validate_created_by')
 
         assert 'email' in Users.__mapper__.validators
-        assert 'role' in Users.__mapper__.validators
-        assert len(Users.__mapper__.validators) == 2
+        assert len(Users.__mapper__.validators) == 1
         assert 'last_login' not in Users.__mapper__.validators
         assert 'created_by' not in Users.__mapper__.validators
 
@@ -116,8 +114,8 @@ class TestUser:
         """Test the properties of the role field"""
         role_column = Users.__table__.columns.get('role')
         assert role_column is not None
-        assert isinstance(role_column.type, String)
-        assert role_column.type.length is None
+        assert isinstance(role_column.type, Enum)
+        assert role_column.type.enum_class == Role
         assert role_column.nullable is False
         assert role_column.unique is None
         assert role_column.index is None
@@ -370,40 +368,6 @@ class TestUser:
                     name=f"Invalid Email {i}",
                     password="testpassword",
                     role="USER"
-                )
-            await db_session.rollback()
-
-    # Role Validation Tests
-    @pytest.mark.asyncio
-    async def test_role_validation_valid_roles(self, db_session: AsyncSession):
-        """Test role validator with valid roles by saving to database"""
-        valid_roles = ["USER", "ADMIN", "SYSTEM", "MANAGER"]
-
-        for i, role in enumerate(valid_roles, 1):
-            user = Users(
-                username=f"roletest{i}",
-                email=f"roletest{i}@test.local",
-                name=f"Role Test {i}",
-                password="testpassword",
-                role=role
-            )
-
-            # Verify role was set correctly
-            assert user.role == role
-
-    @pytest.mark.asyncio
-    async def test_role_validation_invalid_roles(self, db_session: AsyncSession):
-        """Test role validator with invalid roles"""
-        invalid_roles = ["INVALID", "user", "admin", "Guest", "SuperAdmin", ""]
-
-        for i, role in enumerate(invalid_roles, 1):
-            with pytest.raises(ValueError, match="Invalid role"):
-                Users(
-                    username=f"invalidrole{i}",
-                    email=f"invalidrole{i}@test.local",
-                    name=f"Invalid Role {i}",
-                    password="testpassword",
-                    role=role
                 )
             await db_session.rollback()
 

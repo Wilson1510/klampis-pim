@@ -1,16 +1,21 @@
-from sqlalchemy import String, Text, event
+from sqlalchemy import String, Text, event, select, Enum
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 import pytest
 
 from app.core.base import Base
-from app.models.supplier_model import Suppliers
+from app.models.supplier_model import Suppliers, CompanyType
+from app.models.product_model import Products
+from app.models.category_model import Categories
+from app.models.category_type_model import CategoryTypes
 from app.core.listeners import _set_slug
 from tests.utils.model_test_utils import (
     save_object,
     get_object_by_id,
     get_all_objects,
     delete_object,
-    count_model_objects
+    count_model_objects,
+    assert_relationship
 )
 
 
@@ -47,15 +52,13 @@ class TestSupplier:
         """Test that the fields have the expected validation"""
         assert hasattr(Suppliers, 'validate_contact')
         assert hasattr(Suppliers, 'validate_email')
-        assert hasattr(Suppliers, 'validate_company_type')
         assert not hasattr(Suppliers, 'validate_name')
 
         assert 'contact' in Suppliers.__mapper__.validators
         assert 'email' in Suppliers.__mapper__.validators
-        assert 'company_type' in Suppliers.__mapper__.validators
         assert 'name' not in Suppliers.__mapper__.validators
 
-        assert len(Suppliers.__mapper__.validators) == 3
+        assert len(Suppliers.__mapper__.validators) == 2
 
     def test_has_listeners(self):
         """Test that the model has the expected listeners"""
@@ -88,8 +91,8 @@ class TestSupplier:
         """Test the properties of the company_type field"""
         company_type_column = Suppliers.__table__.columns.get('company_type')
         assert company_type_column is not None
-        assert isinstance(company_type_column.type, String)
-        assert company_type_column.type.length == 50
+        assert isinstance(company_type_column.type, Enum)
+        assert company_type_column.type.enum_class == CompanyType
         assert company_type_column.nullable is False
         assert company_type_column.unique is None
         assert company_type_column.index is None
@@ -127,6 +130,10 @@ class TestSupplier:
         assert email_column.index is True
         assert email_column.default is None
 
+    def test_relationships_with_other_models(self):
+        """Test the relationships with other models"""
+        assert_relationship(Suppliers, "products", "supplier")
+
     def test_str_representation(self):
         """Test the string representation"""
         str_repr = str(self.test_supplier1)
@@ -135,6 +142,9 @@ class TestSupplier:
     @pytest.mark.asyncio
     async def test_init_method(self, db_session: AsyncSession):
         """Test the init method"""
+        await db_session.refresh(self.test_supplier1, ['products'])
+        await db_session.refresh(self.test_supplier2, ['products'])
+
         assert self.test_supplier1.id == 1
         assert self.test_supplier1.name == "test supplier 1"
         assert self.test_supplier1.slug == "test-supplier-1"
@@ -142,6 +152,7 @@ class TestSupplier:
         assert self.test_supplier1.address == "test address 1"
         assert self.test_supplier1.contact == "081234567890"
         assert self.test_supplier1.email == "test1@example.com"
+        assert self.test_supplier1.products == []
 
         assert self.test_supplier2.id == 2
         assert self.test_supplier2.name == "test supplier 2"
@@ -150,6 +161,7 @@ class TestSupplier:
         assert self.test_supplier2.address == "test address 2"
         assert self.test_supplier2.contact == "081234567891"
         assert self.test_supplier2.email == "test2@example.com"
+        assert self.test_supplier2.products == []
 
     @pytest.mark.asyncio
     async def test_create_operation(self, db_session: AsyncSession):
@@ -269,7 +281,11 @@ class TestSupplier:
         assert item is None
         assert await count_model_objects(db_session, Suppliers) == 1
 
-    # Validation Tests
+    """
+    ================================================
+    Validation Tests
+    ================================================
+    """
 
     @pytest.mark.asyncio
     async def test_valid_contact_validation(self, db_session: AsyncSession):
@@ -360,46 +376,215 @@ class TestSupplier:
                 )
             await db_session.rollback()
 
-    @pytest.mark.asyncio
-    async def test_valid_company_type_validation(self, db_session: AsyncSession):
-        """Test valid company_type validation"""
-        valid_types = ["INDIVIDUAL", "PT", "CV", "UD"]
+    """
+    ================================================
+    Relationship Tests (Suppliers -> Products)
+    ================================================
+    """
 
-        for i, company_type in enumerate(valid_types):
-            supplier = Suppliers(
-                name=f"test company type {company_type.lower()}",
-                company_type=company_type.lower(),  # Test lowercase input
-                address="test address",
-                contact=f"0812345678{str(i+10).zfill(2)}",
-                email=f"test{company_type.lower()}@example.com"
+    @pytest.fixture
+    async def setup_category(self, db_session: AsyncSession):
+        """Setup category for product tests"""
+        if not hasattr(self, 'test_category_type'):
+            self.test_category_type = CategoryTypes(
+                name="Test Category Type Default"
             )
-            await save_object(db_session, supplier)
-            # Company type should be uppercased and trimmed
-            assert supplier.company_type == company_type
-
-        # Test with spaces
-        supplier_with_spaces = Suppliers(
-            name="test company type with spaces",
-            company_type="  pt  ",
-            address="test address",
-            contact="081234567814",
-            email="testspaces@example.com"
-        )
-        await save_object(db_session, supplier_with_spaces)
-        assert supplier_with_spaces.company_type == "PT"
+            await save_object(db_session, self.test_category_type)
+        if not hasattr(self, 'test_category'):
+            self.test_category = Categories(
+                name="Test Category Default",
+                category_type_id=self.test_category_type.id
+            )
+            await save_object(db_session, self.test_category)
 
     @pytest.mark.asyncio
-    async def test_invalid_company_type_validation(self, db_session: AsyncSession):
-        """Test invalid company_type validation"""
-        # Invalid company type should raise ValueError
-        invalid_types = ["LLC", "CORP", "123", "&^%$", ""]
-        for i, company_type in enumerate(invalid_types):
-            with pytest.raises(ValueError, match="Invalid company type"):
-                Suppliers(
-                    name=f"test invalid company type {i}",
-                    company_type=company_type,
-                    address="test address",
-                    contact=f"0812345678{str(i+10).zfill(2)}",
-                    email=f"testinvalid{i}@example.com"
+    async def test_create_supplier_with_products(
+        self, db_session: AsyncSession, setup_category
+    ):
+        """Test creating supplier with products (valid scenario)"""
+        supplier = Suppliers(
+            name="Test Supplier with Products",
+            company_type="CV",
+            contact="098765432112",
+            email="supplierwithproducts@test.com",
+            products=[
+                Products(
+                    name="Test Product 1",
+                    description="Test Description 1",
+                    category_id=self.test_category.id
+                ),
+                Products(
+                    name="Test Product 2",
+                    description="Test Description 2",
+                    category_id=self.test_category.id
                 )
-            await db_session.rollback()
+            ]
+        )
+        await save_object(db_session, supplier)
+
+        retrieved_supplier = await get_object_by_id(
+            db_session,
+            Suppliers,
+            supplier.id
+        )
+        await db_session.refresh(retrieved_supplier, ['products'])
+
+        assert retrieved_supplier.id == 3
+        assert retrieved_supplier.name == "Test Supplier with Products"
+        assert len(retrieved_supplier.products) == 2
+        assert retrieved_supplier.products[0].name == "Test Product 1"
+        assert retrieved_supplier.products[0].category_id == (
+            self.test_category.id)
+        assert retrieved_supplier.products[0].slug == "test-product-1"
+        assert retrieved_supplier.products[0].description == "Test Description 1"
+
+        assert retrieved_supplier.products[1].name == "Test Product 2"
+        assert retrieved_supplier.products[1].category_id == (
+            self.test_category.id)
+        assert retrieved_supplier.products[1].slug == "test-product-2"
+        assert retrieved_supplier.products[1].description == "Test Description 2"
+
+    @pytest.mark.asyncio
+    async def test_add_multiple_products_to_supplier(
+        self, db_session: AsyncSession, setup_category
+    ):
+        """Test adding multiple products to supplier"""
+        products = []
+        for i in range(5):
+            product = Products(
+                name=f"Test Product {i}",
+                description=f"Test Description {i}",
+                category_id=self.test_category.id,
+                supplier_id=self.test_supplier1.id
+            )
+            await save_object(db_session, product)
+            products.append(product)
+
+        retrieved_supplier = await get_object_by_id(
+            db_session,
+            Suppliers,
+            self.test_supplier1.id
+        )
+        await db_session.refresh(retrieved_supplier, ['products'])
+
+        assert len(retrieved_supplier.products) == 5
+        for i in range(5):
+            assert retrieved_supplier.products[i].id == i + 1
+            assert retrieved_supplier.products[i].name == f"Test Product {i}"
+            assert retrieved_supplier.products[i].slug == f"test-product-{i}"
+            assert retrieved_supplier.products[i].description == f"Test Description {i}"
+            assert retrieved_supplier.products[i].category_id == (
+                self.test_category.id)
+
+    @pytest.mark.asyncio
+    async def test_supplier_deletion_with_products(
+        self, db_session: AsyncSession, setup_category
+    ):
+        """Test trying to delete supplier with associated products"""
+        # Create product associated with the supplier
+        product = Products(
+            name="Test Product Delete",
+            category_id=self.test_category.id,
+            supplier_id=self.test_supplier1.id
+        )
+        await save_object(db_session, product)
+
+        # Try to delete supplier that has associated products
+        with pytest.raises(IntegrityError):
+            await delete_object(db_session, self.test_supplier1)
+        await db_session.rollback()
+
+    @pytest.mark.asyncio
+    async def test_setting_supplier_id_to_null_fails(
+        self, db_session: AsyncSession, setup_category
+    ):
+        """Test that setting supplier_id to NULL fails"""
+        # Create valid product
+        product = Products(
+            name="Test Product Null",
+            category_id=self.test_category.id,
+            supplier_id=self.test_supplier1.id
+        )
+        await save_object(db_session, product)
+
+        # Try to set supplier_id to NULL (should fail constraint)
+        product.supplier_id = None
+
+        with pytest.raises(IntegrityError):
+            await save_object(db_session, product)
+        await db_session.rollback()
+
+    @pytest.mark.asyncio
+    async def test_orphaned_product_cleanup(
+        self, db_session: AsyncSession, setup_category
+    ):
+        """Test handling of products when their supplier is deleted"""
+        # Create temporary supplier
+        temp_supplier = Suppliers(
+            name="Temporary Supplier",
+            company_type="UD",
+            contact="012345678901",
+            email="temp@supplier.com"
+        )
+        await save_object(db_session, temp_supplier)
+
+        # Create product associated with temp supplier
+        temp_product = Products(
+            name="Temporary Product",
+            category_id=self.test_category.id,
+            supplier_id=temp_supplier.id
+        )
+        await save_object(db_session, temp_product)
+
+        # Try to delete the supplier (should fail due to foreign key)
+        with pytest.raises(IntegrityError):
+            await delete_object(db_session, temp_supplier)
+        await db_session.rollback()
+
+        # To properly delete, first remove the product
+        await delete_object(db_session, temp_product)
+
+        # Now supplier can be deleted
+        await delete_object(db_session, temp_supplier)
+
+        # Verify both are deleted
+        deleted_product = await get_object_by_id(
+            db_session, Products, temp_product.id
+        )
+        deleted_supplier = await get_object_by_id(
+            db_session, Suppliers, temp_supplier.id
+        )
+
+        assert deleted_product is None
+        assert deleted_supplier is None
+
+    @pytest.mark.asyncio
+    async def test_query_supplier_by_products(
+        self, db_session: AsyncSession, setup_category
+    ):
+        """Test querying supplier by products"""
+        # Create products associated with different suppliers
+        product1 = Products(
+            name="Query Product 1",
+            category_id=self.test_category.id,
+            supplier_id=self.test_supplier1.id
+        )
+        await save_object(db_session, product1)
+
+        product2 = Products(
+            name="Query Product 2",
+            category_id=self.test_category.id,
+            supplier_id=self.test_supplier2.id
+        )
+        await save_object(db_session, product2)
+
+        # Query supplier by products using raw SQL
+        stmt = select(Suppliers).join(Products).where(
+            Products.name == "Query Product 1"
+        )
+        result = await db_session.execute(stmt)
+        supplier = result.scalar_one_or_none()
+
+        assert supplier.id == self.test_supplier1.id
+        assert supplier.name == "test supplier 1"
+        assert supplier.slug == "test-supplier-1"
