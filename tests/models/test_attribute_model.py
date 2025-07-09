@@ -413,9 +413,6 @@ class TestAttribute:
         assert self.test_attribute1 in attributes
         assert self.test_attribute2 in attributes
 
-"""
-belum selesai
-- pindahkan test_setting_parent_id_to_null_fails ke test children -> parent
-- tambahkan test_update_parent_children di test parent -> children
-- balik test_setting_attribute_to_empty_list menjadi test_setting_attribute_attribute_sets_to_empty_list
-"""
+    """
+    belum selesai
+    """

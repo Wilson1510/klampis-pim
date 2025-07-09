@@ -285,28 +285,6 @@ class TestCategoryType:
         await db_session.rollback()
 
     @pytest.mark.asyncio
-    async def test_setting_category_type_to_null_on_top_level_fails(
-        self, db_session: AsyncSession
-    ):
-        """Test that setting category_type_id to NULL on top-level category fails"""
-
-        # Create valid top-level category
-        category = Categories(
-            name="Test Category",
-            category_type_id=self.test_category_type1.id
-        )
-        await save_object(db_session, category)
-
-        # Try to set category_type_id to NULL (should fail constraint)
-        category.category_type_id = None
-
-        with pytest.raises(IntegrityError) as exc_info:
-            await save_object(db_session, category)
-        await db_session.rollback()
-
-        assert "check_category_hierarchy_rule" in str(exc_info.value)
-
-    @pytest.mark.asyncio
     async def test_orphaned_category_cleanup(self, db_session: AsyncSession):
         """Test handling of categories when their category type is deleted"""
 

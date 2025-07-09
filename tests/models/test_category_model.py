@@ -571,6 +571,28 @@ class TestCategory:
         await db_session.rollback()
 
     @pytest.mark.asyncio
+    async def test_setting_category_type_to_null_on_top_category_fails(
+        self, db_session: AsyncSession
+    ):
+        """Test that setting category_type_id to NULL on top-level category fails"""
+
+        # Create valid top-level category
+        category = Categories(
+            name="Test Category",
+            category_type_id=self.test_category_type.id
+        )
+        await save_object(db_session, category)
+
+        # Try to set category_type_id to NULL (should fail constraint)
+        category.category_type_id = None
+
+        with pytest.raises(IntegrityError) as exc_info:
+            await save_object(db_session, category)
+        await db_session.rollback()
+
+        assert "check_category_hierarchy_rule" in str(exc_info.value)
+
+    @pytest.mark.asyncio
     async def test_delete_category_with_category_type_relationship(
         self, db_session: AsyncSession
     ):
@@ -772,6 +794,28 @@ class TestCategory:
         with pytest.raises(IntegrityError):
             await save_object(db_session, category)
         await db_session.rollback()
+
+    @pytest.mark.asyncio
+    async def test_setting_parent_id_to_null_on_child_category_fails(
+        self, db_session: AsyncSession
+    ):
+        """Test that setting parent_id to NULL on child category fails"""
+        # Create valid child category
+        category = Categories(
+            name="test child category",
+            description="test description",
+            parent_id=self.test_category1.id
+        )
+        await save_object(db_session, category)
+
+        # Try to set parent_id to NULL (should fail constraint)
+        category.parent_id = None
+
+        with pytest.raises(IntegrityError) as exc_info:
+            await save_object(db_session, category)
+        await db_session.rollback()
+
+        assert "check_category_hierarchy_rule" in str(exc_info.value)
 
     @pytest.mark.asyncio
     async def test_delete_category_with_parent_relationship(
