@@ -8,6 +8,7 @@ for maximum safety and maintainability.
 """
 
 import pytest
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.category_type_model import CategoryTypes
@@ -16,6 +17,7 @@ from app.models.supplier_model import Suppliers, CompanyType
 from app.models.product_model import Products
 from app.models.sku_model import Skus
 from app.models.attribute_model import Attributes
+from app.models.attribute_set_model import AttributeSets
 from tests.utils.model_test_utils import save_object
 
 
@@ -80,9 +82,10 @@ async def category_factory(db_session: AsyncSession, category_type_factory):
         )
     """
     async def _factory(**kwargs):
-        # Handle special parameters that need processing
-        category_type = kwargs.pop('category_type', None)
-        parent_id = kwargs.get('parent_id', None)
+        # Handle relationship objects first
+        parent = kwargs.pop('parent', None)
+        if parent:
+            kwargs['parent_id'] = parent.id  # Ensure parent_id is set
 
         # Define default values
         defaults = {
@@ -91,16 +94,31 @@ async def category_factory(db_session: AsyncSession, category_type_factory):
         }
 
         # Handle business logic for category hierarchy
-        if parent_id is not None:
+        if 'parent_id' in kwargs and kwargs['parent_id'] is not None:
             # Child category - should not have category_type_id
-            defaults["parent_id"] = parent_id
+            defaults["parent_id"] = kwargs['parent_id']
             defaults["category_type_id"] = None
         else:
             # Parent category - needs category_type_id
-            if category_type is None:
-                category_type = await category_type_factory()
-            defaults["category_type_id"] = category_type.id
             defaults["parent_id"] = None
+
+            # Handle category_type dependency with priority:
+            # 1. Direct object, 2. Direct ID, 3. Get-or-Create
+            category_type = kwargs.pop('category_type', None)
+            if category_type:
+                defaults['category_type_id'] = category_type.id
+            elif 'category_type_id' not in kwargs:
+                # Get or Create a default if no ID was provided
+                stmt = select(CategoryTypes).where(
+                    CategoryTypes.name == "Test Category Type"
+                )
+                result = await db_session.execute(stmt)
+                existing_type = result.scalar_one_or_none()
+                if existing_type:
+                    defaults['category_type_id'] = existing_type.id
+                else:
+                    new_type = await category_type_factory()
+                    defaults['category_type_id'] = new_type.id
 
         # Merge defaults with provided kwargs
         params = {**defaults, **kwargs}
@@ -183,7 +201,12 @@ async def product_factory(db_session: AsyncSession, category_factory, supplier_f
     async def _factory(**kwargs):
         # Handle special parameters that need processing
         category = kwargs.pop('category', None)
+        if category:
+            kwargs['category_id'] = category.id
+
         supplier = kwargs.pop('supplier', None)
+        if supplier:
+            kwargs['supplier_id'] = supplier.id
 
         # Define default values
         defaults = {
@@ -191,17 +214,27 @@ async def product_factory(db_session: AsyncSession, category_factory, supplier_f
             "description": None
         }
 
-        # Handle category dependency
+        # Handle category dependency (get-or-create if not provided)
         if 'category_id' not in kwargs:
-            if category is None:
-                category = await category_factory()
-            defaults["category_id"] = category.id
+            stmt = select(Categories).where(Categories.name == "Test Category")
+            result = await db_session.execute(stmt)
+            existing_category = result.scalar_one_or_none()
+            if existing_category:
+                defaults['category_id'] = existing_category.id
+            else:
+                new_category = await category_factory()
+                defaults['category_id'] = new_category.id
 
-        # Handle supplier dependency
+        # Handle supplier dependency (get-or-create if not provided)
         if 'supplier_id' not in kwargs:
-            if supplier is None:
-                supplier = await supplier_factory()
-            defaults["supplier_id"] = supplier.id
+            stmt = select(Suppliers).where(Suppliers.name == "Test Supplier")
+            result = await db_session.execute(stmt)
+            existing_supplier = result.scalar_one_or_none()
+            if existing_supplier:
+                defaults['supplier_id'] = existing_supplier.id
+            else:
+                new_supplier = await supplier_factory()
+                defaults['supplier_id'] = new_supplier.id
 
         # Merge defaults with provided kwargs
         params = {**defaults, **kwargs}
@@ -239,8 +272,10 @@ async def sku_factory(db_session: AsyncSession, product_factory):
         )
     """
     async def _factory(**kwargs):
-        # Handle special parameters that need processing
+        # Handle relationship object first
         product = kwargs.pop('product', None)
+        if product:
+            kwargs['product_id'] = product.id
 
         # Define default values
         defaults = {
@@ -248,11 +283,16 @@ async def sku_factory(db_session: AsyncSession, product_factory):
             "description": None
         }
 
-        # Handle product dependency
+        # Handle product dependency (get-or-create if not provided)
         if 'product_id' not in kwargs:
-            if product is None:
-                product = await product_factory()
-            defaults["product_id"] = product.id
+            stmt = select(Products).where(Products.name == "Test Product")
+            result = await db_session.execute(stmt)
+            existing_product = result.scalar_one_or_none()
+            if existing_product:
+                defaults['product_id'] = existing_product.id
+            else:
+                new_product = await product_factory()
+                defaults['product_id'] = new_product.id
 
         # Merge defaults with provided kwargs
         params = {**defaults, **kwargs}
@@ -271,24 +311,6 @@ async def sku_factory(db_session: AsyncSession, product_factory):
 async def attribute_factory(db_session: AsyncSession):
     """
     Factory for creating Attributes with flexible parameters.
-
-    Usage:
-        # Minimal (uses defaults)
-        attribute = await attribute_factory()
-
-        # With custom parameters
-        attribute = await attribute_factory(
-            name="Color",
-            data_type=DataType.TEXT,
-            uom="RGB"
-        )
-
-        # Number attribute
-        attribute = await attribute_factory(
-            name="Weight",
-            data_type=DataType.NUMBER,
-            uom="kg"
-        )
     """
     async def _factory(**kwargs):
         # Define default values
@@ -305,5 +327,29 @@ async def attribute_factory(db_session: AsyncSession):
         # Save and return
         await save_object(db_session, attribute)
         return attribute
+
+    return _factory
+
+
+@pytest.fixture
+async def attribute_set_factory(db_session: AsyncSession):
+    """
+    Factory for creating AttributeSets with flexible parameters.
+    """
+    async def _factory(**kwargs):
+        # Define default values
+        defaults = {
+            "name": "Test Attribute Set"
+        }
+
+        # Merge defaults with provided kwargs
+        params = {**defaults, **kwargs}
+
+        # Create the object
+        attribute_set = AttributeSets(**params)
+
+        # Save and return
+        await save_object(db_session, attribute_set)
+        return attribute_set
 
     return _factory
