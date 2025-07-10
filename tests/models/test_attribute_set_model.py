@@ -44,14 +44,14 @@ class TestAttributeSet:
         """Test the properties of the name field"""
         name_column = AttributeSets.__table__.columns.get('name')
         assert isinstance(name_column.type, String)
-        assert name_column.type.length == 50
+        assert name_column.type.length == 100
         assert name_column.nullable is False
 
     def test_slug_field_properties(self):
         """Test the properties of the slug field"""
         slug_column = AttributeSets.__table__.columns.get('slug')
         assert isinstance(slug_column.type, String)
-        assert slug_column.type.length == 50
+        assert slug_column.type.length == 100
         assert slug_column.unique is True
 
     def test_relationships(self):

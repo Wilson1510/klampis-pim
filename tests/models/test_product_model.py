@@ -4,7 +4,6 @@ from sqlalchemy.exc import IntegrityError
 import pytest
 
 from app.core.base import Base
-from app.models.category_type_model import CategoryTypes
 from app.models.category_model import Categories
 from app.models.product_model import Products
 from app.models.sku_model import Skus
@@ -24,47 +23,34 @@ class TestProduct:
     """Test suite for Product model and relationships"""
 
     @pytest.fixture(autouse=True)
-    async def setup_objects(self, db_session: AsyncSession):
+    async def setup_objects(
+        self,
+        db_session: AsyncSession,
+        product_factory,
+        supplier_factory,
+        category_factory
+    ):
         """Setup method for the test suite"""
-        # Create category type
-        self.test_category_type = CategoryTypes(
-            name="test category type"
-        )
-        await save_object(db_session, self.test_category_type)
-
         # Create category
-        self.test_category = Categories(
-            name="test category",
-            description="test category description",
-            category_type_id=self.test_category_type.id
-        )
-        await save_object(db_session, self.test_category)
+        self.test_category = await category_factory()
 
         # Create supplier
-        self.test_supplier = Suppliers(
-            name="Test Supplier",
-            company_type="PT",
-            contact="1234567890123",
-            email="test@supplier.com"
-        )
-        await save_object(db_session, self.test_supplier)
+        self.test_supplier = await supplier_factory()
 
         # Create products
-        self.test_product1 = Products(
-            name="test product 1",
-            description="test product 1 description",
-            category_id=self.test_category.id,
-            supplier_id=self.test_supplier.id
+        self.test_product1 = await product_factory(
+            name="Test Product 1",
+            description="Test Product 1 Description",
+            category=self.test_category,
+            supplier=self.test_supplier
         )
-        await save_object(db_session, self.test_product1)
 
-        self.test_product2 = Products(
-            name="test product 2",
-            description="test product 2 description",
-            category_id=self.test_category.id,
-            supplier_id=self.test_supplier.id
+        self.test_product2 = await product_factory(
+            name="Test Product 2",
+            description="Test Product 2 Description",
+            category=self.test_category,
+            supplier=self.test_supplier
         )
-        await save_object(db_session, self.test_product2)
 
     def test_inheritance_from_base_model(self):
         """Test that Product model inherits from Base model"""
@@ -145,7 +131,7 @@ class TestProduct:
     def test_str_representation(self):
         """Test the string representation"""
         str_repr = str(self.test_product1)
-        assert str_repr == "Products(test product 1)"
+        assert str_repr == "Products(Test Product 1)"
 
     @pytest.mark.asyncio
     async def test_init_method(self, db_session: AsyncSession):
@@ -154,9 +140,9 @@ class TestProduct:
         await db_session.refresh(self.test_product2, ['skus'])
 
         assert self.test_product1.id == 1
-        assert self.test_product1.name == "test product 1"
+        assert self.test_product1.name == "Test Product 1"
         assert self.test_product1.slug == "test-product-1"
-        assert self.test_product1.description == "test product 1 description"
+        assert self.test_product1.description == "Test Product 1 Description"
         assert self.test_product1.category_id == self.test_category.id
         assert self.test_product1.category == self.test_category
         assert self.test_product1.supplier_id == self.test_supplier.id
@@ -164,9 +150,9 @@ class TestProduct:
         assert self.test_product1.skus == []
 
         assert self.test_product2.id == 2
-        assert self.test_product2.name == "test product 2"
+        assert self.test_product2.name == "Test Product 2"
         assert self.test_product2.slug == "test-product-2"
-        assert self.test_product2.description == "test product 2 description"
+        assert self.test_product2.description == "Test Product 2 Description"
         assert self.test_product2.category_id == self.test_category.id
         assert self.test_product2.category == self.test_category
         assert self.test_product2.supplier_id == self.test_supplier.id
@@ -214,17 +200,17 @@ class TestProduct:
         """Test the get operation"""
         item = await get_object_by_id(db_session, Products, self.test_product1.id)
         assert item.id == 1
-        assert item.name == "test product 1"
+        assert item.name == "Test Product 1"
         assert item.slug == "test-product-1"
-        assert item.description == "test product 1 description"
+        assert item.description == "Test Product 1 Description"
         assert item.category_id == self.test_category.id
         assert item.supplier_id == self.test_supplier.id
 
         item = await get_object_by_id(db_session, Products, self.test_product2.id)
         assert item.id == 2
-        assert item.name == "test product 2"
+        assert item.name == "Test Product 2"
         assert item.slug == "test-product-2"
-        assert item.description == "test product 2 description"
+        assert item.description == "Test Product 2 Description"
         assert item.category_id == self.test_category.id
         assert item.supplier_id == self.test_supplier.id
 
@@ -232,16 +218,16 @@ class TestProduct:
         assert len(items) == 2
 
         assert items[0].id == 1
-        assert items[0].name == "test product 1"
+        assert items[0].name == "Test Product 1"
         assert items[0].slug == "test-product-1"
-        assert items[0].description == "test product 1 description"
+        assert items[0].description == "Test Product 1 Description"
         assert items[0].category_id == self.test_category.id
         assert items[0].supplier_id == self.test_supplier.id
 
         assert items[1].id == 2
-        assert items[1].name == "test product 2"
+        assert items[1].name == "Test Product 2"
         assert items[1].slug == "test-product-2"
-        assert items[1].description == "test product 2 description"
+        assert items[1].description == "Test Product 2 Description"
         assert items[1].category_id == self.test_category.id
         assert items[1].supplier_id == self.test_supplier.id
 
@@ -255,7 +241,7 @@ class TestProduct:
         assert item.id == 1
         assert item.name == "updated test product 1"
         assert item.slug == "updated-test-product-1"
-        assert item.description == "test product 1 description"
+        assert item.description == "Test Product 1 Description"
         assert item.category_id == self.test_category.id
         assert item.supplier_id == self.test_supplier.id
         assert await count_model_objects(db_session, Products) == 2
@@ -267,7 +253,7 @@ class TestProduct:
         assert item.name == "updated test product 1"
         # slug keep the same
         assert item.slug == "updated-test-product-1"
-        assert item.description == "test product 1 description"
+        assert item.description == "Test Product 1 Description"
         assert item.category_id == self.test_category.id
         assert item.supplier_id == self.test_supplier.id
         assert await count_model_objects(db_session, Products) == 2
@@ -300,7 +286,7 @@ class TestProduct:
 
         assert retrieved_product.category_id == self.test_category.id
         assert retrieved_product.category == self.test_category
-        assert retrieved_product.category.name == "test category"
+        assert retrieved_product.category.name == "Test Category"
 
     @pytest.mark.asyncio
     async def test_product_without_category_relationship(
@@ -321,6 +307,8 @@ class TestProduct:
         self, db_session: AsyncSession
     ):
         """Test updating a product to use a different category"""
+
+        """Ini masih gagal. perlu perbaikan di fixture factory"""
         # Create another category
         another_category = Categories(
             name="another test category",
@@ -341,7 +329,7 @@ class TestProduct:
         # Verify initially has first category
         assert product.category_id == self.test_category.id
         assert product.category == self.test_category
-        assert product.category.name == "test category"
+        assert product.category.name == "Test Category"
 
         # Update to use different category
         product.category_id = another_category.id
@@ -444,7 +432,7 @@ class TestProduct:
         # Verify category still exists (should not be affected)
         await db_session.refresh(category, ['products'])
         assert category is not None
-        assert category.name == "test category"
+        assert category.name == "Test Category"
         assert category.products == [self.test_product1, self.test_product2]
 
     """
@@ -802,4 +790,4 @@ class TestProduct:
 
         assert product is not None
         assert product.id == self.test_product1.id
-        assert product.name == "test product 1"
+        assert product.name == "Test Product 1"

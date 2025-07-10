@@ -7,7 +7,6 @@ from app.core.base import Base
 from app.models.category_type_model import CategoryTypes
 from app.models.category_model import Categories
 from app.models.product_model import Products
-from app.models.supplier_model import Suppliers
 from app.core.listeners import _set_slug
 from tests.utils.model_test_utils import (
     save_object,
@@ -22,28 +21,23 @@ from tests.utils.model_test_utils import (
 class TestCategory:
     """Test suite for Category model and relationships"""
     @pytest.fixture(autouse=True)
-    async def setup_objects(self, db_session: AsyncSession):
+    async def setup_objects(
+        self, db_session: AsyncSession, category_factory, category_type_factory
+    ):
         """Setup method for the test suite"""
-        # Create category type
-        self.test_category_type = CategoryTypes(
-            name="test category type"
-        )
-        await save_object(db_session, self.test_category_type)
-
+        self.test_category_type = await category_type_factory()
         # Create category
-        self.test_category1 = Categories(
-            name="test category 1",
-            description="test category 1 description",
-            category_type_id=self.test_category_type.id
+        self.test_category1 = await category_factory(
+            name="Test Category 1",
+            description="Test Category 1 Description",
+            category_type=self.test_category_type
         )
-        await save_object(db_session, self.test_category1)
 
-        self.test_category2 = Categories(
-            name="test category 2",
-            description="test category 2 description",
+        self.test_category2 = await category_factory(
+            name="Test Category 2",
+            description="Test Category 2 Description",
             parent_id=self.test_category1.id
         )
-        await save_object(db_session, self.test_category2)
 
     def test_inheritance_from_base_model(self):
         """Test that Category model inherits from Base model"""
@@ -153,7 +147,7 @@ class TestCategory:
     def test_str_representation(self):
         """Test the string representation"""
         str_repr = str(self.test_category1)
-        assert str_repr == "Categories(test category 1)"
+        assert str_repr == "Categories(Test Category 1)"
 
     @pytest.mark.asyncio
     async def test_init_method(self, db_session: AsyncSession):
@@ -165,9 +159,9 @@ class TestCategory:
         await db_session.refresh(self.test_category2, ['products'])
 
         assert self.test_category1.id == 1
-        assert self.test_category1.name == "test category 1"
+        assert self.test_category1.name == "Test Category 1"
         assert self.test_category1.slug == "test-category-1"
-        assert self.test_category1.description == "test category 1 description"
+        assert self.test_category1.description == "Test Category 1 Description"
         assert self.test_category1.category_type_id == 1
         assert self.test_category1.category_type == self.test_category_type
         assert self.test_category1.parent_id is None
@@ -176,9 +170,9 @@ class TestCategory:
         assert self.test_category1.products == []
 
         assert self.test_category2.id == 2
-        assert self.test_category2.name == "test category 2"
+        assert self.test_category2.name == "Test Category 2"
         assert self.test_category2.slug == "test-category-2"
-        assert self.test_category2.description == "test category 2 description"
+        assert self.test_category2.description == "Test Category 2 Description"
         assert self.test_category2.category_type_id is None
         assert self.test_category2.category_type is None
         assert self.test_category2.parent_id == self.test_category1.id
@@ -190,32 +184,32 @@ class TestCategory:
     async def test_create_operation(self, db_session: AsyncSession):
         """Test the create operation"""
         item = Categories(
-            name="test category 3",
-            description="test category 3 description",
+            name="Test Category 3",
+            description="Test Category 3 Description",
             category_type_id=self.test_category_type.id
         )
         await save_object(db_session, item)
 
         assert item.id == 3
-        assert item.name == "test category 3"
+        assert item.name == "Test Category 3"
         assert item.slug == "test-category-3"
-        assert item.description == "test category 3 description"
+        assert item.description == "Test Category 3 Description"
         assert item.category_type_id == 1
         assert item.parent_id is None
         assert await count_model_objects(db_session, Categories) == 3
 
         item_with_slug = Categories(
-            name="test category 4",
+            name="Test Category 4",
             slug="slug-category-4",
-            description="test category 4 description",
+            description="Test Category 4 Description",
             category_type_id=self.test_category_type.id
         )
         await save_object(db_session, item_with_slug)
         assert item_with_slug.id == 4
-        assert item_with_slug.name == "test category 4"
+        assert item_with_slug.name == "Test Category 4"
         # slug should be set to the slugified name
         assert item_with_slug.slug == "test-category-4"
-        assert item_with_slug.description == "test category 4 description"
+        assert item_with_slug.description == "Test Category 4 Description"
         assert item_with_slug.category_type_id == 1
         assert item_with_slug.parent_id is None
         assert await count_model_objects(db_session, Categories) == 4
@@ -225,17 +219,17 @@ class TestCategory:
         """Test the get operation"""
         item = await get_object_by_id(db_session, Categories, self.test_category1.id)
         assert item.id == 1
-        assert item.name == "test category 1"
+        assert item.name == "Test Category 1"
         assert item.slug == "test-category-1"
-        assert item.description == "test category 1 description"
+        assert item.description == "Test Category 1 Description"
         assert item.category_type_id == 1
         assert item.parent_id is None
 
         item = await get_object_by_id(db_session, Categories, self.test_category2.id)
         assert item.id == 2
-        assert item.name == "test category 2"
+        assert item.name == "Test Category 2"
         assert item.slug == "test-category-2"
-        assert item.description == "test category 2 description"
+        assert item.description == "Test Category 2 Description"
         assert item.category_type_id is None
         assert item.parent_id == 1
 
@@ -243,16 +237,16 @@ class TestCategory:
         assert len(items) == 2
 
         assert items[0].id == 1
-        assert items[0].name == "test category 1"
+        assert items[0].name == "Test Category 1"
         assert items[0].slug == "test-category-1"
-        assert items[0].description == "test category 1 description"
+        assert items[0].description == "Test Category 1 Description"
         assert items[0].category_type_id == 1
         assert items[0].parent_id is None
 
         assert items[1].id == 2
-        assert items[1].name == "test category 2"
+        assert items[1].name == "Test Category 2"
         assert items[1].slug == "test-category-2"
-        assert items[1].description == "test category 2 description"
+        assert items[1].description == "Test Category 2 Description"
         assert items[1].category_type_id is None
         assert items[1].parent_id == 1
 
@@ -266,7 +260,7 @@ class TestCategory:
         assert item.id == 1
         assert item.name == "updated test category 1"
         assert item.slug == "updated-test-category-1"
-        assert item.description == "test category 1 description"
+        assert item.description == "Test Category 1 Description"
         assert item.category_type_id == 1
         assert item.parent_id is None
         assert await count_model_objects(db_session, Categories) == 2
@@ -278,7 +272,7 @@ class TestCategory:
         assert item.name == "updated test category 1"
         # slug keep the same
         assert item.slug == "updated-test-category-1"
-        assert item.description == "test category 1 description"
+        assert item.description == "Test Category 1 Description"
         assert item.category_type_id == 1
         assert item.parent_id is None
         assert await count_model_objects(db_session, Categories) == 2
@@ -487,7 +481,7 @@ class TestCategory:
 
         assert retrieved_category.category_type_id == self.test_category_type.id
         assert retrieved_category.category_type == self.test_category_type
-        assert retrieved_category.category_type.name == "test category type"
+        assert retrieved_category.category_type.name == "Test Category Type"
 
     @pytest.mark.asyncio
     async def test_category_without_category_type_relationship(
@@ -525,7 +519,7 @@ class TestCategory:
         # Verify initially has first category_type
         assert category.category_type_id == self.test_category_type.id
         assert category.category_type == self.test_category_type
-        assert category.category_type.name == "test category type"
+        assert category.category_type.name == "Test Category Type"
 
         # Update to use different category_type
         category.category_type_id = another_category_type.id
@@ -627,7 +621,7 @@ class TestCategory:
         # Verify category_type still exists (should not be affected)
         await db_session.refresh(category_type, ['categories'])
         assert category_type is not None
-        assert category_type.name == "test category type"
+        assert category_type.name == "Test Category Type"
         assert category_type.categories == [self.test_category1]
 
     """
@@ -647,7 +641,7 @@ class TestCategory:
 
         assert retrieved_category.parent_id == self.test_category1.id
         assert retrieved_category.parent == self.test_category1
-        assert retrieved_category.parent.name == "test category 1"
+        assert retrieved_category.parent.name == "Test Category 1"
 
     @pytest.mark.asyncio
     async def test_category_without_parent_relationship(
@@ -677,7 +671,7 @@ class TestCategory:
 
         assert len(retrieved_category.children) == 1
         assert retrieved_category.children[0] == self.test_category2
-        assert retrieved_category.children[0].name == "test category 2"
+        assert retrieved_category.children[0].name == "Test Category 2"
 
     @pytest.mark.asyncio
     async def test_category_without_children_relationship(
@@ -748,7 +742,7 @@ class TestCategory:
         # Verify initially has first parent
         assert category.parent_id == self.test_category1.id
         assert category.parent == self.test_category1
-        assert category.parent.name == "test category 1"
+        assert category.parent.name == "Test Category 1"
 
         # Update to use different parent
         category.parent_id = another_parent.id
@@ -829,7 +823,7 @@ class TestCategory:
         )
         await db_session.refresh(category, ['children'])
         assert len(category.children) == 1
-        assert category.children[0].name == "test category 2"
+        assert category.children[0].name == "Test Category 2"
 
         # should fail because test category 2 will lose its parent_id
         # and does not have category_type_id
@@ -876,7 +870,7 @@ class TestCategory:
 
         # Verify parent still exists (should not be affected)
         assert category_parent is not None
-        assert category_parent.name == "test category 1"
+        assert category_parent.name == "Test Category 1"
         assert category_parent.children == [self.test_category2]
 
     @pytest.mark.asyncio
@@ -913,16 +907,10 @@ class TestCategory:
     """
 
     @pytest.fixture
-    async def setup_supplier(self, db_session: AsyncSession):
+    async def setup_supplier(self, db_session: AsyncSession, supplier_factory):
         """Setup supplier for product tests"""
         if not hasattr(self, 'test_supplier'):
-            self.test_supplier = Suppliers(
-                name="Test Supplier Default",
-                company_type="PT",
-                contact="1234567890123",
-                email="default@supplier.com"
-            )
-            await save_object(db_session, self.test_supplier)
+            self.test_supplier = await supplier_factory()
 
     @pytest.mark.asyncio
     async def test_create_category_with_products(
@@ -1124,5 +1112,5 @@ class TestCategory:
         category = result.scalar_one_or_none()
 
         assert category.id == self.test_category1.id
-        assert category.name == "test category 1"
+        assert category.name == "Test Category 1"
         assert category.slug == "test-category-1"
