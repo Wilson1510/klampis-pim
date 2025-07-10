@@ -434,7 +434,6 @@ class TestSupplier:
         self, db_session: AsyncSession, setup_category
     ):
         """Test adding multiple products to supplier"""
-        products = []
         for i in range(5):
             product = Products(
                 name=f"Test Product {i}",
@@ -443,7 +442,6 @@ class TestSupplier:
                 supplier_id=self.test_supplier1.id
             )
             await save_object(db_session, product)
-            products.append(product)
 
         retrieved_supplier = await get_object_by_id(
             db_session,

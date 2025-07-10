@@ -241,7 +241,6 @@ class TestCategoryType:
         self, db_session: AsyncSession
     ):
         """Test adding multiple categories to category type"""
-        categories = []
         for i in range(5):
             category = Categories(
                 name=f"Test Category {i}",
@@ -249,7 +248,6 @@ class TestCategoryType:
                 category_type_id=self.test_category_type1.id
             )
             await save_object(db_session, category)
-            categories.append(category)
 
         retrieved_category_type = await get_object_by_id(
             db_session,

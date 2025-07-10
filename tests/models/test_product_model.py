@@ -646,7 +646,6 @@ class TestProduct:
         product = self.test_product1
 
         # Add skus
-        skus = []
         for i in range(5):
             sku = Skus(
                 name=f"New SKU {i}",
@@ -654,7 +653,6 @@ class TestProduct:
                 product_id=product.id
             )
             await save_object(db_session, sku)
-            skus.append(sku)
 
         retrieved_product = await get_object_by_id(
             db_session, Products, product.id

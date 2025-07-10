@@ -286,14 +286,12 @@ class TestAttribute:
         self, db_session: AsyncSession
     ):
         """Test adding multiple attributes to an attribute set"""
-        attribute_sets = []
         for i in range(5):
             attribute_set = AttributeSets(
                 name=f"Test Attribute Set {i}",
                 attributes=[self.test_attribute1]
             )
             await save_object(db_session, attribute_set)
-            attribute_sets.append(attribute_set)
 
         retrieved_attribute = await get_object_by_id(
             db_session,
