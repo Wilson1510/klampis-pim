@@ -6,8 +6,6 @@ import pytest
 from app.core.base import Base
 from app.models.supplier_model import Suppliers, CompanyType
 from app.models.product_model import Products
-from app.models.category_model import Categories
-from app.models.category_type_model import CategoryTypes
 from app.core.listeners import _set_slug
 from tests.utils.model_test_utils import (
     save_object,
@@ -22,27 +20,24 @@ from tests.utils.model_test_utils import (
 class TestSupplier:
     """Test suite for Supplier model and relationships"""
     @pytest.fixture(autouse=True)
-    async def setup_objects(self, db_session: AsyncSession):
+    async def setup_objects(self, db_session: AsyncSession, supplier_factory):
         """Setup method for the test suite"""
         # Create supplier
-        self.test_supplier1 = Suppliers(
-            name="test supplier 1",
+        self.test_supplier1 = await supplier_factory(
+            name="Test Supplier 1",
             company_type="PT",
-            address="test address 1",
+            address="Test Address 1",
             contact="081234567890",
             email="test1@example.com"
         )
-        await save_object(db_session, self.test_supplier1)
 
-        self.test_supplier2 = Suppliers(
-            name="test supplier 2",
+        self.test_supplier2 = await supplier_factory(
+            name="Test Supplier 2",
             company_type="CV",
-            address="test address 2",
+            address="Test Address 2",
             contact="081234567891",
             email="test2@example.com"
         )
-
-        await save_object(db_session, self.test_supplier2)
 
     def test_inheritance_from_base_model(self):
         """Test that Supplier model inherits from Base model"""
@@ -137,7 +132,7 @@ class TestSupplier:
     def test_str_representation(self):
         """Test the string representation"""
         str_repr = str(self.test_supplier1)
-        assert str_repr == "Suppliers(test supplier 1)"
+        assert str_repr == "Suppliers(Test Supplier 1)"
 
     @pytest.mark.asyncio
     async def test_init_method(self, db_session: AsyncSession):
@@ -146,19 +141,19 @@ class TestSupplier:
         await db_session.refresh(self.test_supplier2, ['products'])
 
         assert self.test_supplier1.id == 1
-        assert self.test_supplier1.name == "test supplier 1"
+        assert self.test_supplier1.name == "Test Supplier 1"
         assert self.test_supplier1.slug == "test-supplier-1"
         assert self.test_supplier1.company_type == "PT"
-        assert self.test_supplier1.address == "test address 1"
+        assert self.test_supplier1.address == "Test Address 1"
         assert self.test_supplier1.contact == "081234567890"
         assert self.test_supplier1.email == "test1@example.com"
         assert self.test_supplier1.products == []
 
         assert self.test_supplier2.id == 2
-        assert self.test_supplier2.name == "test supplier 2"
+        assert self.test_supplier2.name == "Test Supplier 2"
         assert self.test_supplier2.slug == "test-supplier-2"
         assert self.test_supplier2.company_type == "CV"
-        assert self.test_supplier2.address == "test address 2"
+        assert self.test_supplier2.address == "Test Address 2"
         assert self.test_supplier2.contact == "081234567891"
         assert self.test_supplier2.email == "test2@example.com"
         assert self.test_supplier2.products == []
@@ -208,19 +203,19 @@ class TestSupplier:
         """Test the get operation"""
         item = await get_object_by_id(db_session, Suppliers, self.test_supplier1.id)
         assert item.id == 1
-        assert item.name == "test supplier 1"
+        assert item.name == "Test Supplier 1"
         assert item.slug == "test-supplier-1"
         assert item.company_type == "PT"
-        assert item.address == "test address 1"
+        assert item.address == "Test Address 1"
         assert item.contact == "081234567890"
         assert item.email == "test1@example.com"
 
         item = await get_object_by_id(db_session, Suppliers, self.test_supplier2.id)
         assert item.id == 2
-        assert item.name == "test supplier 2"
+        assert item.name == "Test Supplier 2"
         assert item.slug == "test-supplier-2"
         assert item.company_type == "CV"
-        assert item.address == "test address 2"
+        assert item.address == "Test Address 2"
         assert item.contact == "081234567891"
         assert item.email == "test2@example.com"
 
@@ -228,18 +223,18 @@ class TestSupplier:
         assert len(items) == 2
 
         assert items[0].id == 1
-        assert items[0].name == "test supplier 1"
+        assert items[0].name == "Test Supplier 1"
         assert items[0].slug == "test-supplier-1"
         assert items[0].company_type == "PT"
-        assert items[0].address == "test address 1"
+        assert items[0].address == "Test Address 1"
         assert items[0].contact == "081234567890"
         assert items[0].email == "test1@example.com"
 
         assert items[1].id == 2
-        assert items[1].name == "test supplier 2"
+        assert items[1].name == "Test Supplier 2"
         assert items[1].slug == "test-supplier-2"
         assert items[1].company_type == "CV"
-        assert items[1].address == "test address 2"
+        assert items[1].address == "Test Address 2"
         assert items[1].contact == "081234567891"
         assert items[1].email == "test2@example.com"
 
@@ -254,7 +249,7 @@ class TestSupplier:
         assert item.name == "updated test supplier 1"
         assert item.slug == "updated-test-supplier-1"
         assert item.company_type == "PT"
-        assert item.address == "test address 1"
+        assert item.address == "Test Address 1"
         assert item.contact == "081234567890"
         assert item.email == "test1@example.com"
         assert await count_model_objects(db_session, Suppliers) == 2
@@ -267,7 +262,7 @@ class TestSupplier:
         # slug keep the same
         assert item.slug == "updated-test-supplier-1"
         assert item.company_type == "PT"
-        assert item.address == "test address 1"
+        assert item.address == "Test Address 1"
         assert item.contact == "081234567890"
         assert item.email == "test1@example.com"
         assert await count_model_objects(db_session, Suppliers) == 2
@@ -383,19 +378,9 @@ class TestSupplier:
     """
 
     @pytest.fixture
-    async def setup_category(self, db_session: AsyncSession):
+    async def setup_category(self, db_session: AsyncSession, category_factory):
         """Setup category for product tests"""
-        if not hasattr(self, 'test_category_type'):
-            self.test_category_type = CategoryTypes(
-                name="Test Category Type Default"
-            )
-            await save_object(db_session, self.test_category_type)
-        if not hasattr(self, 'test_category'):
-            self.test_category = Categories(
-                name="Test Category Default",
-                category_type_id=self.test_category_type.id
-            )
-            await save_object(db_session, self.test_category)
+        self.test_category = await category_factory()
 
     @pytest.mark.asyncio
     async def test_create_supplier_with_products(
@@ -474,7 +459,8 @@ class TestSupplier:
             assert retrieved_supplier.products[i].slug == f"test-product-{i}"
             assert retrieved_supplier.products[i].description == f"Test Description {i}"
             assert retrieved_supplier.products[i].category_id == (
-                self.test_category.id)
+                self.test_category.id
+            )
 
     @pytest.mark.asyncio
     async def test_update_suppliers_products(
@@ -601,5 +587,5 @@ class TestSupplier:
         supplier = result.scalar_one_or_none()
 
         assert supplier.id == self.test_supplier1.id
-        assert supplier.name == "test supplier 1"
+        assert supplier.name == "Test Supplier 1"
         assert supplier.slug == "test-supplier-1"

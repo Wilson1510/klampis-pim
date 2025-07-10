@@ -909,8 +909,7 @@ class TestCategory:
     @pytest.fixture
     async def setup_supplier(self, db_session: AsyncSession, supplier_factory):
         """Setup supplier for product tests"""
-        if not hasattr(self, 'test_supplier'):
-            self.test_supplier = await supplier_factory()
+        self.test_supplier = await supplier_factory()
 
     @pytest.mark.asyncio
     async def test_create_category_with_products(

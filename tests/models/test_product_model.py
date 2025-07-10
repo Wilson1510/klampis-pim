@@ -304,18 +304,14 @@ class TestProduct:
 
     @pytest.mark.asyncio
     async def test_update_product_to_different_category(
-        self, db_session: AsyncSession
+        self, db_session: AsyncSession, category_factory
     ):
         """Test updating a product to use a different category"""
-
-        """Ini masih gagal. perlu perbaikan di fixture factory"""
         # Create another category
-        another_category = Categories(
+        another_category = await category_factory(
             name="another test category",
-            description="another test category description",
-            category_type_id=self.test_category_type.id
+            description="another test category description"
         )
-        await save_object(db_session, another_category)
 
         # Create product with first category
         product = Products(

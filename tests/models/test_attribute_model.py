@@ -8,11 +8,6 @@ from datetime import datetime
 from app.core.base import Base
 from app.models.attribute_model import Attributes, DataType
 from app.models.attribute_set_model import AttributeSets
-from app.models.category_model import Categories
-from app.models.category_type_model import CategoryTypes
-from app.models.product_model import Products
-from app.models.supplier_model import Suppliers
-from app.models.sku_model import Skus
 from app.models.sku_attribute_value_model import SkuAttributeValue
 from app.core.listeners import _set_code
 from tests.utils.model_test_utils import (
@@ -29,18 +24,16 @@ class TestAttribute:
     """Test suite for Attribute model"""
 
     @pytest.fixture(autouse=True)
-    async def setup_objects(self, db_session: AsyncSession):
+    async def setup_objects(self, db_session: AsyncSession, attribute_factory):
         """Setup method for the test suite"""
-        self.test_attribute1 = Attributes(
-            name="test attribute 1",
-            uom="test uom 1"
+        self.test_attribute1 = await attribute_factory(
+            name="Test Attribute 1",
+            uom="Test UOM 1"
         )
-        await save_object(db_session, self.test_attribute1)
 
-        self.test_attribute2 = Attributes(
-            name="test attribute 2"
+        self.test_attribute2 = await attribute_factory(
+            name="Test Attribute 2"
         )
-        await save_object(db_session, self.test_attribute2)
 
     def test_inheritance_from_base_model(self):
         """Test that Attribute model inherits from Base model"""
@@ -123,7 +116,7 @@ class TestAttribute:
     def test_str_representation(self):
         """Test the string representation"""
         str_repr = str(self.test_attribute1)
-        assert str_repr == "Attributes(test attribute 1)"
+        assert str_repr == "Attributes(Test Attribute 1)"
 
     @pytest.mark.asyncio
     async def test_init_method(self, db_session: AsyncSession):
@@ -135,15 +128,15 @@ class TestAttribute:
         await db_session.refresh(self.test_attribute2, ['attribute_sets'])
 
         assert self.test_attribute1.id == 1
-        assert self.test_attribute1.name == "test attribute 1"
+        assert self.test_attribute1.name == "Test Attribute 1"
         assert self.test_attribute1.code == "TEST-ATTRIBUTE-1"
         assert self.test_attribute1.data_type == DataType.TEXT
-        assert self.test_attribute1.uom == "test uom 1"
+        assert self.test_attribute1.uom == "Test UOM 1"
         assert self.test_attribute1.sku_attribute_values == []
         assert self.test_attribute1.attribute_sets == []
 
         assert self.test_attribute2.id == 2
-        assert self.test_attribute2.name == "test attribute 2"
+        assert self.test_attribute2.name == "Test Attribute 2"
         assert self.test_attribute2.code == "TEST-ATTRIBUTE-2"
         assert self.test_attribute2.data_type == DataType.TEXT
         assert self.test_attribute2.uom is None
@@ -197,25 +190,25 @@ class TestAttribute:
         """Test the get operation"""
         item = await get_object_by_id(db_session, Attributes, self.test_attribute1.id)
         assert item.id == 1
-        assert item.name == "test attribute 1"
+        assert item.name == "Test Attribute 1"
         assert item.code == "TEST-ATTRIBUTE-1"
         assert item.data_type == DataType.TEXT
-        assert item.uom == "test uom 1"
+        assert item.uom == "Test UOM 1"
 
         item = await get_object_by_id(db_session, Attributes, self.test_attribute2.id)
         assert item.id == 2
-        assert item.name == "test attribute 2"
+        assert item.name == "Test Attribute 2"
         assert item.code == "TEST-ATTRIBUTE-2"
         assert item.data_type == DataType.TEXT
         assert item.uom is None
 
         items = await get_all_objects(db_session, Attributes)
         assert len(items) == 2
-        assert items[0].name == "test attribute 1"
+        assert items[0].name == "Test Attribute 1"
         assert items[0].code == "TEST-ATTRIBUTE-1"
         assert items[0].data_type == DataType.TEXT
-        assert items[0].uom == "test uom 1"
-        assert items[1].name == "test attribute 2"
+        assert items[0].uom == "Test UOM 1"
+        assert items[1].name == "Test Attribute 2"
         assert items[1].code == "TEST-ATTRIBUTE-2"
         assert items[1].data_type == DataType.TEXT
         assert items[1].uom is None
@@ -456,50 +449,10 @@ class TestAttribute:
     """
 
     @pytest.fixture
-    async def setup_sku(self, db_session: AsyncSession):
+    async def setup_sku(self, db_session: AsyncSession, sku_factory):
         """Setup sku for attribute tests"""
-        if not hasattr(self, 'test_category_type'):
-            self.test_category_type = CategoryTypes(
-                name="Test Category Type"
-            )
-            await save_object(db_session, self.test_category_type)
-
-        if not hasattr(self, 'test_category'):
-            self.test_category = Categories(
-                name="Test Category",
-                category_type_id=self.test_category_type.id
-            )
-            await save_object(db_session, self.test_category)
-
-        if not hasattr(self, 'test_supplier'):
-            self.test_supplier = Suppliers(
-                name="Test Supplier",
-                company_type="PT",
-                address="Test Address",
-                contact="081234567890",
-                email="test@test.com"
-            )
-            await save_object(db_session, self.test_supplier)
-
-        if not hasattr(self, 'test_product'):
-            self.test_product = Products(
-                name="Test Product",
-                category_id=self.test_category.id,
-                supplier_id=self.test_supplier.id
-            )
-            await save_object(db_session, self.test_product)
-
-        self.test_sku1 = Skus(
-            name="Test SKU 1",
-            product_id=self.test_product.id
-        )
-        await save_object(db_session, self.test_sku1)
-
-        self.test_sku2 = Skus(
-            name="Test SKU 2",
-            product_id=self.test_product.id
-        )
-        await save_object(db_session, self.test_sku2)
+        self.test_sku1 = await sku_factory(name="Test SKU 1")
+        self.test_sku2 = await sku_factory(name="Test SKU 2")
 
     @pytest.mark.asyncio
     async def test_create_attribute_with_sku_attribute_values(

@@ -20,17 +20,14 @@ class TestAttributeSet:
     """Test suite for AttributeSet model"""
 
     @pytest.fixture(autouse=True)
-    async def setup_objects(self, db_session: AsyncSession):
+    async def setup_objects(self, db_session: AsyncSession, attribute_set_factory):
         """Setup method for the test suite"""
-        self.test_attribute_set1 = AttributeSets(
-            name="Electronics"
+        self.test_attribute_set1 = await attribute_set_factory(
+            name="Test Attribute Set 1"
         )
-        await save_object(db_session, self.test_attribute_set1)
-
-        self.test_attribute_set2 = AttributeSets(
-            name="Clothing"
+        self.test_attribute_set2 = await attribute_set_factory(
+            name="Test Attribute Set 2"
         )
-        await save_object(db_session, self.test_attribute_set2)
 
     def test_inheritance_from_base_model(self):
         """Test that AttributeSet model inherits from Base model"""
@@ -61,26 +58,26 @@ class TestAttributeSet:
     @pytest.mark.asyncio
     async def test_init_method(self, db_session: AsyncSession):
         """Test the init method"""
-        assert self.test_attribute_set1.name == "Electronics"
-        assert self.test_attribute_set1.slug == "electronics"
-        assert self.test_attribute_set2.name == "Clothing"
-        assert self.test_attribute_set2.slug == "clothing"
+        assert self.test_attribute_set1.name == "Test Attribute Set 1"
+        assert self.test_attribute_set1.slug == "test-attribute-set-1"
+        assert self.test_attribute_set2.name == "Test Attribute Set 2"
+        assert self.test_attribute_set2.slug == "test-attribute-set-2"
 
     @pytest.mark.asyncio
     async def test_create_operation(self, db_session: AsyncSession):
         """Test create operation"""
-        new_set = AttributeSets(name="Home Goods")
+        new_set = AttributeSets(name="Test Attribute Set 3")
         await save_object(db_session, new_set)
         assert new_set.id is not None
-        assert new_set.name == "Home Goods"
-        assert new_set.slug == "home-goods"
+        assert new_set.name == "Test Attribute Set 3"
+        assert new_set.slug == "test-attribute-set-3"
         assert await count_model_objects(db_session, AttributeSets) == 3
 
     @pytest.mark.asyncio
     async def test_slug_uniqueness(self, db_session: AsyncSession):
         """Test slug uniqueness"""
         with pytest.raises(IntegrityError):
-            duplicate_set = AttributeSets(name="Electronics")
+            duplicate_set = AttributeSets(name="Test Attribute Set 1")
             await save_object(db_session, duplicate_set)
         await db_session.rollback()
 
@@ -90,20 +87,20 @@ class TestAttributeSet:
         retrieved_set = await get_object_by_id(
             db_session, AttributeSets, self.test_attribute_set1.id
         )
-        assert retrieved_set.name == "Electronics"
+        assert retrieved_set.name == "Test Attribute Set 1"
         all_sets = await get_all_objects(db_session, AttributeSets)
         assert len(all_sets) == 2
 
     @pytest.mark.asyncio
     async def test_update_operation(self, db_session: AsyncSession):
         """Test update operation"""
-        self.test_attribute_set1.name = "Digital Gadgets"
+        self.test_attribute_set1.name = "Test Attribute Set 1 Updated"
         await save_object(db_session, self.test_attribute_set1)
         updated_set = await get_object_by_id(
             db_session, AttributeSets, self.test_attribute_set1.id
         )
-        assert updated_set.name == "Digital Gadgets"
-        assert updated_set.slug == "digital-gadgets"
+        assert updated_set.name == "Test Attribute Set 1 Updated"
+        assert updated_set.slug == "test-attribute-set-1-updated"
 
     @pytest.mark.asyncio
     async def test_delete_operation(self, db_session: AsyncSession):
@@ -117,7 +114,4 @@ class TestAttributeSet:
 
 """
 belum selesai
-- pindahkan test_setting_parent_id_to_null_fails ke test children -> parent
-- tambahkan test_update_parent_children di test parent -> children
-- balik test_setting_attribute_to_empty_list menjadi test_setting_attribute_attribute_sets_to_empty_list
 """

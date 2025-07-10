@@ -5,11 +5,8 @@ import pytest
 import uuid
 
 from app.core.base import Base
-from app.models.category_type_model import CategoryTypes
-from app.models.category_model import Categories
 from app.models.product_model import Products
 from app.models.sku_model import Skus
-from app.models.supplier_model import Suppliers
 from app.core.listeners import _set_slug
 from tests.utils.model_test_utils import (
     save_object,
@@ -25,54 +22,25 @@ class TestSku:
     """Test suite for Sku model and relationships"""
 
     @pytest.fixture(autouse=True)
-    async def setup_objects(self, db_session: AsyncSession):
+    async def setup_objects(
+        self, db_session: AsyncSession, product_factory, sku_factory
+    ):
         """Setup method for the test suite"""
-        # Create category type
-        self.test_category_type = CategoryTypes(
-            name="test category type"
-        )
-        await save_object(db_session, self.test_category_type)
-
-        # Create category
-        self.test_category = Categories(
-            name="test category",
-            description="test category description",
-            category_type_id=self.test_category_type.id
-        )
-        await save_object(db_session, self.test_category)
-
-        # Create supplier
-        self.test_supplier = Suppliers(
-            name="Test Supplier",
-            company_type="PT",
-            contact="1234567890123",
-            email="test@supplier.com"
-        )
-        await save_object(db_session, self.test_supplier)
-
         # Create a product
-        self.test_product = Products(
-            name="test product",
-            description="test product description",
-            category_id=self.test_category.id,
-            supplier_id=self.test_supplier.id
-        )
-        await save_object(db_session, self.test_product)
+        self.test_product = await product_factory()
 
         # Create skus
-        self.test_sku1 = Skus(
-            name="test sku 1",
-            description="test sku 1 description",
-            product_id=self.test_product.id
+        self.test_sku1 = await sku_factory(
+            name="Test Sku 1",
+            description="Test Sku 1 description",
+            product=self.test_product
         )
-        await save_object(db_session, self.test_sku1)
 
-        self.test_sku2 = Skus(
-            name="test sku 2",
-            description="test sku 2 description",
-            product_id=self.test_product.id
+        self.test_sku2 = await sku_factory(
+            name="Test Sku 2",
+            description="Test Sku 2 description",
+            product=self.test_product
         )
-        await save_object(db_session, self.test_sku2)
 
     def test_inheritance_from_base_model(self):
         """Test that Sku model inherits from Base model"""
@@ -151,24 +119,24 @@ class TestSku:
     def test_str_representation(self):
         """Test the string representation"""
         str_repr = str(self.test_sku1)
-        assert str_repr == "Skus(test sku 1)"
+        assert str_repr == "Skus(Test Sku 1)"
 
     @pytest.mark.asyncio
     async def test_init_method(self, db_session: AsyncSession):
         """Test the init method"""
         assert self.test_sku1.id == 1
-        assert self.test_sku1.name == "test sku 1"
+        assert self.test_sku1.name == "Test Sku 1"
         assert self.test_sku1.slug == "test-sku-1"
-        assert self.test_sku1.description == "test sku 1 description"
+        assert self.test_sku1.description == "Test Sku 1 description"
         assert self.test_sku1.sku_number is not None
         assert len(self.test_sku1.sku_number) == 10
         assert self.test_sku1.product_id == self.test_product.id
         assert self.test_sku1.product == self.test_product
 
         assert self.test_sku2.id == 2
-        assert self.test_sku2.name == "test sku 2"
+        assert self.test_sku2.name == "Test Sku 2"
         assert self.test_sku2.slug == "test-sku-2"
-        assert self.test_sku2.description == "test sku 2 description"
+        assert self.test_sku2.description == "Test Sku 2 description"
         assert self.test_sku2.sku_number is not None
         assert len(self.test_sku2.sku_number) == 10
         assert self.test_sku2.product_id == self.test_product.id
@@ -218,31 +186,31 @@ class TestSku:
         """Test the get operation"""
         item = await get_object_by_id(db_session, Skus, self.test_sku1.id)
         assert item.id == 1
-        assert item.name == "test sku 1"
+        assert item.name == "Test Sku 1"
         assert item.slug == "test-sku-1"
-        assert item.description == "test sku 1 description"
+        assert item.description == "Test Sku 1 description"
         assert item.product_id == self.test_product.id
 
         item = await get_object_by_id(db_session, Skus, self.test_sku2.id)
         assert item.id == 2
-        assert item.name == "test sku 2"
+        assert item.name == "Test Sku 2"
         assert item.slug == "test-sku-2"
-        assert item.description == "test sku 2 description"
+        assert item.description == "Test Sku 2 description"
         assert item.product_id == self.test_product.id
 
         items = await get_all_objects(db_session, Skus)
         assert len(items) == 2
 
         assert items[0].id == 1
-        assert items[0].name == "test sku 1"
+        assert items[0].name == "Test Sku 1"
         assert items[0].slug == "test-sku-1"
-        assert items[0].description == "test sku 1 description"
+        assert items[0].description == "Test Sku 1 description"
         assert items[0].product_id == self.test_product.id
 
         assert items[1].id == 2
-        assert items[1].name == "test sku 2"
+        assert items[1].name == "Test Sku 2"
         assert items[1].slug == "test-sku-2"
-        assert items[1].description == "test sku 2 description"
+        assert items[1].description == "Test Sku 2 description"
         assert items[1].product_id == self.test_product.id
 
     @pytest.mark.asyncio
@@ -258,7 +226,7 @@ class TestSku:
         assert item.name == "updated test sku 1"
         assert item.slug == "updated-test-sku-1"
         assert item.sku_number == original_sku_number  # should not change on update
-        assert item.description == "test sku 1 description"
+        assert item.description == "Test Sku 1 description"
         assert item.product_id == self.test_product.id
         assert await count_model_objects(db_session, Skus) == 2
 
@@ -364,7 +332,7 @@ class TestSku:
 
         assert retrieved_sku.product_id == self.test_product.id
         assert retrieved_sku.product == self.test_product
-        assert retrieved_sku.product.name == "test product"
+        assert retrieved_sku.product.name == "Test Product"
 
     @pytest.mark.asyncio
     async def test_sku_without_product_relationship(
@@ -381,17 +349,14 @@ class TestSku:
 
     @pytest.mark.asyncio
     async def test_update_sku_to_different_product(
-        self, db_session: AsyncSession
+        self, db_session: AsyncSession, product_factory
     ):
         """Test updating a sku to use a different product"""
         # Create another product
-        another_product = Products(
+        another_product = await product_factory(
             name="Another Test Product",
-            description="another test product description",
-            category_id=self.test_category.id,
-            supplier_id=self.test_supplier.id
+            description="Another test product description"
         )
-        await save_object(db_session, another_product)
 
         # Create sku with first product
         sku = Skus(
@@ -404,7 +369,7 @@ class TestSku:
         # Verify initially has first product
         assert sku.product_id == self.test_product.id
         assert sku.product == self.test_product
-        assert sku.product.name == "test product"
+        assert sku.product.name == "Test Product"
 
         # Update to use different product
         sku.product_id = another_product.id
@@ -503,5 +468,5 @@ class TestSku:
         # Verify product still exists (should not be affected)
         await db_session.refresh(product, ['skus'])
         assert product is not None
-        assert product.name == "test product"
+        assert product.name == "Test Product"
         assert product.skus == [self.test_sku1, self.test_sku2]
