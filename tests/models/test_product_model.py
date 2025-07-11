@@ -19,38 +19,34 @@ from tests.utils.model_test_utils import (
 )
 
 
+@pytest.fixture
+async def setup_products(product_factory, supplier_factory, category_factory):
+    """Fixture to create products for the test suite"""
+    test_category = await category_factory()
+    test_supplier = await supplier_factory()
+    test_product1 = await product_factory(
+        name="Test Product 1",
+        description="Test Product 1 Description",
+        category=test_category,
+        supplier=test_supplier
+    )
+    test_product2 = await product_factory(
+        name="Test Product 2",
+        description="Test Product 2 Description",
+        category=test_category,
+        supplier=test_supplier
+    )
+    return test_category, test_supplier, test_product1, test_product2
+
+
 class TestProduct:
     """Test suite for Product model and relationships"""
 
     @pytest.fixture(autouse=True)
-    async def setup_objects(
-        self,
-        db_session: AsyncSession,
-        product_factory,
-        supplier_factory,
-        category_factory
-    ):
+    def setup_objects(self, setup_products):
         """Setup method for the test suite"""
-        # Create category
-        self.test_category = await category_factory()
-
-        # Create supplier
-        self.test_supplier = await supplier_factory()
-
-        # Create products
-        self.test_product1 = await product_factory(
-            name="Test Product 1",
-            description="Test Product 1 Description",
-            category=self.test_category,
-            supplier=self.test_supplier
-        )
-
-        self.test_product2 = await product_factory(
-            name="Test Product 2",
-            description="Test Product 2 Description",
-            category=self.test_category,
-            supplier=self.test_supplier
-        )
+        self.test_category, self.test_supplier, self.test_product1, \
+            self.test_product2 = setup_products
 
     def test_inheritance_from_base_model(self):
         """Test that Product model inherits from Base model"""
@@ -267,16 +263,18 @@ class TestProduct:
         assert item is None
         assert await count_model_objects(db_session, Products) == 1
 
-    """
-    ================================================
-    Relationship Tests (Products -> Categories)
-    ================================================
-    """
+
+class TestProductCategoryRelationship:
+    """Test suite for Product model relationships with Category model"""
+
+    @pytest.fixture(autouse=True)
+    def setup_objects(self, setup_products):
+        """Setup method for the test suite"""
+        self.test_category, self.test_supplier, self.test_product1, \
+            self.test_product2 = setup_products
 
     @pytest.mark.asyncio
-    async def test_product_with_category_relationship(
-        self, db_session: AsyncSession
-    ):
+    async def test_product_with_category_relationship(self, db_session: AsyncSession):
         """Test product with category relationship properly loads"""
         retrieved_product = await get_object_by_id(
             db_session,
@@ -373,9 +371,7 @@ class TestProduct:
         await db_session.rollback()
 
     @pytest.mark.asyncio
-    async def test_setting_category_id_to_null_fails(
-        self, db_session: AsyncSession
-    ):
+    async def test_setting_category_id_to_null_fails(self, db_session: AsyncSession):
         """Test that setting category_id to NULL fails"""
         # Create valid product
         product = Products(
@@ -431,16 +427,18 @@ class TestProduct:
         assert category.name == "Test Category"
         assert category.products == [self.test_product1, self.test_product2]
 
-    """
-    ================================================
-    Relationship Tests (Products -> Suppliers)
-    ================================================
-    """
+
+class TestProductSupplierRelationship:
+    """Test suite for Product model relationships with Supplier model"""
+
+    @pytest.fixture(autouse=True)
+    def setup_objects(self, setup_products):
+        """Setup method for the test suite"""
+        self.test_category, self.test_supplier, self.test_product1, \
+            self.test_product2 = setup_products
 
     @pytest.mark.asyncio
-    async def test_product_with_supplier_relationship(
-        self, db_session: AsyncSession
-    ):
+    async def test_product_with_supplier_relationship(self, db_session: AsyncSession):
         """Test product with supplier relationship properly loads"""
         retrieved_product = await get_object_by_id(
             db_session,
@@ -467,9 +465,7 @@ class TestProduct:
         await db_session.rollback()
 
     @pytest.mark.asyncio
-    async def test_update_product_to_different_supplier(
-        self, db_session: AsyncSession
-    ):
+    async def test_update_product_to_different_supplier(self, db_session: AsyncSession):
         """Test updating a product to use a different supplier"""
         # Create another supplier
         another_supplier = Suppliers(
@@ -540,9 +536,7 @@ class TestProduct:
         await db_session.rollback()
 
     @pytest.mark.asyncio
-    async def test_setting_supplier_id_to_null_fails(
-        self, db_session: AsyncSession
-    ):
+    async def test_setting_supplier_id_to_null_fails(self, db_session: AsyncSession):
         """Test that setting supplier_id to NULL fails"""
         # Create valid product
         product = Products(
@@ -598,16 +592,18 @@ class TestProduct:
         assert supplier.name == "Test Supplier"
         assert supplier.products == [self.test_product1, self.test_product2]
 
-    """
-    ================================================
-    Relationship Tests (Products -> Skus)
-    ================================================
-    """
+
+class TestProductSkuRelationship:
+    """Test suite for Product model relationships with Sku model"""
+
+    @pytest.fixture(autouse=True)
+    def setup_objects(self, setup_products):
+        """Setup method for the test suite"""
+        self.test_category, self.test_supplier, self.test_product1, \
+            self.test_product2 = setup_products
 
     @pytest.mark.asyncio
-    async def test_create_product_with_skus(
-        self, db_session: AsyncSession
-    ):
+    async def test_create_product_with_skus(self, db_session: AsyncSession):
         """Test creating a product with multiple SKUs"""
         product = Products(
             name="Test Product with Skus",
@@ -639,9 +635,7 @@ class TestProduct:
         assert retrieved_product.skus[1].sku_number is not None
 
     @pytest.mark.asyncio
-    async def test_add_multiple_skus_to_product(
-        self, db_session: AsyncSession
-    ):
+    async def test_add_multiple_skus_to_product(self, db_session: AsyncSession):
         """Test adding multiple skus to an existing product"""
         product = self.test_product1
 
@@ -669,9 +663,7 @@ class TestProduct:
             assert retrieved_product.skus[i].product_id == product.id
 
     @pytest.mark.asyncio
-    async def test_update_products_skus(
-        self, db_session: AsyncSession
-    ):
+    async def test_update_products_skus(self, db_session: AsyncSession):
         """Test updating a product's skus"""
         product = await get_object_by_id(
             db_session,
@@ -704,9 +696,7 @@ class TestProduct:
         await db_session.rollback()
 
     @pytest.mark.asyncio
-    async def test_product_deletion_with_skus(
-        self, db_session: AsyncSession
-    ):
+    async def test_product_deletion_with_skus(self, db_session: AsyncSession):
         """Test that deleting a product with associated skus fails"""
         # Create a sku associated with the product
         sku = Skus(
@@ -722,9 +712,7 @@ class TestProduct:
         await db_session.rollback()
 
     @pytest.mark.asyncio
-    async def test_orphaned_sku_cleanup(
-        self, db_session: AsyncSession
-    ):
+    async def test_orphaned_sku_cleanup(self, db_session: AsyncSession):
         """Test handling of SKUs when their product is deleted"""
         # Create a temporary product
         temp_product = Products(
@@ -759,9 +747,7 @@ class TestProduct:
         assert deleted_product is None
 
     @pytest.mark.asyncio
-    async def test_query_product_by_skus(
-        self, db_session: AsyncSession
-    ):
+    async def test_query_product_by_skus(self, db_session: AsyncSession):
         """Test querying a product by one of its skus"""
         # Create a sku for test_product1
         sku1 = Skus(

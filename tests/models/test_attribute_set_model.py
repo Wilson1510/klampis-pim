@@ -17,18 +17,25 @@ from tests.utils.model_test_utils import (
 )
 
 
+@pytest.fixture
+async def setup_attribute_sets(attribute_set_factory):
+    """Fixture to create attribute sets for the test suite"""
+    attribute_set1 = await attribute_set_factory(
+        name="Test Attribute Set 1"
+    )
+    attribute_set2 = await attribute_set_factory(
+        name="Test Attribute Set 2"
+    )
+    return attribute_set1, attribute_set2
+
+
 class TestAttributeSet:
     """Test suite for AttributeSet model"""
 
     @pytest.fixture(autouse=True)
-    async def setup_objects(self, db_session: AsyncSession, attribute_set_factory):
+    def setup_objects(self, setup_attribute_sets):
         """Setup method for the test suite"""
-        self.test_attribute_set1 = await attribute_set_factory(
-            name="Test Attribute Set 1"
-        )
-        self.test_attribute_set2 = await attribute_set_factory(
-            name="Test Attribute Set 2"
-        )
+        self.test_attribute_set1, self.test_attribute_set2 = setup_attribute_sets
 
     def test_inheritance_from_base_model(self):
         """Test that AttributeSet model inherits from Base model"""
@@ -174,23 +181,18 @@ class TestAttributeSet:
         assert item is None
         assert await count_model_objects(db_session, AttributeSets) == 1
 
-    """
-    ================================================
-    Relationship Tests (AttributeSets -> Categories)
-    ================================================
-    """
 
-    @pytest.fixture
-    async def setup_category_type(
-        self, db_session: AsyncSession, category_type_factory
-    ):
-        """Setup category type for attribute set tests"""
+class TestAttributeSetCategoryRelationship:
+    """Test suite for AttributeSet model relationships with Category model"""
+
+    @pytest.fixture(autouse=True)
+    async def setup_objects(self, setup_attribute_sets, category_type_factory):
+        """Setup method for the test suite"""
+        self.test_attribute_set1, self.test_attribute_set2 = setup_attribute_sets
         self.test_category_type = await category_type_factory()
 
     @pytest.mark.asyncio
-    async def test_create_attribute_set_with_categories(
-        self, db_session: AsyncSession, setup_category_type
-    ):
+    async def test_create_attribute_set_with_categories(self, db_session: AsyncSession):
         """Test creating an attribute set and associating it with multiple categories"""
         attribute_set = AttributeSets(
             name="Test Attribute Set with Categories",
@@ -221,7 +223,7 @@ class TestAttributeSet:
 
     @pytest.mark.asyncio
     async def test_add_multiple_categories_to_attribute_set(
-        self, db_session: AsyncSession, setup_category_type
+        self, db_session: AsyncSession
     ):
         """Test adding multiple categories to an attribute set"""
         for i in range(5):
@@ -250,9 +252,7 @@ class TestAttributeSet:
             )
 
     @pytest.mark.asyncio
-    async def test_update_attribute_sets_categories(
-        self, db_session: AsyncSession, setup_category_type
-    ):
+    async def test_update_attribute_sets_categories(self, db_session: AsyncSession):
         """Test updating an attribute set's categories"""
         attribute_set = await get_object_by_id(
             db_session, AttributeSets, self.test_attribute_set1.id
@@ -290,7 +290,7 @@ class TestAttributeSet:
 
     @pytest.mark.asyncio
     async def test_attribute_set_deletion_with_categories(
-        self, db_session: AsyncSession, setup_category_type
+        self, db_session: AsyncSession
     ):
         """Test deleting an attribute set with categories"""
         category = Categories(
@@ -318,9 +318,7 @@ class TestAttributeSet:
         assert item is not None
 
     @pytest.mark.asyncio
-    async def test_orphaned_category_cleanup(
-        self, db_session: AsyncSession, setup_category_type
-    ):
+    async def test_orphaned_category_cleanup(self, db_session: AsyncSession):
         """Test handling of categories when their attribute set is deleted"""
         temp_attribute_set = AttributeSets(
             name="Temporary Attribute Set for Category test"
@@ -348,9 +346,7 @@ class TestAttributeSet:
         assert item is not None
 
     @pytest.mark.asyncio
-    async def test_query_attribute_set_by_category(
-        self, db_session: AsyncSession, setup_category_type
-    ):
+    async def test_query_attribute_set_by_category(self, db_session: AsyncSession):
         """Test querying an attribute set by category"""
         category1 = Categories(
             name="Test Category 1",
@@ -374,16 +370,17 @@ class TestAttributeSet:
         assert len(attribute_sets) == 1
         assert self.test_attribute_set1 in attribute_sets
 
-    """
-    ================================================
-    Relationship Tests (AttributeSets -> Attributes)
-    ================================================
-    """
+
+class TestAttributeSetAttributeRelationship:
+    """Test suite for AttributeSet model relationships with Attribute model"""
+
+    @pytest.fixture(autouse=True)
+    def setup_objects(self, setup_attribute_sets):
+        """Setup method for the test suite"""
+        self.test_attribute_set1, self.test_attribute_set2 = setup_attribute_sets
 
     @pytest.mark.asyncio
-    async def test_create_attribute_set_with_attributes(
-        self, db_session: AsyncSession
-    ):
+    async def test_create_attribute_set_with_attributes(self, db_session: AsyncSession):
         """Test creating an attribute set and associating it with multiple attributes"""
         attribute_set = AttributeSets(
             name="Test Attribute Set with Attributes",
@@ -430,9 +427,7 @@ class TestAttributeSet:
             )
 
     @pytest.mark.asyncio
-    async def test_update_attributes_attribute_sets(
-        self, db_session: AsyncSession
-    ):
+    async def test_update_attributes_attribute_sets(self, db_session: AsyncSession):
         """Test updating an attribute set's attributes"""
         attribute_set = await get_object_by_id(
             db_session, AttributeSets, self.test_attribute_set1.id
@@ -524,9 +519,7 @@ class TestAttributeSet:
         assert test_attribute_set2 is not None
 
     @pytest.mark.asyncio
-    async def test_query_attribute_set_by_attribute(
-        self, db_session: AsyncSession
-    ):
+    async def test_query_attribute_set_by_attribute(self, db_session: AsyncSession):
         """Test querying an attribute set by attribute"""
         attribute1 = Attributes(
             name="Test Attribute 1",

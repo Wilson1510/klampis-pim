@@ -18,29 +18,30 @@ from tests.utils.model_test_utils import (
 )
 
 
+@pytest.fixture
+async def setup_skus(sku_factory, product_factory):
+    """Fixture to create skus for the test suite"""
+    test_product = await product_factory()
+    test_sku1 = await sku_factory(
+        name="Test Sku 1",
+        description="Test Sku 1 description",
+        product=test_product
+    )
+    test_sku2 = await sku_factory(
+        name="Test Sku 2",
+        description="Test Sku 2 description",
+        product=test_product
+    )
+    return test_product, test_sku1, test_sku2
+
+
 class TestSku:
     """Test suite for Sku model and relationships"""
 
     @pytest.fixture(autouse=True)
-    async def setup_objects(
-        self, db_session: AsyncSession, product_factory, sku_factory
-    ):
+    def setup_objects(self, setup_skus):
         """Setup method for the test suite"""
-        # Create a product
-        self.test_product = await product_factory()
-
-        # Create skus
-        self.test_sku1 = await sku_factory(
-            name="Test Sku 1",
-            description="Test Sku 1 description",
-            product=self.test_product
-        )
-
-        self.test_sku2 = await sku_factory(
-            name="Test Sku 2",
-            description="Test Sku 2 description",
-            product=self.test_product
-        )
+        self.test_product, self.test_sku1, self.test_sku2 = setup_skus
 
     def test_inheritance_from_base_model(self):
         """Test that Sku model inherits from Base model"""
@@ -257,11 +258,14 @@ class TestSku:
         assert item is None
         assert await count_model_objects(db_session, Skus) == 1
 
-    """
-    ================================================
-    Validation Tests
-    ================================================
-    """
+
+class TestSkuValidation:
+    """Test suite for Sku model validation"""
+
+    @pytest.fixture(autouse=True)
+    def setup_objects(self, setup_skus):
+        """Setup method for the test suite"""
+        self.test_product, self.test_sku1, self.test_sku2 = setup_skus
 
     @pytest.mark.asyncio
     async def test_valid_sku_number_validation(self, db_session: AsyncSession):
@@ -313,16 +317,17 @@ class TestSku:
                 )
             await db_session.rollback()
 
-    """
-    ================================================
-    Relationship Tests (Skus -> Products)
-    ================================================
-    """
+
+class TestSkuProductRelationship:
+    """Test suite for Sku model relationships with Product model"""
+
+    @pytest.fixture(autouse=True)
+    def setup_objects(self, setup_skus):
+        """Setup method for the test suite"""
+        self.test_product, self.test_sku1, self.test_sku2 = setup_skus
 
     @pytest.mark.asyncio
-    async def test_sku_with_product_relationship(
-        self, db_session: AsyncSession
-    ):
+    async def test_sku_with_product_relationship(self, db_session: AsyncSession):
         """Test sku with product relationship properly loads"""
         retrieved_sku = await get_object_by_id(
             db_session,
@@ -335,9 +340,7 @@ class TestSku:
         assert retrieved_sku.product.name == "Test Product"
 
     @pytest.mark.asyncio
-    async def test_sku_without_product_relationship(
-        self, db_session: AsyncSession
-    ):
+    async def test_sku_without_product_relationship(self, db_session: AsyncSession):
         """Test sku without product relationship"""
         item = Skus(
             name="test sku without product",
@@ -381,9 +384,7 @@ class TestSku:
         assert sku.product.name == "Another Test Product"
 
     @pytest.mark.asyncio
-    async def test_create_sku_with_invalid_product_id(
-        self, db_session: AsyncSession
-    ):
+    async def test_create_sku_with_invalid_product_id(self, db_session: AsyncSession):
         """Test creating sku with non-existent product_id raises error"""
         sku = Skus(
             name="test invalid product",
@@ -396,9 +397,7 @@ class TestSku:
         await db_session.rollback()
 
     @pytest.mark.asyncio
-    async def test_update_sku_with_invalid_product_id(
-        self, db_session: AsyncSession
-    ):
+    async def test_update_sku_with_invalid_product_id(self, db_session: AsyncSession):
         """Test updating sku with non-existent product_id raises error"""
         sku = Skus(
             name="test invalid product update",
@@ -415,9 +414,7 @@ class TestSku:
         await db_session.rollback()
 
     @pytest.mark.asyncio
-    async def test_setting_product_id_to_null_fails(
-        self, db_session: AsyncSession
-    ):
+    async def test_setting_product_id_to_null_fails(self, db_session: AsyncSession):
         """Test that setting a SKU's product_id to None fails"""
         # Create a valid sku
         sku = Skus(
@@ -434,9 +431,7 @@ class TestSku:
         await db_session.rollback()
 
     @pytest.mark.asyncio
-    async def test_delete_sku_with_product_relationship(
-        self, db_session: AsyncSession
-    ):
+    async def test_delete_sku_with_product_relationship(self, db_session: AsyncSession):
         """Test deleting a sku that has product relationship"""
         # Create sku with product
         sku = Skus(

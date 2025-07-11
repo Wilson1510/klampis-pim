@@ -17,27 +17,32 @@ from tests.utils.model_test_utils import (
 )
 
 
+@pytest.fixture
+async def setup_suppliers(supplier_factory):
+    """Fixture to create suppliers for the test suite"""
+    test_supplier1 = await supplier_factory(
+        name="Test Supplier 1",
+        company_type="PT",
+        address="Test Address 1",
+        contact="081234567890",
+        email="test1@example.com"
+    )
+    test_supplier2 = await supplier_factory(
+        name="Test Supplier 2",
+        company_type="CV",
+        address="Test Address 2",
+        contact="081234567891",
+        email="test2@example.com"
+    )
+    return test_supplier1, test_supplier2
+
+
 class TestSupplier:
     """Test suite for Supplier model and relationships"""
     @pytest.fixture(autouse=True)
-    async def setup_objects(self, db_session: AsyncSession, supplier_factory):
+    def setup_objects(self, setup_suppliers):
         """Setup method for the test suite"""
-        # Create supplier
-        self.test_supplier1 = await supplier_factory(
-            name="Test Supplier 1",
-            company_type="PT",
-            address="Test Address 1",
-            contact="081234567890",
-            email="test1@example.com"
-        )
-
-        self.test_supplier2 = await supplier_factory(
-            name="Test Supplier 2",
-            company_type="CV",
-            address="Test Address 2",
-            contact="081234567891",
-            email="test2@example.com"
-        )
+        self.test_supplier1, self.test_supplier2 = setup_suppliers
 
     def test_inheritance_from_base_model(self):
         """Test that Supplier model inherits from Base model"""
@@ -276,11 +281,9 @@ class TestSupplier:
         assert item is None
         assert await count_model_objects(db_session, Suppliers) == 1
 
-    """
-    ================================================
-    Validation Tests
-    ================================================
-    """
+
+class TestSupplierValidation:
+    """Test suite for Supplier model validation"""
 
     @pytest.mark.asyncio
     async def test_valid_contact_validation(self, db_session: AsyncSession):
@@ -371,21 +374,18 @@ class TestSupplier:
                 )
             await db_session.rollback()
 
-    """
-    ================================================
-    Relationship Tests (Suppliers -> Products)
-    ================================================
-    """
 
-    @pytest.fixture
-    async def setup_category(self, db_session: AsyncSession, category_factory):
-        """Setup category for product tests"""
+class TestSupplierProductRelationship:
+    """Test suite for Supplier model relationships with Product model"""
+
+    @pytest.fixture(autouse=True)
+    async def setup_objects(self, setup_suppliers, category_factory):
+        """Setup method for the test suite"""
+        self.test_supplier1, self.test_supplier2 = setup_suppliers
         self.test_category = await category_factory()
 
     @pytest.mark.asyncio
-    async def test_create_supplier_with_products(
-        self, db_session: AsyncSession, setup_category
-    ):
+    async def test_create_supplier_with_products(self, db_session: AsyncSession):
         """Test creating supplier with products (valid scenario)"""
         supplier = Suppliers(
             name="Test Supplier with Products",
@@ -430,9 +430,7 @@ class TestSupplier:
         assert retrieved_supplier.products[1].description == "Test Description 2"
 
     @pytest.mark.asyncio
-    async def test_add_multiple_products_to_supplier(
-        self, db_session: AsyncSession, setup_category
-    ):
+    async def test_add_multiple_products_to_supplier(self, db_session: AsyncSession):
         """Test adding multiple products to supplier"""
         for i in range(5):
             product = Products(
@@ -461,9 +459,7 @@ class TestSupplier:
             )
 
     @pytest.mark.asyncio
-    async def test_update_suppliers_products(
-        self, db_session: AsyncSession, setup_category
-    ):
+    async def test_update_suppliers_products(self, db_session: AsyncSession):
         """Test updating a supplier's products"""
         supplier = await get_object_by_id(
             db_session,
@@ -496,9 +492,7 @@ class TestSupplier:
         await db_session.rollback()
 
     @pytest.mark.asyncio
-    async def test_supplier_deletion_with_products(
-        self, db_session: AsyncSession, setup_category
-    ):
+    async def test_supplier_deletion_with_products(self, db_session: AsyncSession):
         """Test trying to delete supplier with associated products"""
         # Create product associated with the supplier
         product = Products(
@@ -514,9 +508,7 @@ class TestSupplier:
         await db_session.rollback()
 
     @pytest.mark.asyncio
-    async def test_orphaned_product_cleanup(
-        self, db_session: AsyncSession, setup_category
-    ):
+    async def test_orphaned_product_cleanup(self, db_session: AsyncSession):
         """Test handling of products when their supplier is deleted"""
         # Create temporary supplier
         temp_supplier = Suppliers(
@@ -558,9 +550,7 @@ class TestSupplier:
         assert deleted_supplier is None
 
     @pytest.mark.asyncio
-    async def test_query_supplier_by_products(
-        self, db_session: AsyncSession, setup_category
-    ):
+    async def test_query_supplier_by_products(self, db_session: AsyncSession):
         """Test querying supplier by products"""
         # Create products associated with different suppliers
         product1 = Products(

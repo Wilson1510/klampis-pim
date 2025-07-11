@@ -17,18 +17,28 @@ from tests.utils.model_test_utils import (
 )
 
 
+@pytest.fixture
+async def setup_category_types(category_type_factory):
+    """
+    Fixture to create category types ONCE for the entire test module.
+    This is the efficient part.
+    """
+    category_type1 = await category_type_factory(name="Test Category Type 1")
+    category_type2 = await category_type_factory(name="Test Category Type 2")
+    # Mengembalikan objek-objek yang sudah dibuat
+    return category_type1, category_type2
+
+
 class TestCategoryType:
     """Test suite for CategoryType model and relationships"""
     @pytest.fixture(autouse=True)
-    async def setup_objects(self, db_session: AsyncSession, category_type_factory):
-        """Setup method for the test suite"""
-        # Create category type
-        self.test_category_type1 = await category_type_factory(
-            name="Test Category Type 1"
-        )
-        self.test_category_type2 = await category_type_factory(
-            name="Test Category Type 2"
-        )
+    def setup_class_data(self, setup_category_types):
+        """
+        Gets data from the module fixture and injects it into self.
+        This runs once per class.
+        """
+        # Memasukkan hasil dari fixture modul ke dalam 'self'
+        self.test_category_type1, self.test_category_type2 = setup_category_types
 
     def test_inheritance_from_base_model(self):
         """Test that CategoryType model inherits from Base model"""
@@ -185,16 +195,23 @@ class TestCategoryType:
         assert item is None
         assert await count_model_objects(db_session, CategoryTypes) == 1
 
+
+class TestCategoryTypeCategoryRelationship:
     """
-    ================================================
-    Relationship Tests (CategoryTypes -> Categories)
-    ================================================
+    Test suite for CategoryType model relationships with Categories model.
     """
 
+    @pytest.fixture(autouse=True)
+    def setup_class_data(self, setup_category_types):
+        """
+        Gets data from the module fixture and injects it into self.
+        This runs once per class.
+        """
+        # Memasukkan hasil dari fixture modul ke dalam 'self'
+        self.test_category_type1, self.test_category_type2 = setup_category_types
+
     @pytest.mark.asyncio
-    async def test_create_category_type_with_categories(
-        self, db_session: AsyncSession
-    ):
+    async def test_create_category_type_with_categories(self, db_session: AsyncSession):
         """Test creating top-level category with category type (valid scenario)"""
         # Top-level category must have category_type_id
         category_type = CategoryTypes(
@@ -266,9 +283,7 @@ class TestCategoryType:
             )
 
     @pytest.mark.asyncio
-    async def test_update_category_types_categories(
-        self, db_session: AsyncSession
-    ):
+    async def test_update_category_types_categories(self, db_session: AsyncSession):
         """Test updating the category type's categories"""
         category_type = await get_object_by_id(
             db_session,
@@ -357,9 +372,7 @@ class TestCategoryType:
         assert deleted_type is None
 
     @pytest.mark.asyncio
-    async def test_query_category_type_by_categories(
-        self, db_session: AsyncSession
-    ):
+    async def test_query_category_type_by_categories(self, db_session: AsyncSession):
         """Test querying category type by categories"""
 
         # Create categories associated with the type

@@ -18,26 +18,34 @@ from tests.utils.model_test_utils import (
 )
 
 
+@pytest.fixture
+async def setup_categories(category_type_factory, category_factory):
+    """
+    Fixture to create categories ONCE for the entire test module.
+    This is the efficient part.
+    """
+    category_type = await category_type_factory()
+    category1 = await category_factory(
+        name="Test Category 1",
+        description="Test Category 1 Description",
+        category_type=category_type
+    )
+    category2 = await category_factory(
+        name="Test Category 2",
+        description="Test Category 2 Description",
+        parent_id=category1.id
+    )
+    # Mengembalikan objek-objek yang sudah dibuat
+    return category_type, category1, category2
+
+
 class TestCategory:
     """Test suite for Category model and relationships"""
     @pytest.fixture(autouse=True)
-    async def setup_objects(
-        self, db_session: AsyncSession, category_factory, category_type_factory
-    ):
+    def setup_objects(self, setup_categories):
         """Setup method for the test suite"""
-        self.test_category_type = await category_type_factory()
-        # Create category
-        self.test_category1 = await category_factory(
-            name="Test Category 1",
-            description="Test Category 1 Description",
-            category_type=self.test_category_type
-        )
-
-        self.test_category2 = await category_factory(
-            name="Test Category 2",
-            description="Test Category 2 Description",
-            parent_id=self.test_category1.id
-        )
+        self.test_category_type, self.test_category1, self.test_category2 = \
+            setup_categories
 
     def test_inheritance_from_base_model(self):
         """Test that Category model inherits from Base model"""
@@ -286,16 +294,18 @@ class TestCategory:
         assert item is None
         assert await count_model_objects(db_session, Categories) == 1
 
-    """
-    ================================================
-    Database Constraint Tests (__table_args__)
-    ================================================
-    """
+
+class TestCategoryConstraint:
+    """Test suite for Category model constraints"""
+
+    @pytest.fixture(autouse=True)
+    def setup_objects(self, setup_categories):
+        """Setup method for the test suite"""
+        self.test_category_type, self.test_category1, self.test_category2 = \
+            setup_categories
 
     @pytest.mark.asyncio
-    async def test_valid_top_level_category_constraint(
-        self, db_session: AsyncSession
-    ):
+    async def test_valid_top_level_category_constraint(self, db_session: AsyncSession):
         """Test valid top-level category: parent_id=NULL, category_type_id=NOT NULL"""
         category = Categories(
             name="valid top level category",
@@ -462,11 +472,15 @@ class TestCategory:
             await save_object(db_session, category)
         await db_session.rollback()
 
-    """
-    ================================================
-    Relationship Tests (Categories -> CategoryTypes)
-    ================================================
-    """
+
+class TestCategoryCategoryTypeRelationship:
+    """Test suite for Category model relationships with CategoryType model"""
+
+    @pytest.fixture(autouse=True)
+    def setup_objects(self, setup_categories):
+        """Setup method for the test suite"""
+        self.test_category_type, self.test_category1, self.test_category2 = \
+            setup_categories
 
     @pytest.mark.asyncio
     async def test_category_with_category_type_relationship(
@@ -624,11 +638,15 @@ class TestCategory:
         assert category_type.name == "Test Category Type"
         assert category_type.categories == [self.test_category1]
 
-    """
-    ================================================
-    Relationship Tests (Categories -> Categories)
-    ================================================
-    """
+
+class TestCategoryCategoryRelationship:
+    """Test suite for Category model relationships with itself model"""
+
+    @pytest.fixture(autouse=True)
+    def setup_objects(self, setup_categories):
+        """Setup method for the test suite"""
+        self.test_category_type, self.test_category1, self.test_category2 = \
+            setup_categories
 
     @pytest.mark.asyncio
     async def test_category_with_parent_relationship(self, db_session: AsyncSession):
@@ -644,9 +662,7 @@ class TestCategory:
         assert retrieved_category.parent.name == "Test Category 1"
 
     @pytest.mark.asyncio
-    async def test_category_without_parent_relationship(
-        self, db_session: AsyncSession
-    ):
+    async def test_category_without_parent_relationship(self, db_session: AsyncSession):
         """Test category without parent relationship (top-level category)"""
         retrieved_category = await get_object_by_id(
             db_session,
@@ -658,9 +674,7 @@ class TestCategory:
         assert retrieved_category.parent is None
 
     @pytest.mark.asyncio
-    async def test_category_with_children_relationship(
-        self, db_session: AsyncSession
-    ):
+    async def test_category_with_children_relationship(self, db_session: AsyncSession):
         """Test category with children relationship properly loads"""
         retrieved_category = await get_object_by_id(
             db_session,
@@ -719,9 +733,7 @@ class TestCategory:
         assert level3_category.children[0].name == "level 4 category"
 
     @pytest.mark.asyncio
-    async def test_update_category_to_different_parent(
-        self, db_session: AsyncSession
-    ):
+    async def test_update_category_to_different_parent(self, db_session: AsyncSession):
         """Test updating a category to use a different parent"""
         # Create another top-level category to use as parent
         another_parent = Categories(
@@ -812,9 +824,7 @@ class TestCategory:
         assert "check_category_hierarchy_rule" in str(exc_info.value)
 
     @pytest.mark.asyncio
-    async def test_update_categories_children(
-        self, db_session: AsyncSession
-    ):
+    async def test_update_categories_children(self, db_session: AsyncSession):
         """Test updating a category's children"""
         category = await get_object_by_id(
             db_session,
@@ -874,9 +884,7 @@ class TestCategory:
         assert category_parent.children == [self.test_category2]
 
     @pytest.mark.asyncio
-    async def test_delete_parent_category_with_children(
-        self, db_session: AsyncSession
-    ):
+    async def test_delete_parent_category_with_children(self, db_session: AsyncSession):
         """Test deleting a parent category that has children"""
         # Create additional child
         child_category = Categories(
@@ -900,21 +908,19 @@ class TestCategory:
             await delete_object(db_session, parent)
         await db_session.rollback()
 
-    """
-    ================================================
-    Relationship Tests (Categories -> Products)
-    ================================================
-    """
 
-    @pytest.fixture
-    async def setup_supplier(self, db_session: AsyncSession, supplier_factory):
-        """Setup supplier for product tests"""
+class TestCategoryProductRelationship:
+    """Test suite for Category model relationships with Product model"""
+
+    @pytest.fixture(autouse=True)
+    async def setup_objects(self, setup_categories, supplier_factory):
+        """Setup method for the test suite"""
+        self.test_category_type, self.test_category1, self.test_category2 = \
+            setup_categories
         self.test_supplier = await supplier_factory()
 
     @pytest.mark.asyncio
-    async def test_create_category_with_products(
-        self, db_session: AsyncSession, setup_supplier
-    ):
+    async def test_create_category_with_products(self, db_session: AsyncSession):
         """Test creating category with products (valid scenario)"""
         category = Categories(
             name="Test Category with Products",
@@ -957,9 +963,7 @@ class TestCategory:
         assert retrieved_category.products[1].supplier_id == self.test_supplier.id
 
     @pytest.mark.asyncio
-    async def test_add_multiple_products_to_category(
-        self, db_session: AsyncSession, setup_supplier
-    ):
+    async def test_add_multiple_products_to_category(self, db_session: AsyncSession):
         """Test adding multiple products to category"""
         for i in range(5):
             product = Products(
@@ -986,9 +990,7 @@ class TestCategory:
             assert retrieved_category.products[i].supplier_id == self.test_supplier.id
 
     @pytest.mark.asyncio
-    async def test_update_categories_products(
-        self, db_session: AsyncSession, setup_supplier
-    ):
+    async def test_update_categories_products(self, db_session: AsyncSession):
         """Test updating a category's products"""
         category = await get_object_by_id(
             db_session,
@@ -1021,9 +1023,7 @@ class TestCategory:
         await db_session.rollback()
 
     @pytest.mark.asyncio
-    async def test_category_deletion_with_products(
-        self, db_session: AsyncSession, setup_supplier
-    ):
+    async def test_category_deletion_with_products(self, db_session: AsyncSession):
         """Test what happens when trying to delete category with associated products"""
         # Create product associated with the category
         product = Products(
@@ -1039,9 +1039,7 @@ class TestCategory:
         await db_session.rollback()
 
     @pytest.mark.asyncio
-    async def test_orphaned_product_cleanup(
-        self, db_session: AsyncSession, setup_supplier
-    ):
+    async def test_orphaned_product_cleanup(self, db_session: AsyncSession):
         """Test handling of products when their category is deleted"""
         # Create temporary category
         temp_category = Categories(
@@ -1082,9 +1080,7 @@ class TestCategory:
         assert deleted_category is None
 
     @pytest.mark.asyncio
-    async def test_query_category_by_products(
-        self, db_session: AsyncSession, setup_supplier
-    ):
+    async def test_query_category_by_products(self, db_session: AsyncSession):
         """Test querying category by products"""
         # Create products associated with different categories
         product1 = Products(

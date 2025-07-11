@@ -20,20 +20,21 @@ from tests.utils.model_test_utils import (
 )
 
 
+@pytest.fixture
+async def setup_attributes(attribute_factory):
+    """Fixture to create attributes for the test suite"""
+    attribute1 = await attribute_factory(name="Test Attribute 1", uom="Test UOM 1")
+    attribute2 = await attribute_factory(name="Test Attribute 2")
+    return attribute1, attribute2
+
+
 class TestAttribute:
     """Test suite for Attribute model"""
 
     @pytest.fixture(autouse=True)
-    async def setup_objects(self, db_session: AsyncSession, attribute_factory):
+    def setup_objects(self, setup_attributes):
         """Setup method for the test suite"""
-        self.test_attribute1 = await attribute_factory(
-            name="Test Attribute 1",
-            uom="Test UOM 1"
-        )
-
-        self.test_attribute2 = await attribute_factory(
-            name="Test Attribute 2"
-        )
+        self.test_attribute1, self.test_attribute2 = setup_attributes
 
     def test_inheritance_from_base_model(self):
         """Test that Attribute model inherits from Base model"""
@@ -247,16 +248,17 @@ class TestAttribute:
         assert item is None
         assert await count_model_objects(db_session, Attributes) == 1
 
-    """
-    ================================================
-    Relationship Tests (Attributes -> AttributeSets)
-    ================================================
-    """
+
+class TestAttributeAttributeSetRelationship:
+    """Test suite for Attribute model relationships with AttributeSet model"""
+
+    @pytest.fixture(autouse=True)
+    def setup_objects(self, setup_attributes):
+        """Setup method for the test suite"""
+        self.test_attribute1, self.test_attribute2 = setup_attributes
 
     @pytest.mark.asyncio
-    async def test_create_attribute_with_attribute_sets(
-        self, db_session: AsyncSession
-    ):
+    async def test_create_attribute_with_attribute_sets(self, db_session: AsyncSession):
         """Test creating an attribute and associating it with multiple sets"""
         attribute = Attributes(
             name="Test Attribute with Attribute Sets",
@@ -312,9 +314,7 @@ class TestAttribute:
             )
 
     @pytest.mark.asyncio
-    async def test_update_attributes_attribute_sets(
-        self, db_session: AsyncSession
-    ):
+    async def test_update_attributes_attribute_sets(self, db_session: AsyncSession):
         """Test updating the attribute's attribute sets"""
         attribute = await get_object_by_id(
             db_session,
@@ -413,9 +413,7 @@ class TestAttribute:
         assert test_attribute2 is not None
 
     @pytest.mark.asyncio
-    async def test_query_attribute_by_attribute_set(
-        self, db_session: AsyncSession
-    ):
+    async def test_query_attribute_by_attribute_set(self, db_session: AsyncSession):
         """Test querying attributes by their attribute sets"""
         # Associate attributes with sets
         attribute_set1 = AttributeSets(
@@ -440,21 +438,20 @@ class TestAttribute:
         assert self.test_attribute1 in attributes
         assert self.test_attribute2 in attributes
 
-    """
-    =================================================
-    Relationship Tests (Attributes -> SkuAttributeValue)
-    =================================================
-    """
 
-    @pytest.fixture
-    async def setup_sku(self, db_session: AsyncSession, sku_factory):
-        """Setup sku for attribute tests"""
+class TestAttributeSkuAttributeValueRelationship:
+    """Test suite for Attribute model relationships with SkuAttributeValue model"""
+
+    @pytest.fixture(autouse=True)
+    async def setup_objects(self, setup_attributes, sku_factory):
+        """Setup method for the test suite"""
+        self.test_attribute1, self.test_attribute2 = setup_attributes
         self.test_sku1 = await sku_factory(name="Test SKU 1")
         self.test_sku2 = await sku_factory(name="Test SKU 2")
 
     @pytest.mark.asyncio
     async def test_create_attribute_with_sku_attribute_values(
-        self, db_session: AsyncSession, setup_sku
+        self, db_session: AsyncSession
     ):
         """Test creating an attribute and associating it with multiple sku attribute
         values
@@ -493,7 +490,7 @@ class TestAttribute:
 
     @pytest.mark.asyncio
     async def test_add_multiple_sku_attribute_values_to_attribute(
-        self, db_session: AsyncSession, setup_sku
+        self, db_session: AsyncSession
     ):
         """Test adding multiple sku attribute values to an attribute"""
         sku_id = self.test_sku1.id
@@ -515,7 +512,7 @@ class TestAttribute:
 
     @pytest.mark.asyncio
     async def test_update_attributes_sku_attribute_values(
-        self, db_session: AsyncSession, setup_sku
+        self, db_session: AsyncSession
     ):
         """Test updating an attribute's sku attribute values"""
         attribute = await get_object_by_id(
@@ -556,7 +553,7 @@ class TestAttribute:
 
     @pytest.mark.asyncio
     async def test_attribute_deletion_with_sku_attribute_values(
-        self, db_session: AsyncSession, setup_sku
+        self, db_session: AsyncSession
     ):
         """Test deleting an attribute from a sku without deleting the attribute"""
         sku_attribute_value = SkuAttributeValue(
@@ -574,9 +571,7 @@ class TestAttribute:
         await db_session.rollback()
 
     @pytest.mark.asyncio
-    async def test_orphaned_sku_attribute_value_cleanup(
-        self, db_session: AsyncSession, setup_sku
-    ):
+    async def test_orphaned_sku_attribute_value_cleanup(self, db_session: AsyncSession):
         """Test handling of sku attribute values when their attribute is deleted"""
         # Create a temporary attribute
         temp_attribute = Attributes(
@@ -616,7 +611,7 @@ class TestAttribute:
 
     @pytest.mark.asyncio
     async def test_query_attribute_by_sku_attribute_value(
-        self, db_session: AsyncSession, setup_sku
+        self, db_session: AsyncSession
     ):
         """Test querying attributes by their sku attribute values"""
         sku_attribute_value1 = SkuAttributeValue(
@@ -641,11 +636,9 @@ class TestAttribute:
         assert len(attributes) == 1
         assert self.test_attribute1 in attributes
 
-    """
-    =================================================
-    Static Methods Tests
-    =================================================
-    """
+
+class TestAttributeStaticMethods:
+    """Test suite for Attribute model static methods"""
 
     def test_validate_value_for_data_type_text(self):
         """Test validate_value_for_data_type with TEXT data type"""
