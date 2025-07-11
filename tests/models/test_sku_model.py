@@ -1,4 +1,4 @@
-from sqlalchemy import String, event, Text, Integer
+from sqlalchemy import String, event, Text, Integer, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
 import pytest
@@ -7,6 +7,7 @@ import uuid
 from app.core.base import Base
 from app.models.product_model import Products
 from app.models.sku_model import Skus
+from app.models.sku_attribute_value_model import SkuAttributeValue
 from app.core.listeners import _set_slug
 from tests.utils.model_test_utils import (
     save_object,
@@ -465,3 +466,194 @@ class TestSkuProductRelationship:
         assert product is not None
         assert product.name == "Test Product"
         assert product.skus == [self.test_sku1, self.test_sku2]
+
+
+class TestSkuSkuAttributeValueRelationship:
+    """Test suite for Sku model relationships with SkuAttributeValue model"""
+
+    @pytest.fixture(autouse=True)
+    async def setup_objects(self, setup_skus, attribute_factory):
+        """Setup method for the test suite"""
+        self.test_product, self.test_sku1, self.test_sku2 = setup_skus
+        self.test_attribute1 = await attribute_factory(name="Test Attribute 1")
+        self.test_attribute2 = await attribute_factory(name="Test Attribute 2")
+
+    @pytest.mark.asyncio
+    async def test_create_sku_with_sku_attribute_values(self, db_session: AsyncSession):
+        """Test creating sku with sku attribute values"""
+        sku = Skus(
+            name="Test Sku with Sku Attribute Values",
+            product_id=self.test_product.id,
+            sku_attribute_values=[
+                SkuAttributeValue(
+                    attribute_id=self.test_attribute1.id,
+                    value="Test Sku Attribute Value 1"
+                ),
+                SkuAttributeValue(
+                    attribute_id=self.test_attribute2.id,
+                    value="Test Sku Attribute Value 2"
+                )
+            ]
+        )
+        await save_object(db_session, sku)
+
+        retrieved_sku = await get_object_by_id(
+            db_session,
+            Skus,
+            sku.id
+        )
+        await db_session.refresh(retrieved_sku, ['sku_attribute_values'])
+
+        assert retrieved_sku.id == 3
+        assert retrieved_sku.name == "Test Sku with Sku Attribute Values"
+        assert len(retrieved_sku.sku_attribute_values) == 2
+        assert retrieved_sku.sku_attribute_values[0].value == (
+            "Test Sku Attribute Value 1"
+        )
+        assert retrieved_sku.sku_attribute_values[1].value == (
+            "Test Sku Attribute Value 2"
+        )
+
+    @pytest.mark.asyncio
+    async def test_add_multiple_sku_attribute_values_to_sku(
+        self, db_session: AsyncSession
+    ):
+        """Test adding multiple sku attribute values to sku"""
+        sku_id = self.test_sku1.id
+        attribute_id = self.test_attribute1.id
+        for i in range(5):
+            sku_attribute_value = SkuAttributeValue(
+                value=f"Test Sku Attribute Value {i}",
+                sku_id=sku_id,
+                attribute_id=attribute_id
+            )
+
+            if i >= 1:
+                # should fail because sku_id and attribute_id are no longer unique
+                with pytest.raises(IntegrityError):
+                    await save_object(db_session, sku_attribute_value)
+                await db_session.rollback()
+            else:
+                await save_object(db_session, sku_attribute_value)
+
+    @pytest.mark.asyncio
+    async def test_update_skus_sku_attribute_values(self, db_session: AsyncSession):
+        """Test updating sku sku attribute values"""
+        sku = await get_object_by_id(
+            db_session,
+            Skus,
+            self.test_sku1.id
+        )
+        await db_session.refresh(sku, ['sku_attribute_values'])
+        assert len(sku.sku_attribute_values) == 0
+
+        sku.sku_attribute_values = [
+            SkuAttributeValue(
+                value="Test Sku Attribute Value 1",
+                attribute_id=self.test_attribute1.id
+            ),
+            SkuAttributeValue(
+                value="Test Sku Attribute Value 2",
+                attribute_id=self.test_attribute2.id
+            )
+        ]
+        await save_object(db_session, sku)
+        await db_session.refresh(sku, ['sku_attribute_values'])
+        assert len(sku.sku_attribute_values) == 2
+        assert sku.sku_attribute_values[0].value == "Test Sku Attribute Value 1"
+        assert sku.sku_attribute_values[1].value == "Test Sku Attribute Value 2"
+
+        sku.sku_attribute_values = [
+            SkuAttributeValue(
+                value="Test Sku Attribute Value 3",
+                attribute_id=self.test_attribute1.id
+            )
+        ]
+        with pytest.raises(IntegrityError):
+            # should fail because Test Sku Attribute Value 1 and Test Sku Attribute
+            # Value 2 no longer have sku_id
+            await save_object(db_session, sku)
+        await db_session.rollback()
+
+    @pytest.mark.asyncio
+    async def test_sku_deletion_with_sku_attribute_values(
+        self, db_session: AsyncSession
+    ):
+        """Test deleting a sku that has sku attribute values"""
+        sku_attribute_value = SkuAttributeValue(
+            value="Test Sku Attribute Value 1",
+            sku_id=self.test_sku1.id,
+            attribute_id=self.test_attribute1.id
+        )
+        await save_object(db_session, sku_attribute_value)
+        await db_session.refresh(sku_attribute_value, ['sku'])
+        assert sku_attribute_value.sku_id == self.test_sku1.id
+
+        # should fail because sku_attribute_value will lose its sku_id
+        with pytest.raises(IntegrityError):
+            await delete_object(db_session, self.test_sku1)
+        await db_session.rollback()
+
+    @pytest.mark.asyncio
+    async def test_orphaned_sku_attribute_value_cleanup(self, db_session: AsyncSession):
+        """Test orphaned sku attribute value cleanup"""
+        temp_sku = Skus(
+            name="Temporary Sku for Sku Attribute Value Cleanup",
+            product_id=self.test_product.id
+        )
+        await save_object(db_session, temp_sku)
+
+        temp_sku_attribute_value = SkuAttributeValue(
+            value="Temporary Sku Attribute Value",
+            sku_id=temp_sku.id,
+            attribute_id=self.test_attribute1.id
+        )
+        await save_object(db_session, temp_sku_attribute_value)
+
+        # Try to delete the sku (should fail because of foreign key)
+        with pytest.raises(IntegrityError):
+            await delete_object(db_session, temp_sku)
+        await db_session.rollback()
+
+        # To properly delete, first remove the sku attribute value
+        await delete_object(db_session, temp_sku_attribute_value)
+        await delete_object(db_session, temp_sku)
+
+        # Verify both are deleted
+        deleted_sku = await get_object_by_id(
+            db_session,
+            Skus,
+            temp_sku.id
+        )
+        deleted_sku_attribute_value = await get_object_by_id(
+            db_session,
+            SkuAttributeValue,
+            temp_sku_attribute_value.id
+        )
+        assert deleted_sku is None
+        assert deleted_sku_attribute_value is None
+
+    @pytest.mark.asyncio
+    async def test_query_sku_by_sku_attribute_value(self, db_session: AsyncSession):
+        """Test querying sku by sku attribute value"""
+        sku_attribute_value1 = SkuAttributeValue(
+            value="Test Sku Attribute Value 1",
+            sku_id=self.test_sku1.id,
+            attribute_id=self.test_attribute1.id
+        )
+        await save_object(db_session, sku_attribute_value1)
+
+        sku_attribute_value2 = SkuAttributeValue(
+            value="Test Sku Attribute Value 2",
+            sku_id=self.test_sku2.id,
+            attribute_id=self.test_attribute1.id
+        )
+        await save_object(db_session, sku_attribute_value2)
+
+        stmt = select(Skus).join(Skus.sku_attribute_values).where(
+            SkuAttributeValue.value == "Test Sku Attribute Value 1"
+        )
+        result = await db_session.execute(stmt)
+        skus = result.scalars().all()
+        assert len(skus) == 1
+        assert self.test_sku1 in skus

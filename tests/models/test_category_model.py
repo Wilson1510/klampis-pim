@@ -7,6 +7,7 @@ from app.core.base import Base
 from app.models.category_type_model import CategoryTypes
 from app.models.category_model import Categories
 from app.models.product_model import Products
+from app.models.attribute_set_model import AttributeSets
 from app.core.listeners import _set_slug
 from tests.utils.model_test_utils import (
     save_object,
@@ -1107,3 +1108,195 @@ class TestCategoryProductRelationship:
         assert category.id == self.test_category1.id
         assert category.name == "Test Category 1"
         assert category.slug == "test-category-1"
+
+
+class TestCategoryAttributeSetRelationship:
+    """Test suite for Category model relationships with AttributeSet model"""
+
+    @pytest.fixture(autouse=True)
+    def setup_objects(self, setup_categories):
+        """Setup method for the test suite"""
+        self.test_category_type, self.test_category1, self.test_category2 = \
+            setup_categories
+
+    @pytest.mark.asyncio
+    async def test_create_category_with_attribute_sets(self, db_session: AsyncSession):
+        """Test creating category with attribute sets"""
+        category = Categories(
+            name="Test Category with Attribute Sets",
+            description="Test Description with Attribute Sets",
+            category_type_id=self.test_category_type.id,
+            attribute_sets=[
+                AttributeSets(name="Test Attribute Set 1"),
+                AttributeSets(name="Test Attribute Set 2")
+            ]
+        )
+        await save_object(db_session, category)
+
+        retrieved_category = await get_object_by_id(
+            db_session,
+            Categories,
+            category.id
+        )
+        await db_session.refresh(retrieved_category, ['attribute_sets'])
+
+        assert retrieved_category.id == 3
+        assert retrieved_category.name == "Test Category with Attribute Sets"
+        assert len(retrieved_category.attribute_sets) == 2
+        assert retrieved_category.attribute_sets[0].name == "Test Attribute Set 1"
+        assert retrieved_category.attribute_sets[1].name == "Test Attribute Set 2"
+
+    @pytest.mark.asyncio
+    async def test_add_multiple_attribute_sets_to_category(
+        self, db_session: AsyncSession
+    ):
+        """Test adding multiple attribute sets to category"""
+        for i in range(5):
+            attribute_set = AttributeSets(
+                name=f"Test Attribute Set {i}",
+                categories=[self.test_category1]
+            )
+            await save_object(db_session, attribute_set)
+
+        retrieved_category = await get_object_by_id(
+            db_session,
+            Categories,
+            self.test_category1.id
+        )
+        await db_session.refresh(retrieved_category, ['attribute_sets'])
+
+        assert len(retrieved_category.attribute_sets) == 5
+        for i in range(5):
+            assert retrieved_category.attribute_sets[i].id == i + 1
+            assert retrieved_category.attribute_sets[i].name == (
+                f"Test Attribute Set {i}"
+            )
+            assert retrieved_category.attribute_sets[i].slug == (
+                f"test-attribute-set-{i}"
+            )
+
+    @pytest.mark.asyncio
+    async def test_update_categories_attribute_sets(self, db_session: AsyncSession):
+        """Test updating a category's attribute sets"""
+        category = await get_object_by_id(
+            db_session,
+            Categories,
+            self.test_category1.id
+        )
+        await db_session.refresh(category, ['attribute_sets'])
+        assert len(category.attribute_sets) == 0
+
+        category.attribute_sets = [
+            AttributeSets(name="Test Attribute Set 1"),
+            AttributeSets(name="Test Attribute Set 2")
+        ]
+        await save_object(db_session, category)
+        await db_session.refresh(category, ['attribute_sets'])
+        assert len(category.attribute_sets) == 2
+        assert category.attribute_sets[0].name == "Test Attribute Set 1"
+        assert category.attribute_sets[1].name == "Test Attribute Set 2"
+
+        category.attribute_sets = [
+            AttributeSets(name="Test Attribute Set 3"),
+            AttributeSets(name="Test Attribute Set 4"),
+            AttributeSets(name="Test Attribute Set 5")
+        ]
+        await save_object(db_session, category)
+        await db_session.refresh(category, ['attribute_sets'])
+        assert len(category.attribute_sets) == 3
+        assert category.attribute_sets[0].name == "Test Attribute Set 3"
+        assert category.attribute_sets[1].name == "Test Attribute Set 4"
+        assert category.attribute_sets[2].name == "Test Attribute Set 5"
+
+    @pytest.mark.asyncio
+    async def test_category_deletion_with_attribute_sets(
+        self, db_session: AsyncSession
+    ):
+        """
+        Test what happens when trying to delete category with associated attribute
+        sets"""
+        # Create attribute set associated with the category
+        attribute_set = AttributeSets(
+            name="Test Attribute Set Delete",
+            categories=[self.test_category1, self.test_category2]
+        )
+        await save_object(db_session, attribute_set)
+        await db_session.refresh(attribute_set, ['categories'])
+        assert len(attribute_set.categories) == 2
+
+        # Remove all attribute sets from the category
+        await delete_object(db_session, self.test_category2)
+        await delete_object(db_session, self.test_category1)
+        await db_session.refresh(attribute_set, ['categories'])
+        assert len(attribute_set.categories) == 0
+
+        test_category1 = await get_object_by_id(
+            db_session,
+            Categories,
+            self.test_category1.id
+        )
+        test_category2 = await get_object_by_id(
+            db_session,
+            Categories,
+            self.test_category2.id
+        )
+
+        assert test_category1 is None
+        assert test_category2 is None
+
+    @pytest.mark.asyncio
+    async def test_setting_category_attribute_sets_to_empty_list(
+        self, db_session: AsyncSession
+    ):
+        """Test setting categories to empty list"""
+        attribute_set = AttributeSets(
+            name="Test Attribute Set 1",
+            categories=[self.test_category1, self.test_category2]
+        )
+        await save_object(db_session, attribute_set)
+        await db_session.refresh(attribute_set, ['categories'])
+        assert len(attribute_set.categories) == 2
+
+        attribute_set.categories = []
+        await save_object(db_session, attribute_set)
+        await db_session.refresh(attribute_set, ['categories'])
+        assert len(attribute_set.categories) == 0
+
+        test_category1 = await get_object_by_id(
+            db_session,
+            Categories,
+            self.test_category1.id
+        )
+        test_category2 = await get_object_by_id(
+            db_session,
+            Categories,
+            self.test_category2.id
+        )
+
+        assert test_category1 is not None
+        assert test_category2 is not None
+
+    @pytest.mark.asyncio
+    async def test_query_category_by_attribute_set(self, db_session: AsyncSession):
+        """Test querying category by attribute set"""
+        attribute_set1 = AttributeSets(
+            name="Test Attribute Set 1",
+            categories=[self.test_category1, self.test_category2]
+        )
+        await save_object(db_session, attribute_set1)
+
+        attribute_set2 = AttributeSets(
+            name="Test Attribute Set 2",
+            categories=[self.test_category1, self.test_category2]
+        )
+        await save_object(db_session, attribute_set2)
+
+        # Query category by attribute set using raw SQL
+        stmt = select(Categories).join(Categories.attribute_sets).where(
+            AttributeSets.name == "Test Attribute Set 1"
+        )
+        result = await db_session.execute(stmt)
+        categories = result.scalars().all()
+        assert len(categories) == 2
+        assert self.test_category1 in categories
+        assert self.test_category2 in categories
