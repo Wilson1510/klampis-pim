@@ -3,6 +3,7 @@ from sqlalchemy import String, event, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.base import Base
+from app.models.attribute_model import Attributes
 from app.models.category_model import Categories
 from app.models.attribute_set_model import AttributeSets
 from app.core.listeners import _set_slug
@@ -378,3 +379,178 @@ class TestAttributeSet:
     Relationship Tests (AttributeSets -> Attributes)
     ================================================
     """
+
+    @pytest.mark.asyncio
+    async def test_create_attribute_set_with_attributes(
+        self, db_session: AsyncSession
+    ):
+        """Test creating an attribute set and associating it with multiple attributes"""
+        attribute_set = AttributeSets(
+            name="Test Attribute Set with Attributes",
+            attributes=[
+                Attributes(name="Test Attribute 1"),
+                Attributes(name="Test Attribute 2")
+            ]
+        )
+        await save_object(db_session, attribute_set)
+
+        retrieved_attribute_set = await get_object_by_id(
+            db_session, AttributeSets, attribute_set.id
+        )
+        await db_session.refresh(retrieved_attribute_set, ['attributes'])
+
+        assert retrieved_attribute_set.id == 3
+        assert retrieved_attribute_set.name == "Test Attribute Set with Attributes"
+        assert len(retrieved_attribute_set.attributes) == 2
+        assert retrieved_attribute_set.attributes[0].name == "Test Attribute 1"
+        assert retrieved_attribute_set.attributes[1].name == "Test Attribute 2"
+
+    @pytest.mark.asyncio
+    async def test_add_multiple_attributes_to_attribute_set(
+        self, db_session: AsyncSession
+    ):
+        """Test adding multiple attributes to an attribute set"""
+        for i in range(5):
+            attribute = Attributes(
+                name=f"Test Attribute {i}",
+                attribute_sets=[self.test_attribute_set1]
+            )
+            await save_object(db_session, attribute)
+
+        retrieved_attribute_set = await get_object_by_id(
+            db_session, AttributeSets, self.test_attribute_set1.id
+        )
+        await db_session.refresh(retrieved_attribute_set, ['attributes'])
+
+        assert len(retrieved_attribute_set.attributes) == 5
+        for i in range(5):
+            assert retrieved_attribute_set.attributes[i].id == i + 1
+            assert retrieved_attribute_set.attributes[i].name == (
+                f"Test Attribute {i}"
+            )
+
+    @pytest.mark.asyncio
+    async def test_update_attributes_attribute_sets(
+        self, db_session: AsyncSession
+    ):
+        """Test updating an attribute set's attributes"""
+        attribute_set = await get_object_by_id(
+            db_session, AttributeSets, self.test_attribute_set1.id
+        )
+        await db_session.refresh(attribute_set, ['attributes'])
+        assert len(attribute_set.attributes) == 0
+
+        attribute_set.attributes = [
+            Attributes(name="Test Attribute 1"),
+            Attributes(name="Test Attribute 2")
+        ]
+        await save_object(db_session, attribute_set)
+        await db_session.refresh(attribute_set, ['attributes'])
+
+        assert len(attribute_set.attributes) == 2
+        assert attribute_set.attributes[0].name == "Test Attribute 1"
+        assert attribute_set.attributes[1].name == "Test Attribute 2"
+
+        attribute_set.attributes = [
+            Attributes(name="Test Attribute 3"),
+            Attributes(name="Test Attribute 4"),
+            Attributes(name="Test Attribute 5")
+        ]
+        await save_object(db_session, attribute_set)
+        await db_session.refresh(attribute_set, ['attributes'])
+        assert len(attribute_set.attributes) == 3
+        assert attribute_set.attributes[0].name == "Test Attribute 3"
+        assert attribute_set.attributes[1].name == "Test Attribute 4"
+        assert attribute_set.attributes[2].name == "Test Attribute 5"
+
+    @pytest.mark.asyncio
+    async def test_attribute_set_deletion_with_attributes(
+        self, db_session: AsyncSession
+    ):
+        """Test deleting an attribute set with attributes"""
+        attribute = Attributes(
+            name="Test Attribute 1",
+            attribute_sets=[
+                self.test_attribute_set1,
+                self.test_attribute_set2
+            ]
+        )
+        await save_object(db_session, attribute)
+        await db_session.refresh(attribute, ['attribute_sets'])
+        assert len(attribute.attribute_sets) == 2
+
+        await delete_object(db_session, self.test_attribute_set1)
+        await delete_object(db_session, self.test_attribute_set2)
+        await db_session.refresh(attribute, ['attribute_sets'])
+        assert len(attribute.attribute_sets) == 0
+
+        test_attribute_set1 = await get_object_by_id(
+            db_session, AttributeSets, self.test_attribute_set1.id
+        )
+        test_attribute_set2 = await get_object_by_id(
+            db_session, AttributeSets, self.test_attribute_set2.id
+        )
+        assert test_attribute_set1 is None
+        assert test_attribute_set2 is None
+
+    @pytest.mark.asyncio
+    async def test_setting_attribute_set_attributes_to_empty_list(
+        self, db_session: AsyncSession
+    ):
+        """Test setting an attribute set's attributes to an empty list"""
+        attribute = Attributes(
+            name="Test Attribute 1",
+            attribute_sets=[
+                self.test_attribute_set1,
+                self.test_attribute_set2
+            ]
+        )
+        await save_object(db_session, attribute)
+        await db_session.refresh(attribute, ['attribute_sets'])
+        assert len(attribute.attribute_sets) == 2
+
+        attribute.attribute_sets = []
+        await save_object(db_session, attribute)
+        await db_session.refresh(attribute, ['attribute_sets'])
+        assert len(attribute.attribute_sets) == 0
+
+        test_attribute_set1 = await get_object_by_id(
+            db_session, AttributeSets, self.test_attribute_set1.id
+        )
+        test_attribute_set2 = await get_object_by_id(
+            db_session, AttributeSets, self.test_attribute_set2.id
+        )
+        assert test_attribute_set1 is not None
+        assert test_attribute_set2 is not None
+
+    @pytest.mark.asyncio
+    async def test_query_attribute_set_by_attribute(
+        self, db_session: AsyncSession
+    ):
+        """Test querying an attribute set by attribute"""
+        attribute1 = Attributes(
+            name="Test Attribute 1",
+            attribute_sets=[
+                self.test_attribute_set1,
+                self.test_attribute_set2
+            ]
+        )
+        await save_object(db_session, attribute1)
+
+        attribute2 = Attributes(
+            name="Test Attribute 2",
+            attribute_sets=[
+                self.test_attribute_set1,
+                self.test_attribute_set2
+            ]
+        )
+        await save_object(db_session, attribute2)
+
+        stmt = select(AttributeSets).join(AttributeSets.attributes).where(
+            Attributes.name == "Test Attribute 1"
+        )
+        result = await db_session.execute(stmt)
+        attribute_sets = result.scalars().all()
+        assert len(attribute_sets) == 2
+        assert self.test_attribute_set1 in attribute_sets
+        assert self.test_attribute_set2 in attribute_sets
