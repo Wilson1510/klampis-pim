@@ -28,7 +28,7 @@ def _validate_all_types_on_save(mapper, connection, target):
     model_class = target.__class__
 
     # Collect all columns that already have @validates manual validators
-    existing_manual_validates = set()
+    existing_manual_validates = {'password'}
 
     # Check for validators in the class and its MRO (Method Resolution Order)
     for cls in model_class.__mro__:
@@ -36,9 +36,6 @@ def _validate_all_types_on_save(mapper, connection, target):
             # Get all validators from the mapper
             if hasattr(cls.__mapper__, 'validators'):
                 existing_manual_validates.update(cls.__mapper__.validators.keys())
-
-    if 'password' in target.__table__.columns.keys():
-        existing_manual_validates.add('password')
 
     for column in target.__table__.columns:
         # Skip columns that have manual validators
@@ -57,6 +54,8 @@ def _validate_all_types_on_save(mapper, connection, target):
             setattr(target, column.key, value)
 
             if value == "":
+                if column.nullable is True:
+                    continue
                 raise ValueError(f"Column '{column.key}' cannot be empty.")
 
             if isinstance(column.type, Text):
