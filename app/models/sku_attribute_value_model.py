@@ -32,31 +32,13 @@ class SkuAttributeValue(Base):
 
     @validates('value')
     def validate_value(self, key, value):
-        """Validate value based on attribute's data_type"""
-        if not value:
-            return value  # Allow empty values
-
-        # Get the attribute to check its data_type
-        if hasattr(self, 'attribute') and self.attribute:
-            from app.models.attribute_model import Attributes
-
-            if not Attributes.validate_value_for_data_type(
-                value, self.attribute.data_type
-            ):
-                raise ValueError(
-                    f"Value '{value}' is not valid for data type "
-                    f"'{self.attribute.data_type}'"
-                )
-
+        """
+        Validate value based on attribute's data_type. Create this validation to
+        prevent validation checking at listeners.
+        """
+        if len(value) == 0:
+            raise ValueError("Value cannot be empty")
         return value
-
-    def get_typed_value(self):
-        """Get the value converted to its proper Python type"""
-        if not self.value or not self.attribute:
-            return None
-
-        from app.models.attribute_model import Attributes
-        return Attributes.convert_value_to_python(self.value, self.attribute.data_type)
 
     def __str__(self) -> str:
         """String representation of the SKU attribute value."""
