@@ -47,6 +47,11 @@ class TestConstraintBehavior:
             await save_object(db_session, obj)
         await db_session.rollback()
 
+        obj = SampleModelConstraint(constraint_string="")
+        with pytest.raises(ValueError):
+            await save_object(db_session, obj)
+        await db_session.rollback()
+
     async def test_foreign_key_constraint(self, db_session: AsyncSession):
         """Test foreign key constraint prevents invalid references."""
         # Try to create record with invalid foreign key

@@ -43,7 +43,10 @@ class TestDataType:
             await session.rollback()
 
     async def test_string_field_validation(self, db_session):
-        valid_data = ["test", "test with spaces", "  test with whitespace   ", ("test")]
+        valid_data = [
+            "test", "test with spaces", "  test with whitespace   ", ("test"), "",
+            "    "
+        ]
         invalid_data = [
             # [data, error_type, error_message]
             [123, DBAPIError, "expected str, got int"],
@@ -59,8 +62,6 @@ class TestDataType:
             [('test1', 'test2'), DBAPIError, "expected str, got tuple"],
             [(), DBAPIError, "expected str, got tuple"],
             [datetime.now(), DBAPIError, "expected str, got datetime"],
-            ["", ValueError, "Column 'sample_string' cannot be empty."],
-            ["   ", ValueError, "Column 'sample_string' cannot be empty."],
             ["1test", ValueError, "Column 'sample_string' must start with a letter."],
             [
                 'test*',
