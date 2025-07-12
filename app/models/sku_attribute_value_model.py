@@ -18,7 +18,7 @@ class SkuAttributeValue(Base):
         nullable=False,
         index=True
     )
-    value = Column(String(50), nullable=True)
+    value = Column(String(50), nullable=False, index=True)
 
     # Relationships
     sku = relationship("Skus", back_populates="sku_attribute_values")

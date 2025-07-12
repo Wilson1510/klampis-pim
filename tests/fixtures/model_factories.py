@@ -18,6 +18,7 @@ from app.models.product_model import Products
 from app.models.sku_model import Skus
 from app.models.attribute_model import Attributes
 from app.models.attribute_set_model import AttributeSets
+from app.models.sku_attribute_value_model import SkuAttributeValue
 from tests.utils.model_test_utils import save_object
 
 
@@ -351,5 +352,85 @@ async def attribute_set_factory(db_session: AsyncSession):
         # Save and return
         await save_object(db_session, attribute_set)
         return attribute_set
+
+    return _factory
+
+
+@pytest.fixture
+async def sku_attribute_value_factory(
+    db_session: AsyncSession, sku_factory, attribute_factory
+):
+    """
+    Factory for creating SkuAttributeValue with flexible parameters.
+
+    Usage:
+        # Minimal (creates sku and attribute automatically)
+        sku_attr_value = await sku_attribute_value_factory()
+
+        # With existing sku and attribute
+        sku = await sku_factory(name="Test SKU")
+        attribute = await attribute_factory(name="Color")
+        sku_attr_value = await sku_attribute_value_factory(
+            value="Red",
+            sku=sku,
+            attribute=attribute
+        )
+
+        # With IDs directly
+        sku_attr_value = await sku_attribute_value_factory(
+            value="Blue",
+            sku_id=1,
+            attribute_id=2
+        )
+
+        # With None value
+        sku_attr_value = await sku_attribute_value_factory(value=None)
+    """
+    async def _factory(**kwargs):
+        # Handle relationship objects first
+        sku = kwargs.pop('sku', None)
+        if sku:
+            kwargs['sku_id'] = sku.id
+
+        attribute = kwargs.pop('attribute', None)
+        if attribute:
+            kwargs['attribute_id'] = attribute.id
+
+        # Define default values
+        defaults = {
+            "value": "Test Value"
+        }
+
+        # Handle sku dependency (get-or-create if not provided)
+        if 'sku_id' not in kwargs:
+            stmt = select(Skus).where(Skus.name == "Test SKU")
+            result = await db_session.execute(stmt)
+            existing_sku = result.scalar_one_or_none()
+            if existing_sku:
+                defaults['sku_id'] = existing_sku.id
+            else:
+                new_sku = await sku_factory()
+                defaults['sku_id'] = new_sku.id
+
+        # Handle attribute dependency (get-or-create if not provided)
+        if 'attribute_id' not in kwargs:
+            stmt = select(Attributes).where(Attributes.name == "Test Attribute")
+            result = await db_session.execute(stmt)
+            existing_attribute = result.scalar_one_or_none()
+            if existing_attribute:
+                defaults['attribute_id'] = existing_attribute.id
+            else:
+                new_attribute = await attribute_factory()
+                defaults['attribute_id'] = new_attribute.id
+
+        # Merge defaults with provided kwargs
+        params = {**defaults, **kwargs}
+
+        # Create the object
+        sku_attribute_value = SkuAttributeValue(**params)
+
+        # Save and return
+        await save_object(db_session, sku_attribute_value)
+        return sku_attribute_value
 
     return _factory
