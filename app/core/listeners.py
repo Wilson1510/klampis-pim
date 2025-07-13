@@ -1,7 +1,7 @@
 from datetime import datetime
 import re
 
-from sqlalchemy import event, String, Integer, Boolean, DateTime, Float, Text
+from sqlalchemy import event, String, Integer, Boolean, DateTime, Float, Text, Numeric
 from sqlalchemy.orm.attributes import get_history
 
 from app.core.base import Base
@@ -97,6 +97,13 @@ def _validate_all_types_on_save(mapper, connection, target):
             if isinstance(value, bool):
                 raise TypeError(
                     f"Column '{column.key}' must be a float, not a boolean."
+                )
+
+        # Validation for Numeric type
+        elif isinstance(column.type, Numeric):
+            if isinstance(value, bool):
+                raise TypeError(
+                    f"Column '{column.key}' must be a numeric, not a boolean."
                 )
 
         elif isinstance(column.type, DateTime):

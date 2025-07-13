@@ -1,7 +1,9 @@
 import enum
 from datetime import datetime
 
-from sqlalchemy import Column, String, Integer, Boolean, Float, DateTime, Text, Enum
+from sqlalchemy import (
+    Column, String, Integer, Boolean, Float, DateTime, Text, Enum, Numeric
+)
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.exc import DBAPIError, StatementError
 import pytest
@@ -21,6 +23,7 @@ class SampleModelDataType(Base):
     sample_string = Column(String)
     sample_boolean = Column(Boolean)
     sample_float = Column(Float)
+    sample_numeric = Column(Numeric(15, 2))
     sample_datetime = Column(DateTime(timezone=True))
     sample_jsonb = Column(JSONB)
     sample_text = Column(Text)
@@ -186,6 +189,54 @@ class TestDataType:
         ]
 
         await self.create_item(valid_data, invalid_data, "sample_float", db_session)
+
+    async def test_numeric_field_validation(self, db_session):
+        valid_data = [
+            8887776665554.44, 77777.4, 77777.444, 8887776665554, 888777666555.4,
+            2067, "3174.12", "1556", (77777.55)
+        ]
+        invalid_data = [
+            [888777666555444, DBAPIError, "field numerik melebihi jangkauan"],
+            [8887776665554443, DBAPIError, "field numerik melebihi jangkauan"],
+            [888777666555444.2, DBAPIError, "field numerik melebihi jangkauan"],
+            ["test123", DBAPIError, "class 'decimal.ConversionSyntax'"],
+            [
+                False,
+                TypeError,
+                "Column 'sample_numeric' must be a numeric, not a boolean."
+            ],
+            [[5732.21], DBAPIError, "argument must be a sequence of length 3"],
+            [
+                [3306.12, 5432, 12],
+                DBAPIError,
+                "(sign must be an integer with the value 0 or 1)"
+            ],
+            [[], DBAPIError, "(argument must be a sequence of length 3)"],
+            [
+                {1589.744},
+                DBAPIError,
+                "(conversion from set to Decimal is not supported)"
+            ],
+            [
+                {2912.74, 1830.45},
+                DBAPIError,
+                "(conversion from set to Decimal is not supported)"
+            ],
+            [
+                {9092.87: 9200.32},
+                DBAPIError,
+                "(conversion from dict to Decimal is not supported)"
+            ],
+            [{}, DBAPIError, "(conversion from dict to Decimal is not supported)"],
+            [(1898.14, 1892.74), DBAPIError, "argument must be a sequence of length 3"],
+            [(), DBAPIError, "(argument must be a sequence of length 3)"],
+            [
+                datetime.now(),
+                DBAPIError,
+                "(conversion from datetime.datetime to Decimal is not supported)"
+            ]
+        ]
+        await self.create_item(valid_data, invalid_data, "sample_numeric", db_session)
 
     async def test_datetime_field_validation(self, db_session):
         valid_data = [
