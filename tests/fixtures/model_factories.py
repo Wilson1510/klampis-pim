@@ -19,6 +19,8 @@ from app.models.sku_model import Skus
 from app.models.attribute_model import Attributes
 from app.models.attribute_set_model import AttributeSets
 from app.models.sku_attribute_value_model import SkuAttributeValue
+from app.models.pricelist_model import Pricelists
+from app.models.price_detail_model import PriceDetails
 from tests.utils.model_test_utils import save_object
 
 
@@ -432,5 +434,70 @@ async def sku_attribute_value_factory(
         # Save and return
         await save_object(db_session, sku_attribute_value)
         return sku_attribute_value
+
+    return _factory
+
+
+@pytest.fixture
+async def pricelist_factory(db_session: AsyncSession):
+    """
+    Factory for creating Pricelists with flexible parameters.
+    """
+    async def _factory(**kwargs):
+        defaults = {
+            "name": "Test Pricelist"
+        }
+        params = {**defaults, **kwargs}
+        pricelist = Pricelists(**params)
+        await save_object(db_session, pricelist)
+        return pricelist
+
+    return _factory
+
+
+@pytest.fixture
+async def price_detail_factory(
+    db_session: AsyncSession, sku_factory, pricelist_factory
+):
+    """
+    Factory for creating PriceDetails with flexible parameters.
+    """
+    async def _factory(**kwargs):
+        sku = kwargs.pop('sku', None)
+        if sku:
+            kwargs['sku_id'] = sku.id
+
+        pricelist = kwargs.pop('pricelist', None)
+        if pricelist:
+            kwargs['pricelist_id'] = pricelist.id
+
+        defaults = {
+            "price": 100.00
+        }
+
+        if 'sku_id' not in kwargs:
+            stmt = select(Skus).where(Skus.name == "Test SKU")
+            result = await db_session.execute(stmt)
+            existing_sku = result.scalar_one_or_none()
+            if existing_sku:
+                defaults['sku_id'] = existing_sku.id
+            else:
+                new_sku = await sku_factory()
+                defaults['sku_id'] = new_sku.id
+
+        if 'pricelist_id' not in kwargs:
+            stmt = select(Pricelists).where(Pricelists.name == "Test Pricelist")
+            result = await db_session.execute(stmt)
+            existing_pricelist = result.scalar_one_or_none()
+            if existing_pricelist:
+                defaults['pricelist_id'] = existing_pricelist.id
+            else:
+                new_pricelist = await pricelist_factory()
+                defaults['pricelist_id'] = new_pricelist.id
+
+        params = {**defaults, **kwargs}
+        price_detail = PriceDetails(**params)
+        await save_object(db_session, price_detail)
+        return price_detail
 
     return _factory

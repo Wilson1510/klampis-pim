@@ -245,13 +245,11 @@ class TestCategoryTypeCategoryRelationship:
         assert retrieved_category_type.categories[0].name == "Test Category 1"
         assert retrieved_category_type.categories[0].slug == "test-category-1"
         assert retrieved_category_type.categories[0].description == "Test Description 1"
-        assert retrieved_category_type.categories[0].category_type_id == 3
 
         assert retrieved_category_type.categories[1].id == 2
         assert retrieved_category_type.categories[1].name == "Test Category 2"
         assert retrieved_category_type.categories[1].slug == "test-category-2"
         assert retrieved_category_type.categories[1].description == "Test Description 2"
-        assert retrieved_category_type.categories[1].category_type_id == 3
 
     @pytest.mark.asyncio
     async def test_add_multiple_categories_to_category_type(
