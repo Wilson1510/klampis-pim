@@ -269,7 +269,93 @@ class TestPriceDetailConstraint:
 
         assert await count_model_objects(db_session, PriceDetails) == 2
 
-    """belum selesai"""
+    @pytest.mark.asyncio
+    async def test_create_item_same_sku_id_pricelist_id_min_qty(
+        self, db_session: AsyncSession
+    ):
+        """
+        Test the create operation with same sku_id, pricelist_id, and minimum_quantity.
+        """
+        duplicate_price_detail = PriceDetails(
+            price=300.00,
+            minimum_quantity=1,
+            sku_id=self.test_sku.id,
+            pricelist_id=self.test_pricelist.id
+        )
+        with pytest.raises(IntegrityError):
+            await save_object(db_session, duplicate_price_detail)
+
+        await db_session.rollback()
+
+        assert await count_model_objects(db_session, PriceDetails) == 2
+
+    @pytest.mark.asyncio
+    async def test_create_item_same_sku_id_pricelist_id(
+        self, db_session: AsyncSession
+    ):
+        """
+        Test the create operation with same sku_id, pricelist_id.
+        """
+        duplicate_price_detail = PriceDetails(
+            price=300.00,
+            minimum_quantity=3,
+            sku_id=self.test_sku.id,
+            pricelist_id=self.test_pricelist.id
+        )
+
+        await save_object(db_session, duplicate_price_detail)
+
+        assert await count_model_objects(db_session, PriceDetails) == 3
+
+    @pytest.mark.asyncio
+    async def test_create_item_same_sku_id_min_qty(
+        self, db_session: AsyncSession, pricelist_factory
+    ):
+        """
+        Test the create operation with same sku_id, minimum_quantity.
+        """
+        another_pricelist = await pricelist_factory(name="Another Pricelist")
+        duplicate_price_detail = PriceDetails(
+            price=300.00,
+            minimum_quantity=1,
+            sku_id=self.test_sku.id,
+            pricelist_id=another_pricelist.id
+        )
+        await save_object(db_session, duplicate_price_detail)
+        assert await count_model_objects(db_session, PriceDetails) == 3
+
+    @pytest.mark.asyncio
+    async def test_create_item_same_pricelist_id_min_qty(
+        self, db_session: AsyncSession, sku_factory
+    ):
+        """
+        Test the create operation with same pricelist_id, minimum_quantity.
+        """
+        another_sku = await sku_factory(name="Another SKU")
+        duplicate_price_detail = PriceDetails(
+            price=300.00,
+            minimum_quantity=1,
+            sku_id=another_sku.id,
+            pricelist_id=self.test_pricelist.id
+        )
+        await save_object(db_session, duplicate_price_detail)
+        assert await count_model_objects(db_session, PriceDetails) == 3
+
+    @pytest.mark.asyncio
+    async def test_create_item_same_price_different_min_qty(
+        self, db_session: AsyncSession
+    ):
+        """
+        Test the create operation with same price, different minimum_quantity.
+        """
+        duplicate_price_detail = PriceDetails(
+            price=100.00,
+            minimum_quantity=5,
+            sku_id=self.test_sku.id,
+            pricelist_id=self.test_pricelist.id
+        )
+        await save_object(db_session, duplicate_price_detail)
+        assert await count_model_objects(db_session, PriceDetails) == 3
 
 
 class TestPriceDetailSkuRelationship:
