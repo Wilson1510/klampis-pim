@@ -21,6 +21,7 @@ from app.models.attribute_set_model import AttributeSets
 from app.models.sku_attribute_value_model import SkuAttributeValue
 from app.models.pricelist_model import Pricelists
 from app.models.price_detail_model import PriceDetails
+from app.models.image_model import Images
 from tests.utils.model_test_utils import save_object
 
 
@@ -499,5 +500,34 @@ async def price_detail_factory(
         price_detail = PriceDetails(**params)
         await save_object(db_session, price_detail)
         return price_detail
+
+    return _factory
+
+
+@pytest.fixture
+async def image_factory(db_session: AsyncSession, category_factory):
+    """
+    Factory for creating Images with flexible parameters.
+    """
+    async def _factory(**kwargs):
+        if 'content_type' not in kwargs or 'object_id' not in kwargs:
+            stmt = select(Categories).where(Categories.name == "Test Category")
+            result = await db_session.execute(stmt)
+            existing_category = result.scalar_one_or_none()
+            if existing_category:
+                kwargs['content_type'] = existing_category.__tablename__
+                kwargs['object_id'] = existing_category.id
+            else:
+                new_category = await category_factory()
+                kwargs['content_type'] = new_category.__tablename__
+                kwargs['object_id'] = new_category.id
+
+        defaults = {
+            "file": "test_folder/test.jpg",
+        }
+        params = {**defaults, **kwargs}
+        image = Images(**params)
+        await save_object(db_session, image)
+        return image
 
     return _factory
