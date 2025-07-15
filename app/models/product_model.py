@@ -2,9 +2,10 @@ from sqlalchemy import Column, String, Text, Integer, ForeignKey
 from sqlalchemy.orm import relationship
 
 from app.core.base import Base
+from app.utils.mixins import Imageable
 
 
-class Products(Base):
+class Products(Base, Imageable):
     """
     Products model representing products in the system.
 

@@ -29,6 +29,7 @@ def _validate_all_types_on_save(mapper, connection, target):
     model_class = target.__class__
 
     # Collect all columns that already have @validates manual validators
+    # Password must not be validated here because it must be saved as it is
     existing_manual_validates = {'password'}
 
     # Check for validators in the class and its MRO (Method Resolution Order)

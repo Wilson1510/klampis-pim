@@ -2,9 +2,10 @@ from sqlalchemy import Column, String, Text, Integer, ForeignKey, CheckConstrain
 from sqlalchemy.orm import relationship
 
 from app.core.base import Base
+from app.utils.mixins import Imageable
 
 
-class Categories(Base):
+class Categories(Base, Imageable):
     """
     Categories model representing product categories.
 

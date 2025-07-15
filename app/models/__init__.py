@@ -12,6 +12,7 @@ from app.models.attribute_set_attribute_model import attribute_set_attribute
 from app.models.sku_attribute_value_model import SkuAttributeValue
 from app.models.pricelist_model import Pricelists
 from app.models.price_detail_model import PriceDetails
+from app.models.image_model import Images
 
 __all__ = [
     "Users",
@@ -28,5 +29,6 @@ __all__ = [
     "attribute_set_attribute",
     "SkuAttributeValue",
     "Pricelists",
-    "PriceDetails"
+    "PriceDetails",
+    "Images"
 ]
