@@ -1,23 +1,16 @@
 from sqlalchemy import (
-    String, event, Text, Integer, CheckConstraint, select, Boolean, ForeignKey
+    String, Integer, Boolean
 )
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.ext.hybrid import hybrid_property
 import pytest
 
 from app.core.base import Base
-from app.models.category_type_model import CategoryTypes
-from app.models.category_model import Categories
-from app.models.product_model import Products
-from app.models.attribute_set_model import AttributeSets
 from app.models.image_model import Images
 from tests.utils.model_test_utils import (
     save_object,
     get_object_by_id,
     get_all_objects,
     delete_object,
-    assert_relationship,
     count_model_objects
 )
 
@@ -56,8 +49,10 @@ class TestImage:
 
     def test_fields_with_validation(self):
         assert hasattr(Images, 'validate_file')
+        assert hasattr(Images, 'validate_content_type')
         assert 'file' in Images.__mapper__.validators
-        assert len(Images.__mapper__.validators) == 1
+        assert 'content_type' in Images.__mapper__.validators
+        assert len(Images.__mapper__.validators) == 2
 
     def test_has_get_parent_method(self):
         assert hasattr(Images, 'get_parent')

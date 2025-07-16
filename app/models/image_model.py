@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Boolean, Integer
+from sqlalchemy import Column, String, Boolean, Integer, event
 from sqlalchemy.orm import validates
 from sqlalchemy.ext.asyncio import AsyncSession
 import re
@@ -10,6 +10,8 @@ class Images(Base):
     """
     Images model representing images in the system.
     """
+    CONTENT_TYPE_TO_CLASS = {}
+
     file = Column(String(255), nullable=False, unique=True)
     title = Column(String(100), nullable=True)
     is_primary = Column(Boolean, nullable=False, default=False)
@@ -21,11 +23,19 @@ class Images(Base):
         """
         Retrieve the parent object asynchronously.
         """
-        for mapper in self.registry.mappers:
-            cls = mapper.class_
-            if hasattr(cls, '__tablename__') and cls.__tablename__ == self.content_type:
-                return await session.get(cls, self.object_id)
+        cls = self.CONTENT_TYPE_TO_CLASS.get(self.content_type)
+        if cls:
+            return await session.get(cls, self.object_id)
         return None
+
+    @validates('content_type')
+    def validate_content_type(self, key, value):
+        if value not in self.CONTENT_TYPE_TO_CLASS:
+            raise ValueError(
+                f"Invalid content_type: {value}. Must be one of "
+                f"{set(self.CONTENT_TYPE_TO_CLASS.keys())}"
+            )
+        return value
 
     @validates('file')
     def validate_file(self, key, value):
@@ -39,6 +49,12 @@ class Images(Base):
         if not re.match(r'^[A-Za-z]', value[0]):
             raise ValueError(f"Column {key} must start with a letter")
         return value
+
+    @event.listens_for(Base, 'class_instrument')
+    def on_class_instrument(cls):
+        print(f"on_class_instrument: {cls}")
+        if hasattr(cls, 'images') and hasattr(cls, '__tablename__'):
+            Images.CONTENT_TYPE_TO_CLASS[cls.__tablename__] = cls
 
     def __str__(self) -> str:
         """String representation of the image."""
