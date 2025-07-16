@@ -52,7 +52,6 @@ class Images(Base):
 
     @event.listens_for(Base, 'class_instrument')
     def on_class_instrument(cls):
-        print(f"on_class_instrument: {cls}")
         if hasattr(cls, 'images') and hasattr(cls, '__tablename__'):
             Images.CONTENT_TYPE_TO_CLASS[cls.__tablename__] = cls
 

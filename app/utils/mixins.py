@@ -20,6 +20,5 @@ class Imageable:
                 Images.content_type == cls.__tablename__
             ),
             cascade="all, delete-orphan",
-            lazy="dynamic",
             overlaps="images"
         )

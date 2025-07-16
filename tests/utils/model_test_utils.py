@@ -33,10 +33,7 @@ async def get_object_by_id(session, model_class, object_id):
     """
     Get an object from the database.
     """
-    result = await session.execute(
-        select(model_class).where(model_class.id == object_id)
-    )
-    return result.scalar_one_or_none()
+    return await session.get(model_class, object_id)
 
 
 async def get_all_objects(session, model_class):
