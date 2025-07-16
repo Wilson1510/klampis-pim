@@ -2,10 +2,14 @@ from sqlalchemy import (
     String, Integer, Boolean
 )
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import event
+from sqlalchemy.exc import IntegrityError
 import pytest
 
 from app.core.base import Base
 from app.models.image_model import Images
+from app.models.category_model import Categories
+from app.models.product_model import Products
 from tests.utils.model_test_utils import (
     save_object,
     get_object_by_id,
@@ -53,6 +57,14 @@ class TestImage:
         assert 'file' in Images.__mapper__.validators
         assert 'content_type' in Images.__mapper__.validators
         assert len(Images.__mapper__.validators) == 2
+
+    def test_has_listeners(self):
+        assert event.contains(Base, 'class_instrument', Images.on_class_instrument)
+        assert not event.contains(
+            Images,
+            'class_instrument',
+            Images.on_class_instrument
+        )
 
     def test_has_get_parent_method(self):
         assert hasattr(Images, 'get_parent')
@@ -104,6 +116,12 @@ class TestImage:
         assert content_type_column.unique is None
         assert content_type_column.index is True
         assert content_type_column.default is None
+
+    def test_content_type_to_class_mapping(self):
+        assert Images.CONTENT_TYPE_TO_CLASS == {
+            'categories': self.test_category.__class__,
+            'products': self.test_product.__class__
+        }
 
     def test_str_representation(self):
         assert str(self.test_image1) == "Images(test_folder/test1.jpg)"
@@ -268,3 +286,408 @@ class TestImage:
         item = await get_object_by_id(db_session, Images, self.test_image1.id)
         assert item is None
         assert await count_model_objects(db_session, Images) == 1
+
+
+class TestImageValidation:
+    """Test suite for Image model validation"""
+
+    @pytest.fixture(autouse=True)
+    def setup_objects(self, setup_images):
+        self.test_category, self.test_product, self.test_image1, \
+            self.test_image2 = setup_images
+
+    @pytest.mark.asyncio
+    async def test_valid_file_validation(self, db_session: AsyncSession):
+        """Test valid file validation"""
+        valid_files = [
+            ("test_folder/test3.jpg", "test_folder/test3.jpg"),
+            ("a**&&/>n", "a**&&/>n"),
+            ("Name.jpg", "Name.jpg"),
+            ("    test.jpg    ", "test.jpg"),
+            ("R12345.png", "R12345.png"),
+            ("test_folder/test5.aaa", "test_folder/test5.aaa"),
+        ]
+        for input_file, expected_file in valid_files:
+            item = Images(
+                file=input_file,
+                object_id=self.test_category.id,
+                content_type="categories"
+            )
+            await save_object(db_session, item)
+            assert item.file == expected_file
+
+    @pytest.mark.asyncio
+    async def test_invalid_file_validation(self, db_session: AsyncSession):
+        """Test invalid file validation"""
+        invalid_files = [
+            ("   ", "Column file cannot be empty"),
+            ("", "Column file cannot be empty"),
+            ("1234567890", "Column file must start with a letter"),
+            ("*&^%$#@!~", "Column file must start with a letter"),
+            ("^test_folder/test6.jpg", "Column file must start with a letter"),
+        ]
+        category_id = self.test_category.id
+        for input_file, expected_error in invalid_files:
+            with pytest.raises(ValueError, match=expected_error):
+                Images(
+                    file=input_file,
+                    object_id=category_id,
+                    content_type="categories"
+                )
+            await db_session.rollback()
+
+    @pytest.mark.asyncio
+    async def test_valid_content_type_validation(self, db_session: AsyncSession):
+        """Test valid content type validation"""
+        valid_content_types = [
+            ("categories", "categories"),
+            ("products", "products"),
+        ]
+        for i, (input_content_type, expected_content_type) in enumerate(
+            valid_content_types, 3
+        ):
+            image = Images(
+                file=f"test_folder/test{i}.jpg",
+                object_id=self.test_category.id,
+                content_type=input_content_type
+            )
+            await save_object(db_session, image)
+            assert image.content_type == expected_content_type
+
+    @pytest.mark.asyncio
+    async def test_invalid_content_type_validation(self, db_session: AsyncSession):
+        """Test invalid content type validation"""
+        invalid_content_types = [
+            (
+                "skus",
+                "Invalid content_type: skus. Must be one of",
+            ),
+            (
+                "suppliers",
+                "Invalid content_type: suppliers. Must be one of",
+            ),
+        ]
+        category_id = self.test_category.id
+        for input_content_type, expected_error in invalid_content_types:
+            with pytest.raises(ValueError, match=expected_error):
+                Images(
+                    file="test_folder/test7.jpg",
+                    object_id=category_id,
+                    content_type=input_content_type
+                )
+            await db_session.rollback()
+
+
+class TestImageCategoryRelationship:
+    """Test suite for Image model relationships with Category model"""
+    @pytest.fixture(autouse=True)
+    def setup_objects(self, setup_images):
+        self.test_category, self.test_product, self.test_image1, \
+            self.test_image2 = setup_images
+
+    @pytest.mark.asyncio
+    async def test_image_with_category_relationship(self, db_session: AsyncSession):
+        """Test image with category relationship properly loads"""
+        retrieved_image = await get_object_by_id(
+            db_session, Images, self.test_image1.id
+        )
+        assert retrieved_image.object_id == self.test_category.id
+        parent = await retrieved_image.get_parent(db_session)
+        assert parent == self.test_category
+        assert parent.name == "Test Category"
+
+    @pytest.mark.asyncio
+    async def test_image_without_category_relationship(self, db_session: AsyncSession):
+        """Test image without object_id and content_type"""
+        product_id = self.test_product.id
+        item = Images(file="test_folder/test8.jpg")
+        with pytest.raises(IntegrityError):
+            await save_object(db_session, item)
+        await db_session.rollback()
+
+        """Test image with other content_type"""
+        item = Images(
+            file="test_folder/test9.jpg",
+            object_id=product_id,
+            content_type="products"
+        )
+        # Should not raise an error because the object_id and content_type are provided
+        await save_object(db_session, item)
+        assert await count_model_objects(db_session, Images) == 3
+
+    @pytest.mark.asyncio
+    async def test_update_image_to_different_category(
+        self, db_session: AsyncSession, category_factory
+    ):
+        """Test updating image to use a different category"""
+        another_category = await category_factory(
+            name="another test category",
+            description="another test category description"
+        )
+        image = Images(
+            file="test_folder/test10.jpg",
+            object_id=self.test_category.id,
+            content_type="categories"
+        )
+        await save_object(db_session, image)
+        assert image.object_id == self.test_category.id
+        assert image.content_type == "categories"
+        parent = await image.get_parent(db_session)
+        assert parent == self.test_category
+        assert parent.name == "Test Category"
+
+        image.object_id = another_category.id
+        await save_object(db_session, image)
+        assert image.object_id == another_category.id
+        assert image.content_type == "categories"
+        parent = await image.get_parent(db_session)
+        assert parent == another_category
+        assert parent.name == "another test category"
+
+    @pytest.mark.asyncio
+    async def test_create_image_with_invalid_category_id(
+        self, db_session: AsyncSession
+    ):
+        """Test creating image with invalid category id"""
+        image = Images(
+            file="test_folder/test11.jpg",
+            object_id=999,
+            content_type="categories"
+        )
+
+        # Should not raise an error, validation will be handled in service layer
+        await save_object(db_session, image)
+        assert image.object_id == 999
+        assert image.content_type == "categories"
+        parent = await image.get_parent(db_session)
+        assert parent is None
+        assert await count_model_objects(db_session, Images) == 3
+
+    @pytest.mark.asyncio
+    async def test_update_image_with_invalid_category_id(
+        self, db_session: AsyncSession
+    ):
+        """Test updating image with invalid category id"""
+        image = Images(
+            file="test_folder/test12.jpg",
+            object_id=self.test_category.id,
+            content_type="categories"
+        )
+        await save_object(db_session, image)
+
+        image.object_id = 999
+        await save_object(db_session, image)
+        assert image.object_id == 999
+        assert image.content_type == "categories"
+        parent = await image.get_parent(db_session)
+        assert parent is None
+        assert await count_model_objects(db_session, Images) == 3
+
+    @pytest.mark.asyncio
+    async def test_setting_object_id_to_null_fails(self, db_session: AsyncSession):
+        """Test setting object_id to null fails"""
+        image = Images(
+            file="test_folder/test13.jpg",
+            object_id=self.test_category.id,
+            content_type="categories"
+        )
+        await save_object(db_session, image)
+
+        image.object_id = None
+        with pytest.raises(IntegrityError):
+            await save_object(db_session, image)
+        await db_session.rollback()
+
+    @pytest.mark.asyncio
+    async def test_delete_image_with_category_relationship(
+        self, db_session: AsyncSession
+    ):
+        """Test deleting image with category relationship"""
+        image = Images(
+            file="test_folder/test14.jpg",
+            object_id=self.test_category.id,
+            content_type="categories"
+        )
+        await save_object(db_session, image)
+
+        category = await get_object_by_id(
+            db_session,
+            Categories,
+            self.test_category.id
+        )
+        await db_session.refresh(category, ['images'])
+
+        category_images = category.images
+        assert category_images == [self.test_image1, image]
+
+        await delete_object(db_session, image)
+
+        deleted_image = await get_object_by_id(
+            db_session, Images, image.id
+        )
+        assert deleted_image is None
+
+        # Verify category still exists (should not be affected)
+        await db_session.refresh(category, ['images'])
+        assert category is not None
+        assert category.name == "Test Category"
+        category_images = category.images
+        assert category_images == [self.test_image1]
+
+
+class TestImageProductRelationship:
+    """Test suite for Image model relationships with Product model"""
+
+    @pytest.fixture(autouse=True)
+    def setup_objects(self, setup_images):
+        self.test_category, self.test_product, self.test_image1, \
+            self.test_image2 = setup_images
+
+    @pytest.mark.asyncio
+    async def test_image_with_product_relationship(self, db_session: AsyncSession):
+        """Test image with product relationship properly loads"""
+        retrieved_image = await get_object_by_id(
+            db_session, Images, self.test_image2.id
+        )
+        assert retrieved_image.object_id == self.test_product.id
+        parent = await retrieved_image.get_parent(db_session)
+        assert parent == self.test_product
+        assert parent.name == "Test Product"
+
+    @pytest.mark.asyncio
+    async def test_image_without_product_relationship(self, db_session: AsyncSession):
+        """Test image without object_id and content_type"""
+        category_id = self.test_category.id
+        item = Images(file="test_folder/test8.jpg")
+        with pytest.raises(IntegrityError):
+            await save_object(db_session, item)
+        await db_session.rollback()
+
+        """Test image with other content_type"""
+        item = Images(
+            file="test_folder/test9.jpg",
+            object_id=category_id,
+            content_type="categories"
+        )
+        # Should not raise an error because the object_id and content_type are provided
+        await save_object(db_session, item)
+        assert await count_model_objects(db_session, Images) == 3
+
+    @pytest.mark.asyncio
+    async def test_update_image_to_different_product(
+        self, db_session: AsyncSession, product_factory
+    ):
+        """Test updating image to use a different product"""
+        another_product = await product_factory(
+            name="another test product",
+            description="another test product description"
+        )
+        image = Images(
+            file="test_folder/test10.jpg",
+            object_id=self.test_product.id,
+            content_type="products"
+        )
+        await save_object(db_session, image)
+        assert image.object_id == self.test_product.id
+        assert image.content_type == "products"
+        parent = await image.get_parent(db_session)
+        assert parent == self.test_product
+        assert parent.name == "Test Product"
+
+        image.object_id = another_product.id
+        await save_object(db_session, image)
+        assert image.object_id == another_product.id
+        assert image.content_type == "products"
+        parent = await image.get_parent(db_session)
+        assert parent == another_product
+        assert parent.name == "another test product"
+
+    @pytest.mark.asyncio
+    async def test_create_image_with_invalid_product_id(
+        self, db_session: AsyncSession
+    ):
+        """Test creating image with invalid product id"""
+        image = Images(
+            file="test_folder/test11.jpg",
+            object_id=999,
+            content_type="products"
+        )
+
+        # Should not raise an error, validation will be handled in service layer
+        await save_object(db_session, image)
+        assert image.object_id == 999
+        assert image.content_type == "products"
+        parent = await image.get_parent(db_session)
+        assert parent is None
+        assert await count_model_objects(db_session, Images) == 3
+
+    @pytest.mark.asyncio
+    async def test_update_image_with_invalid_product_id(
+        self, db_session: AsyncSession
+    ):
+        """Test updating image with invalid product id"""
+        image = Images(
+            file="test_folder/test12.jpg",
+            object_id=self.test_category.id,
+            content_type="products"
+        )
+        await save_object(db_session, image)
+
+        image.object_id = 999
+        await save_object(db_session, image)
+        assert image.object_id == 999
+        assert image.content_type == "products"
+        parent = await image.get_parent(db_session)
+        assert parent is None
+        assert await count_model_objects(db_session, Images) == 3
+
+    @pytest.mark.asyncio
+    async def test_setting_object_id_to_null_fails(self, db_session: AsyncSession):
+        """Test setting object_id to null fails"""
+        image = Images(
+            file="test_folder/test13.jpg",
+            object_id=self.test_product.id,
+            content_type="products"
+        )
+        await save_object(db_session, image)
+
+        image.object_id = None
+        with pytest.raises(IntegrityError):
+            await save_object(db_session, image)
+        await db_session.rollback()
+
+    @pytest.mark.asyncio
+    async def test_delete_image_with_product_relationship(
+        self, db_session: AsyncSession
+    ):
+        """Test deleting image with product relationship"""
+        image = Images(
+            file="test_folder/test14.jpg",
+            object_id=self.test_product.id,
+            content_type="products"
+        )
+        await save_object(db_session, image)
+
+        product = await get_object_by_id(
+            db_session,
+            Products,
+            self.test_product.id
+        )
+        await db_session.refresh(product, ['images'])
+
+        product_images = product.images
+        assert product_images == [self.test_image2, image]
+
+        await delete_object(db_session, image)
+
+        deleted_image = await get_object_by_id(
+            db_session, Images, image.id
+        )
+        assert deleted_image is None
+
+        # Verify product still exists (should not be affected)
+        await db_session.refresh(product, ['images'])
+        assert product is not None
+        assert product.name == "Test Product"
+        product_images = product.images
+        assert product_images == [self.test_image2]
