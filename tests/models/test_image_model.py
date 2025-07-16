@@ -59,11 +59,8 @@ class TestImage:
         assert 'file' in Images.__mapper__.validators
         assert len(Images.__mapper__.validators) == 1
 
-    def test_has_hybrid_property(self):
-        assert isinstance(
-            Images.__dict__['parent'],
-            hybrid_property
-        )
+    def test_has_get_parent_method(self):
+        assert hasattr(Images, 'get_parent')
 
     def test_file_field_properties(self):
         file_column = Images.__table__.columns.get('file')
@@ -135,3 +132,144 @@ class TestImage:
         assert self.test_image2.content_type == 'products'
         parent = await self.test_image2.get_parent(db_session)
         assert parent == self.test_product
+
+    @pytest.mark.asyncio
+    async def test_create_operation(self, db_session: AsyncSession):
+        """Test the create operation"""
+        item = Images(
+            file="test_folder/test3.jpg",
+            object_id=self.test_category.id,
+            content_type="categories"
+        )
+        await save_object(db_session, item)
+
+        assert item.id == 3
+        assert item.file == "test_folder/test3.jpg"
+        assert item.title is None
+        assert item.is_primary is False
+        assert item.object_id == 1
+        assert item.content_type == 'categories'
+        parent = await item.get_parent(db_session)
+        assert parent == self.test_category
+        assert parent.name == "Test Category"
+        assert await count_model_objects(db_session, Images) == 3
+
+        item = Images(
+            file="test_folder/test4.jpg",
+            title="Test Image 4",
+            is_primary=True,
+            object_id=self.test_product.id,
+            content_type="products"
+        )
+        await save_object(db_session, item)
+        assert item.id == 4
+        assert item.file == "test_folder/test4.jpg"
+        assert item.title == "Test Image 4"
+        assert item.is_primary is True
+        assert item.object_id == 1
+        assert item.content_type == 'products'
+        parent = await item.get_parent(db_session)
+        assert parent == self.test_product
+        assert parent.name == "Test Product"
+        assert await count_model_objects(db_session, Images) == 4
+
+    @pytest.mark.asyncio
+    async def test_get_operation(self, db_session: AsyncSession):
+        """Test the get operation"""
+        item = await get_object_by_id(db_session, Images, self.test_image1.id)
+        assert item.id == 1
+        assert item.file == "test_folder/test1.jpg"
+        assert item.title is None
+        assert item.is_primary is False
+        assert item.object_id == 1
+        assert item.content_type == 'categories'
+        parent = await item.get_parent(db_session)
+        assert parent == self.test_category
+        assert parent.name == "Test Category"
+        assert await count_model_objects(db_session, Images) == 2
+
+        item = await get_object_by_id(db_session, Images, self.test_image2.id)
+        assert item.id == 2
+        assert item.file == "test_folder/test2.jpg"
+        assert item.title == "Test Image 2"
+        assert item.is_primary is True
+        assert item.object_id == 1
+        assert item.content_type == 'products'
+        parent = await item.get_parent(db_session)
+        assert parent == self.test_product
+        assert parent.name == "Test Product"
+        assert await count_model_objects(db_session, Images) == 2
+
+        items = await get_all_objects(db_session, Images)
+        assert len(items) == 2
+
+        assert items[0].id == 1
+        assert items[0].file == "test_folder/test1.jpg"
+        assert items[0].title is None
+        assert items[0].is_primary is False
+        assert items[0].object_id == 1
+        assert items[0].content_type == 'categories'
+        parent = await items[0].get_parent(db_session)
+        assert parent == self.test_category
+        assert parent.name == "Test Category"
+
+        assert items[1].id == 2
+        assert items[1].file == "test_folder/test2.jpg"
+        assert items[1].title == "Test Image 2"
+        assert items[1].is_primary is True
+        assert items[1].object_id == 1
+        assert items[1].content_type == 'products'
+        parent = await items[1].get_parent(db_session)
+        assert parent == self.test_product
+        assert parent.name == "Test Product"
+
+    @pytest.mark.asyncio
+    async def test_update_operation(self, db_session: AsyncSession, product_factory):
+        """Test the update operation"""
+        item = await get_object_by_id(db_session, Images, self.test_image1.id)
+        item.file = "Updated Test Image 1"
+        await save_object(db_session, item)
+
+        assert item.id == 1
+        assert item.file == "Updated Test Image 1"
+        assert item.title is None
+        assert item.is_primary is False
+        assert item.object_id == 1
+        assert item.content_type == 'categories'
+        parent = await item.get_parent(db_session)
+        assert parent == self.test_category
+        assert parent.name == "Test Category"
+        assert await count_model_objects(db_session, Images) == 2
+
+        product = await product_factory(name="Another Product")
+        item.object_id = product.id
+        await save_object(db_session, item)
+        assert item.id == 1
+        assert item.file == "Updated Test Image 1"
+        assert item.object_id == 2
+        assert item.title is None
+        assert item.content_type == 'categories'
+        parent = await item.get_parent(db_session)
+        assert parent is None  # No category found with id 2
+        assert await count_model_objects(db_session, Images) == 2
+
+        item.content_type = "products"
+        await save_object(db_session, item)
+        assert item.id == 1
+        assert item.file == "Updated Test Image 1"
+        assert item.object_id == 2
+        assert item.title is None
+        assert item.content_type == 'products'
+        parent = await item.get_parent(db_session)
+        assert parent == product
+        assert parent.name == "Another Product"
+        assert await count_model_objects(db_session, Images) == 2
+
+    @pytest.mark.asyncio
+    async def test_delete_operation(self, db_session: AsyncSession):
+        """Test the delete operation"""
+        await delete_object(db_session, self.test_image1)
+
+        item = await get_object_by_id(db_session, Images, self.test_image1.id)
+        assert item is None
+        assert await count_model_objects(db_session, Images) == 1
