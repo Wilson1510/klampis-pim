@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Boolean, Integer, event
+from sqlalchemy import Column, String, Boolean, Integer, event, CheckConstraint
 from sqlalchemy.orm import validates
 from sqlalchemy.ext.asyncio import AsyncSession
 import re
@@ -9,6 +9,15 @@ from app.core.base import Base
 class Images(Base):
     """
     Images model representing images in the system.
+
+    Business Rules:
+    - File name must not be empty and must start with a letter (both levels)
+    - Content type must be valid (enforced at application level)
+    - Object ID must be positive
+
+    Validation Strategy:
+    - Application Level: User-friendly errors and content type validation
+    - Database Level: Ensures data integrity for file format
     """
     CONTENT_TYPE_TO_CLASS = {}
 
@@ -18,6 +27,14 @@ class Images(Base):
 
     object_id = Column(Integer, nullable=False, index=True)
     content_type = Column(String(50), nullable=False, index=True)
+
+    # Database constraints
+    __table_args__ = (
+        CheckConstraint(
+            "file ~ '^[A-Za-z]'",
+            name='check_file_starts_with_letter'
+        ),
+    )
 
     async def get_parent(self, session: AsyncSession):
         """
@@ -30,6 +47,12 @@ class Images(Base):
 
     @validates('content_type')
     def validate_content_type(self, key, value):
+        """
+        Validate content type against registered model types.
+
+        This validation is only at application level since content types
+        are dynamically registered.
+        """
         if value and value.strip() and value not in self.CONTENT_TYPE_TO_CLASS:
             raise ValueError(
                 f"Invalid content_type: {value}. Must be one of "
@@ -40,8 +63,9 @@ class Images(Base):
     @validates('file')
     def validate_file(self, key, value):
         """
-        Validate file based on attribute's data_type. Create this validation to
-        prevent validation checking at listeners.
+        Validate file name format.
+
+        Database constraint serves as backup for data integrity.
         """
         value = value.strip()
         if value == "":

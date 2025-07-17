@@ -1,5 +1,5 @@
 from sqlalchemy import (
-    String, Integer, Boolean
+    String, Integer, Boolean, text
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import event
@@ -288,8 +288,8 @@ class TestImage:
         assert await count_model_objects(db_session, Images) == 1
 
 
-class TestImageValidation:
-    """Test suite for Image model validation"""
+class TestImageValidationDatabase:
+    """Test suite for Image model database validation"""
 
     @pytest.fixture(autouse=True)
     def setup_objects(self, setup_images):
@@ -297,7 +297,129 @@ class TestImageValidation:
             self.test_image2 = setup_images
 
     @pytest.mark.asyncio
-    async def test_valid_file_validation(self, db_session: AsyncSession):
+    async def test_valid_file_database_constraint(self, db_session: AsyncSession):
+        """Test valid file passes database constraint"""
+        valid_files = [
+            ("test_folder/test3.jpg", "test_folder/test3.jpg"),
+            ("a**&&/>n", "a**&&/>n"),
+            ("Name.jpg", "Name.jpg"),
+            ("    test.jpg    ", "test.jpg"),
+            ("R12345.png", "R12345.png"),
+            ("test_folder/test5.aaa", "test_folder/test5.aaa"),
+        ]
+
+        for input_file, expected_file in valid_files:
+            image = Images(
+                file=input_file,
+                object_id=self.test_category.id,
+                content_type="categories"
+            )
+            await save_object(db_session, image)
+            assert image.file == expected_file
+
+    @pytest.mark.asyncio
+    async def test_invalid_file_database_constraint(self, db_session: AsyncSession):
+        """Test invalid file fails database constraint"""
+        # Test files that don't start with letter - should fail at database level
+        invalid_files = [
+            "    ",
+            "",
+            "1234567890",
+            "*&^%$#@!~",
+            "^test_folder/test6.jpg",
+        ]
+        category_id = self.test_category.id
+
+        for invalid_file in invalid_files:
+            # Use raw SQL to bypass application validation and test database constraint
+            sql = text("""
+                INSERT INTO images (
+                       file,
+                       object_id,
+                       content_type,
+                       is_primary,
+                       is_active,
+                       sequence,
+                       created_by,
+                       updated_by
+                )
+                VALUES (
+                       :file,
+                       :object_id,
+                       :content_type,
+                       :is_primary,
+                       :is_active,
+                       :sequence,
+                       :created_by,
+                       :updated_by
+                )
+            """)
+
+            # This should fail at database level due to CheckConstraint
+            with pytest.raises(
+                IntegrityError, match="check_file_starts_with_letter"
+            ):
+                await db_session.execute(sql, {
+                    'file': invalid_file,
+                    'object_id': category_id,
+                    'content_type': 'categories',
+                    'is_active': True,
+                    'is_primary': False,
+                    'sequence': 1,
+                    'created_by': 1,  # System user ID
+                    'updated_by': 1   # System user ID
+                })
+            await db_session.rollback()
+
+    @pytest.mark.asyncio
+    async def test_update_file_database_constraint(self, db_session: AsyncSession):
+        """Test updating file with invalid value fails database constraint"""
+        # Create valid image first
+        image = Images(
+            file="valid_test.jpg",
+            object_id=self.test_category.id,
+            content_type="categories"
+        )
+        await save_object(db_session, image)
+
+        image_id = image.id
+
+        invalid_files = [
+            "   ",
+            "",
+            "1234567890",
+            "*&^%$#@!~",
+            "^test_folder/test6.jpg",
+        ]
+
+        # Try to update with invalid file name using raw SQL to bypass
+        # application validation
+        for invalid_file in invalid_files:
+            sql = text("""
+                UPDATE images
+                SET file = :new_file
+                WHERE id = :image_id
+            """)
+
+            with pytest.raises(
+                IntegrityError, match="check_file_starts_with_letter"
+            ):
+                await db_session.execute(sql, {
+                    'new_file': invalid_file,
+                    'image_id': image_id
+                })
+            await db_session.rollback()
+
+
+class TestImageValidationApplication:
+    """Test suite for Image model validation"""
+
+    @pytest.fixture(autouse=True)
+    def setup_objects(self, setup_images):
+        self.test_category, self.test_product, self.test_image1, \
+            self.test_image2 = setup_images
+
+    def test_valid_file_validation(self):
         """Test valid file validation"""
         valid_files = [
             ("test_folder/test3.jpg", "test_folder/test3.jpg"),
@@ -313,11 +435,9 @@ class TestImageValidation:
                 object_id=self.test_category.id,
                 content_type="categories"
             )
-            await save_object(db_session, item)
             assert item.file == expected_file
 
-    @pytest.mark.asyncio
-    async def test_invalid_file_validation(self, db_session: AsyncSession):
+    def test_invalid_file_validation(self):
         """Test invalid file validation"""
         invalid_files = [
             ("   ", "Column file cannot be empty"),
@@ -334,10 +454,29 @@ class TestImageValidation:
                     object_id=category_id,
                     content_type="categories"
                 )
-            await db_session.rollback()
 
-    @pytest.mark.asyncio
-    async def test_valid_content_type_validation(self, db_session: AsyncSession):
+    def test_update_file_invalid_validation(self):
+        """Test invalid file validation"""
+        invalid_files = [
+            ("   ", "Column file cannot be empty"),
+            ("", "Column file cannot be empty"),
+            ("1234567890", "Column file must start with a letter"),
+            ("*&^%$#@!~", "Column file must start with a letter"),
+            ("^test_folder/test6.jpg", "Column file must start with a letter"),
+        ]
+        category_id = self.test_category.id
+
+        image = Images(
+            file="test_folder/test3.jpg",
+            object_id=category_id,
+            content_type="categories"
+        )
+
+        for input_file, expected_error in invalid_files:
+            with pytest.raises(ValueError, match=expected_error):
+                image.file = input_file
+
+    def test_valid_content_type_validation(self):
         """Test valid content type validation"""
         valid_content_types = [
             ("categories", "categories"),
@@ -351,11 +490,9 @@ class TestImageValidation:
                 object_id=self.test_category.id,
                 content_type=input_content_type
             )
-            await save_object(db_session, image)
             assert image.content_type == expected_content_type
 
-    @pytest.mark.asyncio
-    async def test_invalid_content_type_validation(self, db_session: AsyncSession):
+    def test_invalid_content_type_validation(self):
         """Test invalid content type validation"""
         invalid_content_types = [
             (
@@ -375,7 +512,22 @@ class TestImageValidation:
                     object_id=category_id,
                     content_type=input_content_type
                 )
-            await db_session.rollback()
+
+    def test_update_content_type_invalid_validation(self):
+        """Test updating content type validation"""
+        invalid_content_types = [
+            ("skus", "Invalid content_type: skus. Must be one of"),
+            ("suppliers", "Invalid content_type: suppliers. Must be one of"),
+        ]
+        category_id = self.test_category.id
+        image = Images(
+            file="test_folder/test3.jpg",
+            object_id=category_id,
+            content_type="categories"
+        )
+        for input_content_type, expected_error in invalid_content_types:
+            with pytest.raises(ValueError, match=expected_error):
+                image.content_type = input_content_type
 
 
 class TestImageCategoryRelationship:
