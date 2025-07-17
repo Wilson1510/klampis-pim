@@ -60,6 +60,25 @@ def _validate_all_types_on_save(mapper, connection, target):
                     continue
                 raise ValueError(f"Column '{column.key}' cannot be empty.")
 
+            if 'email' in column.key.lower():
+                if '@' not in value:
+                    raise ValueError(f"Column '{column.key}' must contain '@'.")
+                if '@' in [value[0], value[-1]]:
+                    raise ValueError(
+                        f"Column '{column.key}' must not start or end with '@'."
+                    )
+                setattr(target, column.key, value)
+                continue
+
+            phone_patterns = [
+                'contact', 'phone', 'mobile', 'telp'
+            ]
+
+            if any(pattern in column.key.lower() for pattern in phone_patterns):
+                if not value.isdigit():
+                    raise ValueError(f"Column '{column.key}' must contain only digits.")
+                continue
+
             if isinstance(column.type, Text):
                 continue
 
@@ -107,6 +126,20 @@ def _validate_all_types_on_save(mapper, connection, target):
                 raise TypeError(
                     f"Column '{column.key}' must be a numeric, not a boolean."
                 )
+
+        # Validation for Integer and Numeric types - AUTOMATIC positive validation
+        elif isinstance(column.type, (Integer, Numeric, Float)):
+            # Auto-detect positive columns based on common patterns
+            positive_patterns = [
+                'quantity', 'minimum_', 'price'
+            ]
+
+            if any(pattern in column.key.lower() for pattern in positive_patterns):
+                if isinstance(value, (int, float)) and value <= 0:
+                    raise ValueError(
+                        f"Column '{column.key}' must be a positive number "
+                        "(greater than 0)."
+                    )
 
         elif isinstance(column.type, DateTime):
             # There are certain string values that can be converted to datetime

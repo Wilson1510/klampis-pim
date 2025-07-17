@@ -3,7 +3,6 @@ import enum
 from sqlalchemy import (
     Column, DateTime, Integer, String, ForeignKey, Enum, CheckConstraint
 )
-from sqlalchemy.orm import validates
 
 from app.core.base import Base
 
@@ -65,24 +64,6 @@ class Users(Base):
             name='check_email_format'
         ),
     )
-
-    @validates('email')
-    def validate_email(self, key, value):
-        """
-        Validate email field with user-friendly error messages.
-
-        Database constraint serves as backup for data integrity.
-        """
-        if not isinstance(value, str):
-            return value
-
-        if '@' not in value:
-            raise ValueError("Invalid email format (must contain '@').")
-
-        if '@' in [value[0], value[-1]]:
-            raise ValueError("Invalid email format (must not start or end with '@').")
-
-        return value.lower().strip()
 
     def __str__(self) -> str:
         """String representation of the user."""

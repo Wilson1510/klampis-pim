@@ -1,7 +1,7 @@
 from sqlalchemy import (
     Column, Integer, Numeric, ForeignKey, UniqueConstraint, CheckConstraint
 )
-from sqlalchemy.orm import relationship, validates
+from sqlalchemy.orm import relationship
 
 from app.core.base import Base
 
@@ -57,31 +57,6 @@ class PriceDetails(Base):
             name='check_minimum_quantity_positive'
         ),
     )
-
-    # Application level validation - User-friendly error messages
-    @validates('price')
-    def validate_price(self, key, value):
-        """
-        Validate price to ensure it's positive.
-
-        This provides early validation with user-friendly error messages.
-        Database constraint serves as backup for data integrity.
-        """
-        if value is not None and value <= 0:
-            raise ValueError("Price must be greater than zero")
-        return value
-
-    @validates('minimum_quantity')
-    def validate_minimum_quantity(self, key, value):
-        """
-        Validate minimum quantity to ensure it's positive.
-
-        This provides early validation with user-friendly error messages.
-        Database constraint serves as backup for data integrity.
-        """
-        if value is not None and value <= 0:
-            raise ValueError("Minimum quantity must be greater than zero")
-        return value
 
     def __str__(self) -> str:
         """Return a string representation of the PriceDetails model."""
