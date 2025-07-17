@@ -285,8 +285,7 @@ class TestSupplier:
 class TestSupplierValidation:
     """Test suite for Supplier model validation"""
 
-    @pytest.mark.asyncio
-    async def test_valid_contact_validation(self, db_session: AsyncSession):
+    def test_valid_contact_validation(self):
         """Test valid contact validation"""
         # Valid numeric contact
         valid_contacts = [
@@ -301,11 +300,9 @@ class TestSupplierValidation:
                 contact=input_contact,
                 email=f"testcontact{i}@example.com"
             )
-            await save_object(db_session, supplier)
             assert supplier.contact == expected_contact
 
-    @pytest.mark.asyncio
-    async def test_invalid_contact_validation(self, db_session: AsyncSession):
+    def test_invalid_contact_validation(self):
         """Test invalid contact validation"""
         # Contact with non-digit characters should raise ValueError
         invalid_contacts = [
@@ -321,10 +318,25 @@ class TestSupplierValidation:
                     contact=input_contact,
                     email=f"testinvalid{i}@example.com"
                 )
-            await db_session.rollback()
 
-    @pytest.mark.asyncio
-    async def test_valid_email_validation(self, db_session: AsyncSession):
+    def test_update_to_invalid_contact(self):
+        """Test updating to an invalid contact"""
+        supplier = Suppliers(
+            name="Invalid Contact",
+            company_type="PT",
+            address="test address",
+            contact="081234567894",
+            email="testinvalidcontact@example.com"
+        )
+        invalid_contacts = [
+            "081-234-567-896",
+            "08123456789a"
+        ]
+        for input_contact in invalid_contacts:
+            with pytest.raises(ValueError, match="Contact must contain only digits"):
+                supplier.contact = input_contact
+
+    def test_valid_email_validation(self):
         """Test valid email validation"""
         # Test various valid email formats
         valid_emails = [
@@ -345,14 +357,12 @@ class TestSupplierValidation:
                 contact=f"0812345678{str(i+10).zfill(2)}",
                 email=input_email
             )
-            await save_object(db_session, supplier)
 
             # Verify email was processed correctly
             assert supplier.email == expected_email
             assert '@' in supplier.email
 
-    @pytest.mark.asyncio
-    async def test_invalid_email_validation(self, db_session: AsyncSession):
+    def test_invalid_email_validation(self):
         """Test invalid email validation"""
         # Test invalid email formats
         invalid_emails = [
@@ -372,7 +382,26 @@ class TestSupplierValidation:
                     contact=f"0812345678{str(i+10).zfill(2)}",
                     email=email
                 )
-            await db_session.rollback()
+
+    def test_update_to_invalid_email(self):
+        """Test updating to an invalid email"""
+        supplier = Suppliers(
+            name="Invalid Email",
+            company_type="PT",
+            address="test address",
+            contact="081234567894",
+            email="testinvalidemail@example.com"
+        )
+        invalid_emails = [
+            "invalid-email",
+            "test@",
+            "@example.com",
+            "",
+            "   ",
+        ]
+        for email in invalid_emails:
+            with pytest.raises(ValueError, match="Invalid email format"):
+                supplier.email = email
 
 
 class TestSupplierProductRelationship:

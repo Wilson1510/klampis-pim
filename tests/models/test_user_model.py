@@ -320,8 +320,7 @@ class TestUser:
         assert retrieved_item.role == "ADMIN"
 
     # Email Validation Tests
-    @pytest.mark.asyncio
-    async def test_email_validation_valid_formats(self, db_session: AsyncSession):
+    def test_email_validation_valid_formats(self):
         """Test email validator with valid email formats by saving to database"""
         # Test various valid email formats
         valid_emails = [
@@ -342,14 +341,12 @@ class TestUser:
                 password="testpassword",
                 role="USER"
             )
-            await save_object(db_session, user)
 
             # Verify email was processed correctly
             assert user.email == expected_email
             assert '@' in user.email
 
-    @pytest.mark.asyncio
-    async def test_email_validation_invalid_formats(self, db_session: AsyncSession):
+    def test_email_validation_invalid_formats(self):
         """Test email validator with invalid email formats"""
         # Test invalid email formats
         invalid_emails = [
@@ -369,7 +366,26 @@ class TestUser:
                     password="testpassword",
                     role="USER"
                 )
-            await db_session.rollback()
+
+    def test_update_to_invalid_email(self):
+        """Test updating to an invalid email"""
+        user = Users(
+            username="Invalid Email",
+            email="testinvalidemail@example.com",
+            name="Invalid Email",
+            password="testpassword",
+            role="USER"
+        )
+        invalid_emails = [
+            "invalid-email",
+            "test@",
+            "@example.com",
+            "",
+            "   ",
+        ]
+        for email in invalid_emails:
+            with pytest.raises(ValueError, match="Invalid email format"):
+                user.email = email
 
     @pytest.mark.asyncio
     async def test_password_update_hashing(self, db_session: AsyncSession):

@@ -269,8 +269,7 @@ class TestSkuValidation:
         """Setup method for the test suite"""
         self.test_product, self.test_sku1, self.test_sku2 = setup_skus
 
-    @pytest.mark.asyncio
-    async def test_valid_sku_number_validation(self, db_session: AsyncSession):
+    def test_valid_sku_number_validation(self):
         """Test valid sku_number validation"""
         valid_sku_numbers = [
             "ABCDEF1234",
@@ -284,11 +283,9 @@ class TestSkuValidation:
                 product_id=self.test_product.id,
                 sku_number=sku_num
             )
-            await save_object(db_session, sku)
             assert sku.sku_number == sku_num
 
-    @pytest.mark.asyncio
-    async def test_invalid_sku_number_validation(self, db_session: AsyncSession):
+    def test_invalid_sku_number_validation(self):
         """Test invalid sku_number validation"""
         product_id = self.test_product.id
         # Test for length
@@ -303,7 +300,6 @@ class TestSkuValidation:
                     product_id=product_id,
                     sku_number=sku_num
                 )
-            await db_session.rollback()
 
         # Test for invalid characters
         invalid_char_skus = ["GHIJKLM123", "ABC-123-DE"]
@@ -317,7 +313,29 @@ class TestSkuValidation:
                     product_id=product_id,
                     sku_number=sku_num
                 )
-            await db_session.rollback()
+
+    def test_update_to_invalid_sku_number(self):
+        """Test updating to an invalid sku_number"""
+        sku = Skus(
+            name="Invalid SKU Number",
+            product_id=self.test_product.id,
+            sku_number="ABCDEF1234"
+        )
+        invalid_length_skus = ["12345", "12345678901"]
+        for sku_num in invalid_length_skus:
+            with pytest.raises(
+                ValueError,
+                match="SKU number must be exactly 10 characters long."
+            ):
+                sku.sku_number = sku_num
+
+        invalid_char_skus = ["GHIJKLM123", "ABC-123-DE"]
+        for sku_num in invalid_char_skus:
+            with pytest.raises(
+                ValueError,
+                match="SKU number must only contain 0-9 or A-F characters."
+            ):
+                sku.sku_number = sku_num
 
 
 class TestSkuProductRelationship:

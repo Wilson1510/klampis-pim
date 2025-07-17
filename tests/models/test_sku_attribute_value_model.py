@@ -357,6 +357,16 @@ class TestSkuAttributeValueValidation:
                 value=""
             )
 
+    def test_update_to_empty_value(self):
+        """Test that updating to an empty value is allowed"""
+        sku_attribute_value = SkuAttributeValue(
+            sku_id=self.test_sku1.id,
+            attribute_id=self.test_attribute2.id,
+            value="Test Value"
+        )
+        with pytest.raises(ValueError):
+            sku_attribute_value.value = ""
+
 
 class TestSkuAttributeValueSkuRelationship:
     """Test suite for SkuAttributeValue model relationships with Sku model"""
