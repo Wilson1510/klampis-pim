@@ -1,4 +1,4 @@
-from sqlalchemy import String, event, Text, Integer, CheckConstraint, select
+from sqlalchemy import String, event, Text, Integer, CheckConstraint, select, and_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 import pytest
@@ -8,7 +8,9 @@ from app.models.category_type_model import CategoryTypes
 from app.models.category_model import Categories
 from app.models.product_model import Products
 from app.models.attribute_set_model import AttributeSets
+from app.models.image_model import Images
 from app.core.listeners import _set_slug
+from app.utils.mixins import Imageable
 from tests.utils.model_test_utils import (
     save_object,
     get_object_by_id,
@@ -51,11 +53,13 @@ class TestCategory:
     def test_inheritance_from_base_model(self):
         """Test that Category model inherits from Base model"""
         assert issubclass(Categories, Base)
+        assert issubclass(Categories, Imageable)
 
     def test_fields_with_validation(self):
         """Test that Category model has fields with validation"""
+        assert hasattr(Categories, 'validate_image')
         assert not hasattr(Categories, 'validate_name')
-        assert len(Categories.__mapper__.validators) == 0
+        assert len(Categories.__mapper__.validators) == 1
 
     def test_has_listeners(self):
         """Test that the model has the expected listeners"""
@@ -294,6 +298,23 @@ class TestCategory:
         item = await get_object_by_id(db_session, Categories, self.test_category2.id)
         assert item is None
         assert await count_model_objects(db_session, Categories) == 1
+
+
+class TestCategoryValidation:
+    """Test suite for Category model validation"""
+
+    @pytest.fixture(autouse=True)
+    def setup_objects(self, setup_categories):
+        """Setup method for the test suite"""
+        self.test_category_type, self.test_category1, self.test_category2 = \
+            setup_categories
+
+    @pytest.mark.asyncio
+    async def test_image_validation_provided_content_type(
+        self, db_session: AsyncSession
+    ):
+        """Test valid image content_type validation"""
+        pass
 
 
 class TestCategoryConstraint:
@@ -1300,3 +1321,206 @@ class TestCategoryAttributeSetRelationship:
         assert len(categories) == 2
         assert self.test_category1 in categories
         assert self.test_category2 in categories
+
+
+class TestCategoryImageRelationship:
+    """Test suite for Category model relationships with Image model"""
+
+    @pytest.fixture(autouse=True)
+    def setup_objects(self, setup_categories):
+        """Setup method for the test suite"""
+        self.test_category_type, self.test_category1, self.test_category2 = \
+            setup_categories
+
+    @pytest.mark.asyncio
+    async def test_create_category_with_images(self, db_session: AsyncSession):
+        """Test creating category with images (valid scenario)"""
+        category = Categories(
+            name="Test Category with Images",
+            description="Test Description with Images",
+            category_type_id=self.test_category_type.id,
+            images=[Images(file="test image 1"), Images(file="test image 2")]
+        )
+        await save_object(db_session, category)
+
+        retrieved_category = await get_object_by_id(
+            db_session,
+            Categories,
+            category.id
+        )
+        await db_session.refresh(retrieved_category, ['images'])
+
+        assert retrieved_category.id == 3
+        assert retrieved_category.name == "Test Category with Images"
+        assert retrieved_category.description == "Test Description with Images"
+        assert len(retrieved_category.images) == 2
+
+        assert retrieved_category.images[0].file == "test image 1"
+        assert retrieved_category.images[0].is_primary is False
+        assert retrieved_category.images[0].title is None
+        assert retrieved_category.images[0].object_id == retrieved_category.id
+        assert retrieved_category.images[0].content_type == "categories"
+        parent = await retrieved_category.images[0].get_parent(db_session)
+        assert parent == category
+
+        assert retrieved_category.images[1].file == "test image 2"
+        assert retrieved_category.images[1].is_primary is False
+        assert retrieved_category.images[1].title is None
+        assert retrieved_category.images[1].object_id == retrieved_category.id
+        assert retrieved_category.images[1].content_type == "categories"
+        parent = await retrieved_category.images[1].get_parent(db_session)
+        assert parent == category
+
+    @pytest.mark.asyncio
+    async def test_add_multiple_images_to_category(self, db_session: AsyncSession):
+        """Test adding multiple images to category"""
+        for i in range(5):
+            image = Images(
+                file=f"test image {i}",
+                object_id=self.test_category1.id,
+                content_type="categories"
+            )
+            await save_object(db_session, image)
+
+        retrieved_category = await get_object_by_id(
+            db_session,
+            Categories,
+            self.test_category1.id
+        )
+        await db_session.refresh(retrieved_category, ['images'])
+
+        assert len(retrieved_category.images) == 5
+        for i in range(5):
+            assert retrieved_category.images[i].id == i + 1
+            assert retrieved_category.images[i].file == f"test image {i}"
+            assert retrieved_category.images[i].is_primary is False
+            assert retrieved_category.images[i].title is None
+            assert retrieved_category.images[i].object_id == retrieved_category.id
+            assert retrieved_category.images[i].content_type == "categories"
+            parent = await retrieved_category.images[i].get_parent(db_session)
+            assert parent == retrieved_category
+
+    @pytest.mark.asyncio
+    async def test_update_categories_images(self, db_session: AsyncSession):
+        """Test updating a category's images"""
+        category = await get_object_by_id(
+            db_session,
+            Categories,
+            self.test_category1.id
+        )
+        await db_session.refresh(category, ['images'])
+        assert len(category.images) == 0
+
+        category.images = [Images(file="test image 1"), Images(file="test image 2")]
+        await save_object(db_session, category)
+        await db_session.refresh(category, ['images'])
+        assert len(category.images) == 2
+
+        assert category.images[0].file == "test image 1"
+        parent = await category.images[0].get_parent(db_session)
+        assert parent == category
+        assert category.images[1].file == "test image 2"
+        parent = await category.images[1].get_parent(db_session)
+        assert parent == category
+
+        category.images = [
+            Images(file="test image 3"),
+            Images(file="test image 4"),
+            Images(file="test image 5")
+        ]
+
+        with pytest.raises(IntegrityError):
+            await save_object(db_session, category)
+        await db_session.rollback()
+
+    @pytest.mark.asyncio
+    async def test_category_deletion_with_images(self, db_session: AsyncSession):
+        """Test what happens when trying to delete category with associated images"""
+        # Create image associated with the category
+        image = Images(
+            file="Test Image Delete",
+            object_id=self.test_category1.id,
+            content_type="categories"
+        )
+        await save_object(db_session, image)
+
+        # Try to delete category that has associated images
+        with pytest.raises(IntegrityError):
+            await delete_object(db_session, self.test_category1)
+        await db_session.rollback()
+
+    @pytest.mark.asyncio
+    async def test_orphaned_image_cleanup(self, db_session: AsyncSession):
+        """Test handling of images when their category is deleted"""
+        # Create temporary category
+        temp_category = Categories(
+            name="Temporary Category",
+            description="Temporary description",
+            category_type_id=self.test_category_type.id
+        )
+        await save_object(db_session, temp_category)
+
+        # Create image associated with temp category
+        temp_image = Images(
+            file="Temporary Image",
+            object_id=temp_category.id,
+            content_type="categories"
+        )
+        await save_object(db_session, temp_image)
+
+        # Try to delete the category (should fail due to foreign key)
+        with pytest.raises(IntegrityError):
+            await delete_object(db_session, temp_category)
+        await db_session.rollback()
+
+        # To properly delete, first remove the image
+        await delete_object(db_session, temp_image)
+
+        # Now category can be deleted
+        await delete_object(db_session, temp_category)
+
+        # Verify both are deleted
+        deleted_image = await get_object_by_id(
+            db_session, Images, temp_image.id
+        )
+        deleted_category = await get_object_by_id(
+            db_session, Categories, temp_category.id
+        )
+
+        assert deleted_image is None
+        assert deleted_category is None
+
+    @pytest.mark.asyncio
+    async def test_query_category_by_images(self, db_session: AsyncSession):
+        """Test querying category by images"""
+        # Create images associated with different categories
+        image1 = Images(
+            file="Query Image 1",
+            object_id=self.test_category1.id,
+            content_type="categories"
+        )
+        await save_object(db_session, image1)
+
+        image2 = Images(
+            file="Query Image 2",
+            object_id=self.test_category2.id,
+            content_type="categories"
+        )
+        await save_object(db_session, image2)
+
+        # Query category by images using raw SQL
+        stmt = select(Categories).join(
+            Images,
+            and_(
+                Categories.id == Images.object_id,
+                Images.content_type == "categories"
+            )
+        ).where(
+            Images.file == "Query Image 1"
+        )
+        result = await db_session.execute(stmt)
+        category = result.scalar_one_or_none()
+
+        assert category.id == self.test_category1.id
+        assert category.name == "Test Category 1"
+        assert category.slug == "test-category-1"
