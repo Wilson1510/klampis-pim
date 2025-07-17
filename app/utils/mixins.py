@@ -1,6 +1,7 @@
 from sqlalchemy import and_
 from sqlalchemy.orm import relationship, foreign
 from sqlalchemy.ext.declarative import declared_attr
+from sqlalchemy.orm import validates
 
 
 class Imageable:
@@ -19,6 +20,15 @@ class Imageable:
                 cls.id == foreign(Images.object_id),
                 Images.content_type == cls.__tablename__
             ),
-            cascade="all, delete-orphan",
             overlaps="images"
         )
+
+    @validates('images')
+    def validate_image(self, key, image):
+        """
+        Automatically set content_type when image is added to collection and no
+        content_type is provided.
+        """
+        if not image.content_type:
+            image.content_type = self.__tablename__
+        return image
