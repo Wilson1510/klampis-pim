@@ -30,7 +30,7 @@ class Images(Base):
 
     @validates('content_type')
     def validate_content_type(self, key, value):
-        if value not in self.CONTENT_TYPE_TO_CLASS:
+        if value and value.strip() and value not in self.CONTENT_TYPE_TO_CLASS:
             raise ValueError(
                 f"Invalid content_type: {value}. Must be one of "
                 f"{set(self.CONTENT_TYPE_TO_CLASS.keys())}"

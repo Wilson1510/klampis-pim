@@ -27,8 +27,15 @@ class Imageable:
     def validate_image(self, key, image):
         """
         Automatically set content_type when image is added to collection and no
-        content_type is provided.
+        content_type is provided or is empty string.
         """
-        if not image.content_type:
+        # Only auto-set for None or empty string values
+        if (
+            image.content_type is None or
+            (
+                isinstance(image.content_type, str) and
+                image.content_type.strip() == ""
+            )
+        ):
             image.content_type = self.__tablename__
         return image
