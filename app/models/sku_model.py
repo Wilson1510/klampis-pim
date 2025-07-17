@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import Column, String, Text, Integer, ForeignKey
+from sqlalchemy import Column, String, Text, Integer, ForeignKey, CheckConstraint
 from sqlalchemy.orm import relationship, validates
 
 from app.core.base import Base
@@ -16,6 +16,15 @@ class Skus(Base):
 
     It has a many-to-many relationship with Attributes through the SkuAttributeValue
     association object, which stores the specific value for each attribute.
+
+    Business Rules:
+    - SKU number must be exactly 10 characters, hexadecimal only (both levels)
+    - SKU number must be unique
+    - Name must not be empty
+
+    Validation Strategy:
+    - Application Level: Provides user-friendly error messages and format validation
+    - Database Level: Ensures data integrity for SKU number format
     """
     name = Column(String(100), nullable=False, index=True)
     slug = Column(String(100), unique=True, nullable=False, index=True)
@@ -42,6 +51,18 @@ class Skus(Base):
     )
     price_details = relationship("PriceDetails", back_populates="sku")
 
+    # Database constraints
+    __table_args__ = (
+        CheckConstraint(
+            "LENGTH(sku_number) = 10",
+            name='check_sku_number_length'
+        ),
+        CheckConstraint(
+            "sku_number ~ '^[0-9A-F]{10}$'",
+            name='check_sku_number_format'
+        ),
+    )
+
     @validates('sku_number')
     def validate_sku_number(self, key, value):
         """
@@ -49,6 +70,8 @@ class Skus(Base):
 
         The SKU number must be exactly 10 characters long and
         contain only hexadecimal characters (0-9, A-F).
+
+        Database constraint serves as backup for data integrity.
         """
         if not isinstance(value, str):
             return value

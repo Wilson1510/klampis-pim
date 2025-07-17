@@ -1,6 +1,8 @@
 import enum
 
-from sqlalchemy import Column, DateTime, Integer, String, ForeignKey, Enum
+from sqlalchemy import (
+    Column, DateTime, Integer, String, ForeignKey, Enum, CheckConstraint
+)
 from sqlalchemy.orm import validates
 
 from app.core.base import Base
@@ -20,6 +22,15 @@ class Users(Base):
     This model stores user authentication and profile information.
     All other models reference this for audit trail purposes.
     Passwords are automatically hashed using bcrypt when set.
+
+    Business Rules:
+    - Email must contain '@' and not start/end with '@' (enforced at both levels)
+    - Username must be unique and not empty
+    - Password must not be empty (length handled by bcrypt)
+
+    Validation Strategy:
+    - Application Level: Provides user-friendly error messages and email normalization
+    - Database Level: Ensures data integrity for email format
     """
     username = Column(
         String(20),
@@ -47,9 +58,21 @@ class Users(Base):
         default=None
     )
 
+    # Database constraints
+    __table_args__ = (
+        CheckConstraint(
+            "email ~ '^[^@]+@[^@]+$'",
+            name='check_email_format'
+        ),
+    )
+
     @validates('email')
     def validate_email(self, key, value):
-        """Validate email field."""
+        """
+        Validate email field with user-friendly error messages.
+
+        Database constraint serves as backup for data integrity.
+        """
         if not isinstance(value, str):
             return value
 

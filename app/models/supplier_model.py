@@ -1,6 +1,6 @@
 import enum
 
-from sqlalchemy import Column, Enum, String, Text
+from sqlalchemy import Column, Enum, String, Text, CheckConstraint
 from sqlalchemy.orm import validates, relationship
 
 from app.core.base import Base
@@ -20,6 +20,15 @@ class Suppliers(Base):
     This model stores supplier information including company details,
     contact information, and addresses. Suppliers can provide multiple
     products to the system.
+
+    Business Rules:
+    - Contact must contain only digits (enforced at both levels)
+    - Email must contain '@' and not start/end with '@' (enforced at both levels)
+    - Name and company_type are required
+
+    Validation Strategy:
+    - Application Level: Provides user-friendly error messages and data normalization
+    - Database Level: Ensures data integrity for contact and email format
     """
     name = Column(String(100), nullable=False, index=True)
     slug = Column(String(100), unique=True, nullable=False, index=True)
@@ -31,9 +40,25 @@ class Suppliers(Base):
     # Relationships
     products = relationship("Products", back_populates="supplier")
 
+    # Database constraints
+    __table_args__ = (
+        CheckConstraint(
+            "contact ~ '^[0-9]+$'",
+            name='check_contact_digits_only'
+        ),
+        CheckConstraint(
+            "email ~ '^[^@]+@[^@]+$'",
+            name='check_email_format'
+        ),
+    )
+
     @validates('contact')
     def validate_contact(self, key, value):
-        """Validate contact field."""
+        """
+        Validate contact field to ensure it contains only digits.
+
+        Database constraint serves as backup for data integrity.
+        """
         if not isinstance(value, str):
             return value
 
@@ -43,7 +68,11 @@ class Suppliers(Base):
 
     @validates('email')
     def validate_email(self, key, value):
-        """Validate email field."""
+        """
+        Validate email field with user-friendly error messages.
+
+        Database constraint serves as backup for data integrity.
+        """
         if not isinstance(value, str):
             return value
 
