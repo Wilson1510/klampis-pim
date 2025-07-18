@@ -43,7 +43,7 @@ class TestPriceDetail:
     @pytest.fixture(autouse=True)
     def setup_objects(self, setup_price_details):
         """Setup method for the test suite"""
-        self.test_pricelist, self.test_sku, self.test_price_detail1, \
+        self.test_sku, self.test_pricelist, self.test_price_detail1, \
             self.test_price_detail2 = setup_price_details
 
     def test_inheritance_from_base_model(self):
@@ -243,10 +243,12 @@ class TestPriceDetailValidationDatabase:
     """Test suite for PriceDetail model constraints"""
 
     @pytest.fixture(autouse=True)
-    def setup_objects(self, setup_price_details):
+    async def setup_objects(self, setup_price_details, pricelist_factory, sku_factory):
         """Setup method for the test suite"""
-        self.test_pricelist, self.test_sku, self.test_price_detail1, \
+        self.test_sku, self.test_pricelist, self.test_price_detail1, \
             self.test_price_detail2 = setup_price_details
+        self.another_pricelist = await pricelist_factory(name="Another Pricelist")
+        self.another_sku = await sku_factory(name="Another SKU")
 
     @pytest.mark.asyncio
     async def test_create_item_same_all_fields(
@@ -270,6 +272,32 @@ class TestPriceDetailValidationDatabase:
         assert await count_model_objects(db_session, PriceDetails) == 2
 
     @pytest.mark.asyncio
+    async def test_update_item_same_all_fields(
+        self, db_session: AsyncSession
+    ):
+        """
+        Test the update operation with same all fields.
+        """
+        # Create valid price detail
+        item = PriceDetails(
+            price=300.00,
+            minimum_quantity=3,
+            sku_id=self.another_sku.id,
+            pricelist_id=self.another_pricelist.id
+        )
+        await save_object(db_session, item)
+
+        # Try to update to invalid state (same all fields)
+        item.price = 100.00
+        item.minimum_quantity = 1
+        item.sku_id = self.test_sku.id
+        item.pricelist_id = self.test_pricelist.id
+        with pytest.raises(IntegrityError):
+            await save_object(db_session, item)
+
+        await db_session.rollback()
+
+    @pytest.mark.asyncio
     async def test_create_item_same_sku_id_pricelist_id_min_qty(
         self, db_session: AsyncSession
     ):
@@ -290,6 +318,29 @@ class TestPriceDetailValidationDatabase:
         assert await count_model_objects(db_session, PriceDetails) == 2
 
     @pytest.mark.asyncio
+    async def test_update_item_same_sku_id_pricelist_id_min_qty(
+        self, db_session: AsyncSession
+    ):
+        """
+        Test the update operation with same sku_id, pricelist_id, and minimum_quantity.
+        """
+        price_detail = PriceDetails(
+            price=300.00,
+            minimum_quantity=3,
+            sku_id=self.another_sku.id,
+            pricelist_id=self.another_pricelist.id
+        )
+        await save_object(db_session, price_detail)
+
+        price_detail.sku_id = self.test_sku.id
+        price_detail.pricelist_id = self.test_pricelist.id
+        price_detail.minimum_quantity = 1
+        with pytest.raises(IntegrityError):
+            await save_object(db_session, price_detail)
+
+        await db_session.rollback()
+
+    @pytest.mark.asyncio
     async def test_create_item_same_sku_id_pricelist_id(
         self, db_session: AsyncSession
     ):
@@ -308,38 +359,125 @@ class TestPriceDetailValidationDatabase:
         assert await count_model_objects(db_session, PriceDetails) == 3
 
     @pytest.mark.asyncio
+    async def test_update_item_same_sku_id_pricelist_id(
+        self, db_session: AsyncSession
+    ):
+        """
+        Test the update operation with same sku_id, pricelist_id.
+        """
+        price_detail = PriceDetails(
+            price=300.00,
+            minimum_quantity=3,
+            sku_id=self.another_sku.id,
+            pricelist_id=self.another_pricelist.id
+        )
+
+        await save_object(db_session, price_detail)
+        assert price_detail.sku_id == self.another_sku.id
+        assert price_detail.sku == self.another_sku
+        assert price_detail.sku.name == "Another SKU"
+
+        assert price_detail.pricelist_id == self.another_pricelist.id
+        assert price_detail.pricelist == self.another_pricelist
+        assert price_detail.pricelist.name == "Another Pricelist"
+
+        price_detail.sku_id = self.test_sku.id
+        price_detail.pricelist_id = self.test_pricelist.id
+        await save_object(db_session, price_detail)
+
+        assert price_detail.sku_id == self.test_sku.id
+        assert price_detail.sku == self.test_sku
+        assert price_detail.sku.name == "Test SKU"
+
+        assert price_detail.pricelist_id == self.test_pricelist.id
+        assert price_detail.pricelist == self.test_pricelist
+        assert price_detail.pricelist.name == "Test Pricelist"
+
+    @pytest.mark.asyncio
     async def test_create_item_same_sku_id_min_qty(
-        self, db_session: AsyncSession, pricelist_factory
+        self, db_session: AsyncSession
     ):
         """
         Test the create operation with same sku_id, minimum_quantity.
         """
-        another_pricelist = await pricelist_factory(name="Another Pricelist")
         duplicate_price_detail = PriceDetails(
             price=300.00,
             minimum_quantity=1,
             sku_id=self.test_sku.id,
-            pricelist_id=another_pricelist.id
+            pricelist_id=self.another_pricelist.id
         )
         await save_object(db_session, duplicate_price_detail)
         assert await count_model_objects(db_session, PriceDetails) == 3
 
     @pytest.mark.asyncio
+    async def test_update_item_same_sku_id_min_qty(
+        self, db_session: AsyncSession
+    ):
+        """
+        Test the update operation with same sku_id, minimum_quantity.
+        """
+        price_detail = PriceDetails(
+            price=300.00,
+            minimum_quantity=3,
+            sku_id=self.another_sku.id,
+            pricelist_id=self.another_pricelist.id
+        )
+        await save_object(db_session, price_detail)
+        assert price_detail.sku_id == self.another_sku.id
+        assert price_detail.sku == self.another_sku
+        assert price_detail.sku.name == "Another SKU"
+        assert price_detail.minimum_quantity == 3
+
+        price_detail.sku_id = self.test_sku.id
+        price_detail.minimum_quantity = 1
+        await save_object(db_session, price_detail)
+        assert price_detail.sku_id == self.test_sku.id
+        assert price_detail.sku == self.test_sku
+        assert price_detail.sku.name == "Test SKU"
+        assert price_detail.minimum_quantity == 1
+
+    @pytest.mark.asyncio
     async def test_create_item_same_pricelist_id_min_qty(
-        self, db_session: AsyncSession, sku_factory
+        self, db_session: AsyncSession
     ):
         """
         Test the create operation with same pricelist_id, minimum_quantity.
         """
-        another_sku = await sku_factory(name="Another SKU")
         duplicate_price_detail = PriceDetails(
             price=300.00,
             minimum_quantity=1,
-            sku_id=another_sku.id,
+            sku_id=self.another_sku.id,
             pricelist_id=self.test_pricelist.id
         )
         await save_object(db_session, duplicate_price_detail)
         assert await count_model_objects(db_session, PriceDetails) == 3
+
+    @pytest.mark.asyncio
+    async def test_update_item_same_pricelist_id_min_qty(
+        self, db_session: AsyncSession
+    ):
+        """
+        Test the update operation with same pricelist_id, minimum_quantity.
+        """
+        price_detail = PriceDetails(
+            price=300.00,
+            minimum_quantity=3,
+            sku_id=self.another_sku.id,
+            pricelist_id=self.another_pricelist.id
+        )
+        await save_object(db_session, price_detail)
+        assert price_detail.pricelist_id == self.another_pricelist.id
+        assert price_detail.pricelist == self.another_pricelist
+        assert price_detail.pricelist.name == "Another Pricelist"
+        assert price_detail.minimum_quantity == 3
+
+        price_detail.pricelist_id = self.test_pricelist.id
+        price_detail.minimum_quantity = 1
+        await save_object(db_session, price_detail)
+        assert price_detail.pricelist_id == self.test_pricelist.id
+        assert price_detail.pricelist == self.test_pricelist
+        assert price_detail.pricelist.name == "Test Pricelist"
+        assert price_detail.minimum_quantity == 1
 
     @pytest.mark.asyncio
     async def test_create_item_same_price_different_min_qty(
@@ -356,6 +494,29 @@ class TestPriceDetailValidationDatabase:
         )
         await save_object(db_session, duplicate_price_detail)
         assert await count_model_objects(db_session, PriceDetails) == 3
+
+    @pytest.mark.asyncio
+    async def test_update_item_same_price_different_min_qty(
+        self, db_session: AsyncSession
+    ):
+        """
+        Test the update operation with same price, different minimum_quantity.
+        """
+        price_detail = PriceDetails(
+            price=300.00,
+            minimum_quantity=3,
+            sku_id=self.another_sku.id,
+            pricelist_id=self.another_pricelist.id
+        )
+        await save_object(db_session, price_detail)
+        assert price_detail.price == 300.00
+        assert price_detail.minimum_quantity == 3
+
+        price_detail.price = 100.00
+        price_detail.minimum_quantity = 1
+        await save_object(db_session, price_detail)
+        assert price_detail.price == 100.00
+        assert price_detail.minimum_quantity == 1
 
 
 class TestPriceDetailSkuRelationship:
