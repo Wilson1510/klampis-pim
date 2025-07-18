@@ -244,7 +244,7 @@ class TestSkuAttributeValue:
         assert await count_model_objects(db_session, SkuAttributeValue) == 1
 
 
-class TestSkuAttributeValueConstraint:
+class TestSkuAttributeValueValidationDatabase:
     """Test suite for SkuAttributeValue model constraints"""
 
     @pytest.fixture(autouse=True)
@@ -337,7 +337,7 @@ class TestSkuAttributeValueConstraint:
         assert await count_model_objects(db_session, SkuAttributeValue) == 3
 
 
-class TestSkuAttributeValueValidation:
+class TestSkuAttributeValueValidationApplication:
     """Test suite for SkuAttributeValue model validation"""
 
     @pytest.fixture(autouse=True)

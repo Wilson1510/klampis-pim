@@ -261,7 +261,7 @@ class TestSku:
         assert await count_model_objects(db_session, Skus) == 1
 
 
-class TestSkuValidation:
+class TestSkuValidationApplication:
     """Test suite for Sku model validation"""
 
     @pytest.fixture(autouse=True)

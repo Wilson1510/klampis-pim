@@ -239,7 +239,7 @@ class TestPriceDetail:
         assert await count_model_objects(db_session, PriceDetails) == 1
 
 
-class TestPriceDetailConstraint:
+class TestPriceDetailValidationDatabase:
     """Test suite for PriceDetail model constraints"""
 
     @pytest.fixture(autouse=True)

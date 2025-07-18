@@ -299,7 +299,7 @@ class TestCategory:
         assert await count_model_objects(db_session, Categories) == 1
 
 
-class TestCategoryConstraint:
+class TestCategoryValidationDatabase:
     """Test suite for Category model constraints"""
 
     @pytest.fixture(autouse=True)

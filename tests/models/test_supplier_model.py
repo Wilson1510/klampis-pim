@@ -282,7 +282,7 @@ class TestSupplier:
         assert await count_model_objects(db_session, Suppliers) == 1
 
 
-class TestSupplierValidation:
+class TestSupplierValidationApplication:
     """Test suite for Supplier model validation"""
 
     def test_valid_contact_validation(self):
