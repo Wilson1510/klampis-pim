@@ -1,5 +1,5 @@
 from sqlalchemy import (
-    Column, Integer, Numeric, ForeignKey, UniqueConstraint, CheckConstraint
+    Column, Integer, Numeric, ForeignKey, UniqueConstraint
 )
 from sqlalchemy.orm import relationship
 
@@ -46,16 +46,7 @@ class PriceDetails(Base):
             'sku_id',
             'pricelist_id',
             name='uq_price_detail'
-        ),
-        # Check constraints for data integrity
-        CheckConstraint(
-            'price > 0',
-            name='check_price_positive'
-        ),
-        CheckConstraint(
-            'minimum_quantity > 0',
-            name='check_minimum_quantity_positive'
-        ),
+        )
     )
 
     def __str__(self) -> str:

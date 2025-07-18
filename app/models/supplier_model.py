@@ -1,6 +1,6 @@
 import enum
 
-from sqlalchemy import Column, Enum, String, Text, CheckConstraint
+from sqlalchemy import Column, Enum, String, Text
 from sqlalchemy.orm import relationship
 
 from app.core.base import Base
@@ -41,16 +41,16 @@ class Suppliers(Base):
     products = relationship("Products", back_populates="supplier")
 
     # Database constraints
-    __table_args__ = (
-        CheckConstraint(
-            "contact ~ '^[0-9]+$'",
-            name='check_contact_digits_only'
-        ),
-        CheckConstraint(
-            "email ~ '^[^@]+@[^@]+$'",
-            name='check_email_format'
-        ),
-    )
+    # __table_args__ = (
+    #     CheckConstraint(
+    #         "contact ~ '^[0-9]+$'",
+    #         name='check_contact_digits_only'
+    #     ),
+    #     CheckConstraint(
+    #         "email ~ '^[^@]+@[^@]+$'",
+    #         name='check_email_format'
+    #     ),
+    # )
 
     def __str__(self) -> str:
         """String representation of the supplier."""
