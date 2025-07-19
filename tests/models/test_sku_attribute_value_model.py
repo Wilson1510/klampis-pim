@@ -1,4 +1,4 @@
-from sqlalchemy import String, Integer, UniqueConstraint, Index, text
+from sqlalchemy import String, Integer, UniqueConstraint, Index, text, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
 import pytest
@@ -467,12 +467,41 @@ class TestSkuAttributeValueValidationDatabase:
         non_empty_value = ["Another Value", "  Another Value 1  ", "Another Value 2 "]
         for index, value in enumerate(non_empty_value, 3):
             attribute = await attribute_factory(name=f"Test Attribute {index}")
-            sku_attribute_value = SkuAttributeValue(
-                sku_id=self.test_sku1.id,
-                attribute_id=attribute.id,
-                value=value
-            )
-            await save_object(db_session, sku_attribute_value)
+            sql = text("""
+                INSERT INTO sku_attribute_value (
+                       sku_id,
+                       attribute_id,
+                       value,
+                       is_active,
+                       sequence,
+                       created_by,
+                       updated_by
+                )
+                VALUES (
+                       :sku_id,
+                       :attribute_id,
+                       :value,
+                       :is_active,
+                       :sequence,
+                       :created_by,
+                       :updated_by
+                )
+            """)
+
+            await db_session.execute(sql, {
+                'sku_id': self.test_sku1.id,
+                'attribute_id': attribute.id,
+                'value': value,
+                'is_active': True,
+                'sequence': 1,
+                'created_by': 1,  # System user ID
+                'updated_by': 1   # System user ID
+            })
+            await db_session.commit()
+
+            stmt = select(SkuAttributeValue).where(SkuAttributeValue.value == value)
+            result = await db_session.execute(stmt)
+            sku_attribute_value = result.scalar_one_or_none()
             assert sku_attribute_value.value == value
 
     @pytest.mark.asyncio

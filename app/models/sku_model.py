@@ -54,7 +54,7 @@ class Skus(Base):
     # Database constraints
     __table_args__ = (
         CheckConstraint(
-            "TRIM(UPPER(sku_number)) ~ '^[0-9A-F]{10}$'",
+            "sku_number ~ '^[0-9A-F]{10}$'",
             name='check_skus_sku_number_format'
         ),
     )

@@ -273,27 +273,63 @@ class TestSkuValidationDatabase:
     async def test_valid_sku_number_database_constraint(self, db_session: AsyncSession):
         """Test valid sku_number passes database constraint"""
         valid_sku_numbers = [
-            ("ABCDEF1234", "ABCDEF1234"),
-            (" 1234567890", "1234567890"),
-            ("a1b2C3d4E5 ", "A1B2C3D4E5"),
-            ("FFFFFFFFFF", "FFFFFFFFFF"),
-            ("  ABCfdF1234  ", "ABCFDF1234")
+            "ABCDEF1234",
+            "1234567890",
+            "FFFFFFFFFF"
         ]
-        for i, (sku_num, expected_sku_num) in enumerate(valid_sku_numbers):
-            sku = Skus(
-                name=f"Valid SKU {i}",
-                product_id=self.test_product.id,
-                sku_number=sku_num
-            )
-            await save_object(db_session, sku)
-            assert sku.sku_number == expected_sku_num
+        for i, sku_num in enumerate(valid_sku_numbers):
+            sql = text("""
+                INSERT INTO skus (
+                    name,
+                    slug,
+                    product_id,
+                    sku_number,
+                    is_active,
+                    sequence,
+                    created_by,
+                    updated_by
+                )
+                VALUES (
+                    :name,
+                    :slug,
+                    :product_id,
+                    :sku_number,
+                    :is_active,
+                    :sequence,
+                    :created_by,
+                    :updated_by
+                )
+            """)
+            await db_session.execute(sql, {
+                'name': f"Valid SKU Number {i}",
+                'slug': f"valid-sku-number-{i}",
+                'product_id': self.test_product.id,
+                'sku_number': sku_num,
+                'is_active': True,
+                'sequence': 1,
+                'created_by': 1,
+                'updated_by': 1
+            })
+            await db_session.commit()
+
+            stmt = select(Skus).where(Skus.sku_number == sku_num)
+            result = await db_session.execute(stmt)
+            sku = result.scalar_one_or_none()
+            assert sku.sku_number == sku_num
 
     @pytest.mark.asyncio
     async def test_invalid_sku_number_database_constraint(
         self, db_session: AsyncSession
     ):
         """Test invalid sku_number fails database constraint"""
-        invalid_sku_numbers = ["AAABB1", "ABCDEFG123", "  ABCDE-14", "def123Gbc4"]
+        invalid_sku_numbers = [
+            "AAABB1",
+            "ABCDEFG123",
+            "  ABCDE-14",
+            "def123Gbc4",
+            "AAABBBCCD ",
+            "BBBCCCdDDE"
+        ]
         product_id = self.test_product.id
         for invalid_sku_number in invalid_sku_numbers:
             sql = text("""
@@ -349,7 +385,14 @@ class TestSkuValidationDatabase:
 
         sku_id = sku.id
 
-        invalid_sku_numbers = ["AAABB1", "ABCDEFG123", "  ABCDE-14", "def123Gbc4"]
+        invalid_sku_numbers = [
+            "AAABB1",
+            "ABCDEFG123",
+            "  ABCDE-14",
+            "def123Gbc4",
+            "AAABBBCCD ",
+            "BBBCCCdDDE"
+        ]
 
         # Try to update with invalid file name using raw SQL to bypass
         # application validation
