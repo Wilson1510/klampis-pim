@@ -1,5 +1,5 @@
 import pytest
-from sqlalchemy import Column, String
+from sqlalchemy import Column, String, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import DBAPIError
 
@@ -150,7 +150,9 @@ class TestCommonOperations:
 
         await db_session.rollback()
 
-        model = await get_object_by_id(db_session, SimpleTestModel, item.id)
+        stmt = select(SimpleTestModel).where(SimpleTestModel.name == item.name)
+        result = await db_session.execute(stmt)
+        model = result.scalar_one_or_none()
         assert model is None
 
     async def test_data_not_updated_when_rollback(self, db_session: AsyncSession):

@@ -1,4 +1,4 @@
-from sqlalchemy import select
+from sqlalchemy import select, func
 
 
 def assert_relationship(model_class, relationship_name, back_populates):
@@ -33,10 +33,7 @@ async def get_object_by_id(session, model_class, object_id):
     """
     Get an object from the database.
     """
-    result = await session.execute(
-        select(model_class).where(model_class.id == object_id)
-    )
-    return result.scalar_one_or_none()
+    return await session.get(model_class, object_id)
 
 
 async def get_all_objects(session, model_class):
@@ -54,3 +51,11 @@ async def delete_object(session, object):
     await session.delete(object)
     await session.commit()
     return object
+
+
+async def count_model_objects(session, model_class):
+    """
+    Count the number of objects in the database for a given model class.
+    """
+    result = await session.execute(select(func.count()).select_from(model_class))
+    return result.scalar_one()

@@ -20,7 +20,7 @@ class CategoryTypes(Base):
 
     def __str__(self) -> str:
         """String representation of the category type."""
-        return f"CategoryTypes(name={self.name}, slug={self.slug})"
+        return f"CategoryTypes({self.name})"
 
     def __repr__(self) -> str:
         """Official string representation of the category type."""

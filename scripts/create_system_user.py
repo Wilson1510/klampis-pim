@@ -13,7 +13,7 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.core.session import async_session_factory  # noqa
-from app.models.user import Users  # noqa
+from app.models.user_model import Users  # noqa
 from app.core.config import settings  # noqa
 
 

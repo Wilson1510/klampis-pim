@@ -1,5 +1,5 @@
 from .base import CRUDBase
-from ..models.user import Users
+from ..models.user_model import Users
 from ..schemas.user import UserCreate, UserUpdate, User
 
 
