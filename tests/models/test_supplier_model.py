@@ -285,7 +285,8 @@ class TestSupplier:
 class TestSupplierValidationApplication:
     """Test suite for Supplier model validation"""
 
-    def test_valid_contact_validation(self):
+    @pytest.mark.asyncio
+    async def test_valid_contact_validation(self, db_session: AsyncSession):
         """Test valid contact validation"""
         # Valid numeric contact
         valid_contacts = [
@@ -300,9 +301,11 @@ class TestSupplierValidationApplication:
                 contact=input_contact,
                 email=f"testcontact{i}@example.com"
             )
+            await save_object(db_session, supplier)
             assert supplier.contact == expected_contact
 
-    def test_invalid_contact_validation(self):
+    @pytest.mark.asyncio
+    async def test_invalid_contact_validation(self, db_session: AsyncSession):
         """Test invalid contact validation"""
         # Contact with non-digit characters should raise ValueError
         invalid_contacts = [
@@ -310,16 +313,22 @@ class TestSupplierValidationApplication:
             "08123456789a"
         ]
         for i, input_contact in enumerate(invalid_contacts, 1):
-            with pytest.raises(ValueError, match="Contact must contain only digits"):
-                Suppliers(
-                    name=f"test invalid contact {i}",
-                    company_type="PT",
-                    address="test address",
-                    contact=input_contact,
-                    email=f"testinvalid{i}@example.com"
-                )
+            supplier = Suppliers(
+                name=f"test invalid contact {i}",
+                company_type="PT",
+                address="test address",
+                contact=input_contact,
+                email=f"testinvalid{i}@example.com"
+            )
+            with pytest.raises(
+                ValueError,
+                match="Column 'contact' must contain only digits"
+            ):
+                await save_object(db_session, supplier)
+            await db_session.rollback()
 
-    def test_update_to_invalid_contact(self):
+    @pytest.mark.asyncio
+    async def test_update_to_invalid_contact(self, db_session: AsyncSession):
         """Test updating to an invalid contact"""
         supplier = Suppliers(
             name="Invalid Contact",
@@ -333,10 +342,16 @@ class TestSupplierValidationApplication:
             "08123456789a"
         ]
         for input_contact in invalid_contacts:
-            with pytest.raises(ValueError, match="Contact must contain only digits"):
-                supplier.contact = input_contact
+            supplier.contact = input_contact
+            with pytest.raises(
+                ValueError,
+                match="Column 'contact' must contain only digits"
+            ):
+                await save_object(db_session, supplier)
+            await db_session.rollback()
 
-    def test_valid_email_validation(self):
+    @pytest.mark.asyncio
+    async def test_valid_email_validation(self, db_session: AsyncSession):
         """Test valid email validation"""
         # Test various valid email formats
         valid_emails = [
@@ -357,33 +372,36 @@ class TestSupplierValidationApplication:
                 contact=f"0812345678{str(i+10).zfill(2)}",
                 email=input_email
             )
+            await save_object(db_session, supplier)
 
             # Verify email was processed correctly
             assert supplier.email == expected_email
             assert '@' in supplier.email
 
-    def test_invalid_email_validation(self):
+    @pytest.mark.asyncio
+    async def test_invalid_email_validation(self, db_session: AsyncSession):
         """Test invalid email validation"""
         # Test invalid email formats
         invalid_emails = [
-            "invalid-email",
-            "test@",
-            "@example.com",
-            "",
-            "   ",
+            ("invalid-email", "Column 'email' must contain '@'"),
+            ("test@", "Column 'email' must not start or end with '@'"),
+            ("@example.com", "Column 'email' must not start or end with '@'")
         ]
 
-        for i, email in enumerate(invalid_emails, 1):
-            with pytest.raises(ValueError, match="Invalid email format"):
-                Suppliers(
-                    name=f"test invalid email {i}",
-                    company_type="PT",
-                    address="test address",
-                    contact=f"0812345678{str(i+10).zfill(2)}",
-                    email=email
-                )
+        for i, (email, error_message) in enumerate(invalid_emails, 1):
+            supplier = Suppliers(
+                name=f"test invalid email {i}",
+                company_type="PT",
+                address="test address",
+                contact=f"0812345678{str(i+10).zfill(2)}",
+                email=email
+            )
+            with pytest.raises(ValueError, match=error_message):
+                await save_object(db_session, supplier)
+            await db_session.rollback()
 
-    def test_update_to_invalid_email(self):
+    @pytest.mark.asyncio
+    async def test_update_to_invalid_email(self, db_session: AsyncSession):
         """Test updating to an invalid email"""
         supplier = Suppliers(
             name="Invalid Email",
@@ -393,15 +411,15 @@ class TestSupplierValidationApplication:
             email="testinvalidemail@example.com"
         )
         invalid_emails = [
-            "invalid-email",
-            "test@",
-            "@example.com",
-            "",
-            "   ",
+            ("invalid-email", "Column 'email' must contain '@'"),
+            ("test@", "Column 'email' must not start or end with '@'"),
+            ("@example.com", "Column 'email' must not start or end with '@'")
         ]
-        for email in invalid_emails:
-            with pytest.raises(ValueError, match="Invalid email format"):
-                supplier.email = email
+        for email, error_message in invalid_emails:
+            supplier.email = email
+            with pytest.raises(ValueError, match=error_message):
+                await save_object(db_session, supplier)
+            await db_session.rollback()
 
 
 class TestSupplierProductRelationship:

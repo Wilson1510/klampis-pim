@@ -21,6 +21,54 @@ from app.core.security import hash_password
 from slugify import slugify
 
 
+def _truncate_constraint_name(name: str, max_length: int = 63) -> str:
+    """
+    Truncate constraint name to fit within PostgreSQL's identifier length limit.
+
+    PostgreSQL has a maximum identifier length of 63 characters.
+    If the name exceeds this limit, we'll truncate it intelligently.
+    """
+    if len(name) <= max_length:
+        return name
+
+    # Try to preserve the most important parts: prefix, table, column, suffix
+    parts = name.split('_')
+    if len(parts) < 4:
+        # Simple truncation if we can't parse the structure
+        return name[:max_length]
+
+    prefix = parts[0]  # 'check'
+    table_part = parts[1]
+    column_part = parts[2]
+    suffix_parts = parts[3:]
+    suffix = '_'.join(suffix_parts)
+
+    # Calculate available space for table and column names
+    fixed_parts_length = len(prefix) + len(suffix) + 3  # 3 underscores
+    available_space = max_length - fixed_parts_length
+
+    if available_space <= 0:
+        # Fallback: just truncate the whole name
+        return name[:max_length]
+
+    # Distribute available space between table and column (favor column name)
+    if len(table_part) + len(column_part) <= available_space:
+        return name  # No truncation needed
+
+    # Truncate table name first, then column name if needed
+    table_max = min(len(table_part), available_space // 2)
+    column_max = available_space - table_max
+
+    if column_max < 3:  # Ensure column name has at least 3 characters
+        table_max = available_space - 3
+        column_max = 3
+
+    truncated_table = table_part[:table_max]
+    truncated_column = column_part[:column_max]
+
+    return f"{prefix}_{truncated_table}_{truncated_column}_{suffix}"
+
+
 def _validate_all_types_on_save(mapper, connection, target):
     """
     Listener that is called before INSERT or UPDATE.
@@ -68,9 +116,9 @@ def _validate_all_types_on_save(mapper, connection, target):
                     raise ValueError(f"Column '{column.key}' must contain '@'.")
                 if '@' in [value[0], value[-1]]:
                     raise ValueError(
-                        f"Column '{column.key}' must not start or end with '@'."
+                        f"Column '{column.key}' must not start or end with '@'"
                     )
-                setattr(target, column.key, value)
+                setattr(target, column.key, value.lower())
                 continue
 
             phone_patterns = [
@@ -235,7 +283,9 @@ def _apply_constraints_to_table(table):
                 constraints_to_add.extend([
                     CheckConstraint(
                         f"LENGTH(TRIM({column_name})) > 0",
-                        name=f'check_{table_name}_{column_name}_not_empty'
+                        name=_truncate_constraint_name(
+                            f'check_{table_name}_{column_name}_not_empty'
+                        )
                     )
                 ])
 
@@ -243,7 +293,9 @@ def _apply_constraints_to_table(table):
                 constraints_to_add.extend([
                     CheckConstraint(
                         f"{column_name} ~ '^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$'",
-                        name=f'check_{table_name}_{column_name}_format'
+                        name=_truncate_constraint_name(
+                            f'check_{table_name}_{column_name}_format'
+                        )
                     )
                 ])
 
@@ -251,7 +303,9 @@ def _apply_constraints_to_table(table):
                 constraints_to_add.extend([
                     CheckConstraint(
                         f"{column_name} ~ '^[A-Za-z0-9_ -]*$'",
-                        name=f'check_{table_name}_{column_name}_valid_chars'
+                        name=_truncate_constraint_name(
+                            f'check_{table_name}_{column_name}_valid_chars'
+                        )
                     )
                 ])
 
@@ -264,7 +318,9 @@ def _apply_constraints_to_table(table):
                 constraints_to_add.extend([
                     CheckConstraint(
                         f"{column_name} ~ '^[0-9]+$'",
-                        name=f'check_{table_name}_{column_name}_digits_only'
+                        name=_truncate_constraint_name(
+                            f'check_{table_name}_{column_name}_digits_only'
+                        )
                     )
                 ])
             else:
@@ -272,7 +328,9 @@ def _apply_constraints_to_table(table):
                 constraints_to_add.extend([
                     CheckConstraint(
                         f"{column_name} ~ '^[A-Za-z].*'",
-                        name=f'check_{table_name}_{column_name}_starts_with_letter'
+                        name=_truncate_constraint_name(
+                            f'check_{table_name}_{column_name}_starts_with_letter'
+                        )
                     ),
                 ])
 
@@ -287,7 +345,9 @@ def _apply_constraints_to_table(table):
                 constraints_to_add.append(
                     CheckConstraint(
                         f"{column_name} > 0",
-                        name=f'check_{table_name}_{column_name}_positive'
+                        name=_truncate_constraint_name(
+                            f'check_{table_name}_{column_name}_positive'
+                        )
                     )
                 )
 
