@@ -54,12 +54,8 @@ class Skus(Base):
     # Database constraints
     __table_args__ = (
         CheckConstraint(
-            "LENGTH(sku_number) = 10",
-            name='check_sku_number_length'
-        ),
-        CheckConstraint(
-            "sku_number ~ '^[0-9A-F]{10}$'",
-            name='check_sku_number_format'
+            "TRIM(UPPER(sku_number)) ~ '^[0-9A-F]{10}$'",
+            name='check_skus_sku_number_format'
         ),
     )
 
@@ -75,9 +71,10 @@ class Skus(Base):
         """
         if not isinstance(value, str):
             return value
-        elif len(value) != 10:
+        value = value.strip().upper()
+        if len(value) != 10:
             raise ValueError("SKU number must be exactly 10 characters long.")
-        elif not all(c in '0123456789ABCDEF' for c in value.upper()):
+        elif not all(c in '0123456789ABCDEF' for c in value):
             raise ValueError("SKU number must only contain 0-9 or A-F characters.")
         return value
 

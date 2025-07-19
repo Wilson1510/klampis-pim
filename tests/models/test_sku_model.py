@@ -1,4 +1,4 @@
-from sqlalchemy import String, event, Text, Integer, select
+from sqlalchemy import String, event, Text, Integer, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
 import pytest
@@ -261,6 +261,115 @@ class TestSku:
         assert await count_model_objects(db_session, Skus) == 1
 
 
+class TestSkuValidationDatabase:
+    """Test suite for Sku model validation database"""
+
+    @pytest.fixture(autouse=True)
+    def setup_objects(self, setup_skus):
+        """Setup method for the test suite"""
+        self.test_product, self.test_sku1, self.test_sku2 = setup_skus
+
+    @pytest.mark.asyncio
+    async def test_valid_sku_number_database_constraint(self, db_session: AsyncSession):
+        """Test valid sku_number passes database constraint"""
+        valid_sku_numbers = [
+            ("ABCDEF1234", "ABCDEF1234"),
+            (" 1234567890", "1234567890"),
+            ("a1b2C3d4E5 ", "A1B2C3D4E5"),
+            ("FFFFFFFFFF", "FFFFFFFFFF"),
+            ("  ABCfdF1234  ", "ABCFDF1234")
+        ]
+        for i, (sku_num, expected_sku_num) in enumerate(valid_sku_numbers):
+            sku = Skus(
+                name=f"Valid SKU {i}",
+                product_id=self.test_product.id,
+                sku_number=sku_num
+            )
+            await save_object(db_session, sku)
+            assert sku.sku_number == expected_sku_num
+
+    @pytest.mark.asyncio
+    async def test_invalid_sku_number_database_constraint(
+        self, db_session: AsyncSession
+    ):
+        """Test invalid sku_number fails database constraint"""
+        invalid_sku_numbers = ["AAABB1", "ABCDEFG123", "  ABCDE-14", "def123Gbc4"]
+        product_id = self.test_product.id
+        for invalid_sku_number in invalid_sku_numbers:
+            sql = text("""
+                INSERT INTO skus (
+                    name,
+                    slug,
+                    product_id,
+                    sku_number,
+                    is_active,
+                    sequence,
+                    created_by,
+                    updated_by
+                )
+                VALUES (
+                    :name,
+                    :slug,
+                    :product_id,
+                    :sku_number,
+                    :is_active,
+                    :sequence,
+                    :created_by,
+                    :updated_by
+                )
+            """)
+            with pytest.raises(
+                IntegrityError,
+                match="check_skus_sku_number_format"
+            ):
+                await db_session.execute(sql, {
+                    'name': "Invalid Length SKU",
+                    'slug': "invalid-length-sku",
+                    'product_id': product_id,
+                    'sku_number': invalid_sku_number,
+                    'is_active': True,
+                    'sequence': 1,
+                    'created_by': 1,
+                    'updated_by': 1
+                })
+            await db_session.rollback()
+
+    @pytest.mark.asyncio
+    async def test_update_sku_number_invalid_database_constraint(
+        self, db_session: AsyncSession
+    ):
+        """Test updating sku_number with invalid value fails database constraint"""
+        # Create valid sku first
+        sku = Skus(
+            name="Valid SKU",
+            product_id=self.test_product.id,
+            sku_number="ABCDEF1234"
+        )
+        await save_object(db_session, sku)
+
+        sku_id = sku.id
+
+        invalid_sku_numbers = ["AAABB1", "ABCDEFG123", "  ABCDE-14", "def123Gbc4"]
+
+        # Try to update with invalid file name using raw SQL to bypass
+        # application validation
+        for invalid_sku_number in invalid_sku_numbers:
+            sql = text("""
+                UPDATE skus
+                SET sku_number = :new_sku_number
+                WHERE id = :sku_id
+            """)
+
+            with pytest.raises(
+                IntegrityError, match="check_skus_sku_number_format"
+            ):
+                await db_session.execute(sql, {
+                    'new_sku_number': invalid_sku_number,
+                    'sku_id': sku_id
+                })
+            await db_session.rollback()
+
+
 class TestSkuValidationApplication:
     """Test suite for Sku model validation"""
 
@@ -272,24 +381,25 @@ class TestSkuValidationApplication:
     def test_valid_sku_number_validation(self):
         """Test valid sku_number validation"""
         valid_sku_numbers = [
-            "ABCDEF1234",
-            "1234567890",
-            "A1B2C3D4E5",
-            "FFFFFFFFFF"
+            ("ABCDEF1234", "ABCDEF1234"),
+            (" 1234567890", "1234567890"),
+            ("a1b2C3d4E5 ", "A1B2C3D4E5"),
+            ("FFFFFFFFFF", "FFFFFFFFFF"),
+            ("  ABCfdF1234  ", "ABCFDF1234")
         ]
-        for i, sku_num in enumerate(valid_sku_numbers):
+        for i, (sku_num, expected_sku_num) in enumerate(valid_sku_numbers):
             sku = Skus(
                 name=f"Valid SKU {i}",
                 product_id=self.test_product.id,
                 sku_number=sku_num
             )
-            assert sku.sku_number == sku_num
+            assert sku.sku_number == expected_sku_num
 
     def test_invalid_sku_number_validation(self):
         """Test invalid sku_number validation"""
         product_id = self.test_product.id
         # Test for length
-        invalid_length_skus = ["12345", "12345678901"]
+        invalid_length_skus = ["12345", "12345678901", "  ABCfdF12345  "]
         for sku_num in invalid_length_skus:
             with pytest.raises(
                 ValueError,
@@ -302,7 +412,7 @@ class TestSkuValidationApplication:
                 )
 
         # Test for invalid characters
-        invalid_char_skus = ["GHIJKLM123", "ABC-123-DE"]
+        invalid_char_skus = ["GHIJKLM123", "ABC-123-DE", "  ABCDE-1234"]
         for sku_num in invalid_char_skus:
             with pytest.raises(
                 ValueError,
@@ -321,7 +431,7 @@ class TestSkuValidationApplication:
             product_id=self.test_product.id,
             sku_number="ABCDEF1234"
         )
-        invalid_length_skus = ["12345", "12345678901"]
+        invalid_length_skus = ["12345", "12345678901", "  ABCfdF12345  "]
         for sku_num in invalid_length_skus:
             with pytest.raises(
                 ValueError,
@@ -329,7 +439,7 @@ class TestSkuValidationApplication:
             ):
                 sku.sku_number = sku_num
 
-        invalid_char_skus = ["GHIJKLM123", "ABC-123-DE"]
+        invalid_char_skus = ["GHIJKLM123", "ABC-123-DE", " ABCDE-1234"]
         for sku_num in invalid_char_skus:
             with pytest.raises(
                 ValueError,

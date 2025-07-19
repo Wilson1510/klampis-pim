@@ -1,4 +1,6 @@
-from sqlalchemy import Column, String, Integer, ForeignKey, UniqueConstraint, Index
+from sqlalchemy import (
+    Column, String, Integer, ForeignKey, UniqueConstraint, Index, CheckConstraint
+)
 from sqlalchemy.orm import relationship, validates
 
 from app.core.base import Base
@@ -28,6 +30,10 @@ class SkuAttributeValue(Base):
     __table_args__ = (
         UniqueConstraint('sku_id', 'attribute_id', name='uq_sku_attribute'),
         Index('idx_sku_attribute_composite', 'sku_id', 'attribute_id'),
+        CheckConstraint(
+            "LENGTH(TRIM(value)) > 0",
+            name='check_sku_attribute_value_value_not_empty'
+        ),
     )
 
     @validates('value')
@@ -36,7 +42,9 @@ class SkuAttributeValue(Base):
         Validate value based on attribute's data_type. Create this validation to
         prevent validation checking at listeners.
         """
-        if len(value) == 0:
+        if not isinstance(value, str):
+            return value
+        if len(value.strip()) == 0:
             raise ValueError("Value cannot be empty")
         return value
 

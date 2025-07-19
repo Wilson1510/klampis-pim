@@ -325,8 +325,8 @@ class TestImageValidationDatabase:
             "    ",
             "",
             "1234567890",
-            "*&^%$#@!~",
-            "^test_folder/test6.jpg",
+            "  *&^%$#@!~ ",
+            "^test_folder/test6.jpg ",
         ]
         category_id = self.test_category.id
 
@@ -357,7 +357,7 @@ class TestImageValidationDatabase:
 
             # This should fail at database level due to CheckConstraint
             with pytest.raises(
-                IntegrityError, match="check_file_starts_with_letter"
+                IntegrityError, match="check_images_file_starts_with_letter"
             ):
                 await db_session.execute(sql, {
                     'file': invalid_file,
@@ -372,7 +372,9 @@ class TestImageValidationDatabase:
             await db_session.rollback()
 
     @pytest.mark.asyncio
-    async def test_update_file_database_constraint(self, db_session: AsyncSession):
+    async def test_update_file_invalid_database_constraint(
+        self, db_session: AsyncSession
+    ):
         """Test updating file with invalid value fails database constraint"""
         # Create valid image first
         image = Images(
@@ -388,8 +390,8 @@ class TestImageValidationDatabase:
             "   ",
             "",
             "1234567890",
-            "*&^%$#@!~",
-            "^test_folder/test6.jpg",
+            "  *&^%$#@!~",
+            "^test_folder/test6.jpg ",
         ]
 
         # Try to update with invalid file name using raw SQL to bypass
@@ -402,7 +404,7 @@ class TestImageValidationDatabase:
             """)
 
             with pytest.raises(
-                IntegrityError, match="check_file_starts_with_letter"
+                IntegrityError, match="check_images_file_starts_with_letter"
             ):
                 await db_session.execute(sql, {
                     'new_file': invalid_file,
@@ -481,6 +483,9 @@ class TestImageValidationApplication:
         valid_content_types = [
             ("categories", "categories"),
             ("products", "products"),
+            ("  categories", "categories"),
+            ("products  ", "products"),
+            ("  products  ", "products"),
         ]
         for i, (input_content_type, expected_content_type) in enumerate(
             valid_content_types, 3
@@ -500,7 +505,7 @@ class TestImageValidationApplication:
                 "Invalid content_type: skus. Must be one of",
             ),
             (
-                "suppliers",
+                "  suppliers  ",
                 "Invalid content_type: suppliers. Must be one of",
             ),
         ]
@@ -516,7 +521,7 @@ class TestImageValidationApplication:
     def test_update_content_type_invalid_validation(self):
         """Test updating content type validation"""
         invalid_content_types = [
-            ("skus", "Invalid content_type: skus. Must be one of"),
+            ("  skus  ", "Invalid content_type: skus. Must be one of"),
             ("suppliers", "Invalid content_type: suppliers. Must be one of"),
         ]
         category_id = self.test_category.id

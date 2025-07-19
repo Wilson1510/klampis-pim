@@ -46,7 +46,7 @@ class PriceDetails(Base):
             'sku_id',
             'pricelist_id',
             name='uq_price_detail'
-        )
+        ),
     )
 
     def __str__(self) -> str:

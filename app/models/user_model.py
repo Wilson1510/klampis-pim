@@ -1,7 +1,7 @@
 import enum
 
 from sqlalchemy import (
-    Column, DateTime, Integer, String, ForeignKey, Enum, CheckConstraint
+    Column, DateTime, Integer, String, ForeignKey, Enum
 )
 
 from app.core.base import Base
@@ -55,14 +55,6 @@ class Users(Base):
         ForeignKey("users.id"),
         nullable=True,  # Allow null for system user
         default=None
-    )
-
-    # Database constraints
-    __table_args__ = (
-        CheckConstraint(
-            "email ~ '^[^@]+@[^@]+$'",
-            name='check_email_format'
-        ),
     )
 
     def __str__(self) -> str:

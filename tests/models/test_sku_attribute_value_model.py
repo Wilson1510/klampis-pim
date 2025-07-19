@@ -1,4 +1,4 @@
-from sqlalchemy import String, Integer, UniqueConstraint, Index
+from sqlalchemy import String, Integer, UniqueConstraint, Index, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
 import pytest
@@ -248,12 +248,16 @@ class TestSkuAttributeValueValidationDatabase:
     """Test suite for SkuAttributeValue model constraints"""
 
     @pytest.fixture(autouse=True)
-    def setup_objects(self, setup_sku_attribute_values):
+    async def setup_objects(
+        self, setup_sku_attribute_values, sku_factory, attribute_factory
+    ):
         """Setup method for the test suite"""
         (
             self.test_sku1, self.test_sku2, self.test_attribute1,
             self.test_attribute2, self.test_sku_attr_value1, self.test_sku_attr_value2
         ) = setup_sku_attribute_values
+        self.another_sku = await sku_factory(name="Another SKU")
+        self.another_attribute = await attribute_factory(name="Another Attribute")
 
     @pytest.mark.asyncio
     async def test_create_item_same_objects_sku_id_and_attribute_id(
@@ -277,6 +281,36 @@ class TestSkuAttributeValueValidationDatabase:
         assert await count_model_objects(db_session, SkuAttributeValue) == 2
 
     @pytest.mark.asyncio
+    async def test_update_item_same_objects_sku_id_and_attribute_id(
+        self, db_session: AsyncSession
+    ):
+        """
+        Test that updating an item with the same combination of sku_id and attribute_id
+        belonging to an item fails.
+        """
+        sku_attribute_value = SkuAttributeValue(
+            sku_id=self.another_sku.id,
+            attribute_id=self.another_attribute.id,
+            value="Updated Sku and Attribute"
+        )
+
+        await save_object(db_session, sku_attribute_value)
+
+        assert sku_attribute_value.sku_id == self.another_sku.id
+        assert sku_attribute_value.sku == self.another_sku
+        assert sku_attribute_value.sku.name == "Another SKU"
+        assert sku_attribute_value.attribute_id == self.another_attribute.id
+        assert sku_attribute_value.attribute == self.another_attribute
+        assert sku_attribute_value.attribute.name == "Another Attribute"
+
+        sku_attribute_value.sku_id = self.test_sku1.id
+        sku_attribute_value.attribute_id = self.test_attribute1.id
+        with pytest.raises(IntegrityError):
+            await save_object(db_session, sku_attribute_value)
+
+        await db_session.rollback()
+
+    @pytest.mark.asyncio
     async def test_create_item_different_objects_sku_id_and_attribute_id(
         self, db_session: AsyncSession
     ):
@@ -293,6 +327,33 @@ class TestSkuAttributeValueValidationDatabase:
         await save_object(db_session, new_sku_attribute_value)
 
         assert await count_model_objects(db_session, SkuAttributeValue) == 3
+
+    @pytest.mark.asyncio
+    async def test_update_item_different_objects_sku_id_and_attribute_id(
+        self, db_session: AsyncSession
+    ):
+        """
+        Test that updating an item with a different sku_id and attribute_id belonging to
+        an item succeeds.
+        """
+        sku_attribute_value = SkuAttributeValue(
+            sku_id=self.another_sku.id,
+            attribute_id=self.another_attribute.id,
+            value="Updated Sku and Attribute"
+        )
+
+        await save_object(db_session, sku_attribute_value)
+
+        sku_attribute_value.sku_id = self.test_sku1.id
+        sku_attribute_value.attribute_id = self.test_attribute2.id
+        await save_object(db_session, sku_attribute_value)
+
+        assert sku_attribute_value.sku_id == self.test_sku1.id
+        assert sku_attribute_value.sku == self.test_sku1
+        assert sku_attribute_value.sku.name == "Test Sku 1"
+        assert sku_attribute_value.attribute_id == self.test_attribute2.id
+        assert sku_attribute_value.attribute == self.test_attribute2
+        assert sku_attribute_value.attribute.name == "Test Attribute 2"
 
     @pytest.mark.asyncio
     async def test_create_item_objects_sku_id_and_new_attribute_id(
@@ -317,6 +378,37 @@ class TestSkuAttributeValueValidationDatabase:
         assert await count_model_objects(db_session, SkuAttributeValue) == 3
 
     @pytest.mark.asyncio
+    async def test_update_item_objects_sku_id_and_new_attribute_id(
+        self, db_session: AsyncSession, attribute_factory
+    ):
+        """
+        Test that updating an item with an existing sku_id belonging to an item and a
+        attribute_id not belonging to an item succeeds.
+        """
+        new_attribute = await attribute_factory(
+            name="New Attribute",
+            data_type="TEXT"
+        )
+        sku_attribute_value = SkuAttributeValue(
+            sku_id=self.another_sku.id,
+            attribute_id=self.another_attribute.id,
+            value="Updated Sku and Attribute"
+        )
+
+        await save_object(db_session, sku_attribute_value)
+
+        sku_attribute_value.sku_id = self.test_sku1.id
+        sku_attribute_value.attribute_id = new_attribute.id
+        await save_object(db_session, sku_attribute_value)
+
+        assert sku_attribute_value.sku_id == self.test_sku1.id
+        assert sku_attribute_value.sku == self.test_sku1
+        assert sku_attribute_value.sku.name == "Test Sku 1"
+        assert sku_attribute_value.attribute_id == new_attribute.id
+        assert sku_attribute_value.attribute == new_attribute
+        assert sku_attribute_value.attribute.name == "New Attribute"
+
+    @pytest.mark.asyncio
     async def test_create_item_objects_new_sku_id_and_objects_attribute_id(
         self, db_session: AsyncSession, sku_factory
     ):
@@ -336,6 +428,131 @@ class TestSkuAttributeValueValidationDatabase:
 
         assert await count_model_objects(db_session, SkuAttributeValue) == 3
 
+    @pytest.mark.asyncio
+    async def test_update_item_objects_new_sku_id_and_objects_attribute_id(
+        self, db_session: AsyncSession, sku_factory
+    ):
+        """
+        Test that updating an item with a new sku_id and attribute_id belonging to an
+        item succeeds.
+        """
+        new_sku = await sku_factory(name="New Sku")
+
+        sku_attribute_value = SkuAttributeValue(
+            sku_id=self.another_sku.id,
+            attribute_id=self.another_attribute.id,
+            value="Updated Sku and Attribute"
+        )
+
+        await save_object(db_session, sku_attribute_value)
+
+        sku_attribute_value.sku_id = new_sku.id
+        sku_attribute_value.attribute_id = self.test_attribute1.id
+        await save_object(db_session, sku_attribute_value)
+
+        assert sku_attribute_value.sku_id == new_sku.id
+        assert sku_attribute_value.sku == new_sku
+        assert sku_attribute_value.sku.name == "New Sku"
+        assert sku_attribute_value.attribute_id == self.test_attribute1.id
+        assert sku_attribute_value.attribute == self.test_attribute1
+        assert sku_attribute_value.attribute.name == "Test Attribute 1"
+
+    @pytest.mark.asyncio
+    async def test_create_item_not_empty_value(
+        self, db_session: AsyncSession, attribute_factory
+    ):
+        """
+        Test that creating an item with an empty value fails.
+        """
+        non_empty_value = ["Another Value", "  Another Value 1  ", "Another Value 2 "]
+        for index, value in enumerate(non_empty_value, 3):
+            attribute = await attribute_factory(name=f"Test Attribute {index}")
+            sku_attribute_value = SkuAttributeValue(
+                sku_id=self.test_sku1.id,
+                attribute_id=attribute.id,
+                value=value
+            )
+            await save_object(db_session, sku_attribute_value)
+            assert sku_attribute_value.value == value
+
+    @pytest.mark.asyncio
+    async def test_create_item_empty_value(self, db_session: AsyncSession):
+        """
+        Test that creating an item with an empty value fails.
+        """
+        empty_value = ["", "   "]
+        sku_id = self.test_sku1.id
+        attribute_id = self.test_attribute2.id
+        for value in empty_value:
+            # Use raw SQL to bypass application validation and test database constraint
+            sql = text("""
+                INSERT INTO sku_attribute_value (
+                       sku_id,
+                       attribute_id,
+                       value,
+                       is_active,
+                       sequence,
+                       created_by,
+                       updated_by
+                )
+                VALUES (
+                       :sku_id,
+                       :attribute_id,
+                       :value,
+                       :is_active,
+                       :sequence,
+                       :created_by,
+                       :updated_by
+                )
+            """)
+
+            # This should fail at database level due to CheckConstraint
+            with pytest.raises(
+                IntegrityError, match="check_sku_attribute_value_value_not_empty"
+            ):
+                await db_session.execute(sql, {
+                    'sku_id': sku_id,
+                    'attribute_id': attribute_id,
+                    'value': value,
+                    'is_active': True,
+                    'sequence': 1,
+                    'created_by': 1,  # System user ID
+                    'updated_by': 1   # System user ID
+                })
+            await db_session.rollback()
+
+    @pytest.mark.asyncio
+    async def test_update_item_empty_value(self, db_session: AsyncSession):
+        """Test updating item with empty value fails database constraint"""
+        # Create valid sku attribute value first
+        sku_attribute_value = SkuAttributeValue(
+            sku_id=self.test_sku1.id,
+            attribute_id=self.test_attribute2.id,
+            value="Test Value"
+        )
+        await save_object(db_session, sku_attribute_value)
+
+        empty_value = ["", "   "]
+        sku_attribute_value_id = sku_attribute_value.id
+
+        # Try to update with invalid file name using raw SQL to bypass
+        # application validation
+        for value in empty_value:
+            sql = text("""
+                UPDATE sku_attribute_value
+                SET value = :value
+                WHERE id = :sku_attribute_value_id
+            """)
+
+            with pytest.raises(
+                IntegrityError, match="check_sku_attribute_value_value_not_empty"
+            ):
+                await db_session.execute(sql, {
+                    'value': value,
+                    'sku_attribute_value_id': sku_attribute_value_id
+                })
+            await db_session.rollback()
+
 
 class TestSkuAttributeValueValidationApplication:
     """Test suite for SkuAttributeValue model validation"""
@@ -348,24 +565,39 @@ class TestSkuAttributeValueValidationApplication:
             self.test_attribute2, self.test_sku_attr_value1, self.test_sku_attr_value2
         ) = setup_sku_attribute_values
 
-    def test_empty_value(self):
-        """Test that an empty value is allowed"""
-        with pytest.raises(ValueError):
-            SkuAttributeValue(
+    def test_non_empty_value(self):
+        """Test that a non-empty value is allowed"""
+        non_empty_value = ["Test Value", "  Test Value 1  ", "Test Value 2 "]
+        for value in non_empty_value:
+            sku_attribute_value = SkuAttributeValue(
                 sku_id=self.test_sku1.id,
                 attribute_id=self.test_attribute2.id,
-                value=""
+                value=value
             )
+            assert sku_attribute_value.value == value
+
+    def test_empty_value(self):
+        """Test that an empty value is allowed"""
+        empty_value = ["", "   "]
+        for value in empty_value:
+            with pytest.raises(ValueError):
+                SkuAttributeValue(
+                    sku_id=self.test_sku1.id,
+                    attribute_id=self.test_attribute2.id,
+                    value=value
+                )
 
     def test_update_to_empty_value(self):
         """Test that updating to an empty value is allowed"""
-        sku_attribute_value = SkuAttributeValue(
-            sku_id=self.test_sku1.id,
-            attribute_id=self.test_attribute2.id,
-            value="Test Value"
-        )
-        with pytest.raises(ValueError):
-            sku_attribute_value.value = ""
+        empty_value = ["", "   "]
+        for value in empty_value:
+            sku_attribute_value = SkuAttributeValue(
+                sku_id=self.test_sku1.id,
+                attribute_id=self.test_attribute2.id,
+                value="Test Value"
+            )
+            with pytest.raises(ValueError):
+                sku_attribute_value.value = value
 
 
 class TestSkuAttributeValueSkuRelationship:

@@ -31,8 +31,8 @@ class Images(Base):
     # Database constraints
     __table_args__ = (
         CheckConstraint(
-            "file ~ '^[A-Za-z]'",
-            name='check_file_starts_with_letter'
+            "TRIM(file) ~ '^[A-Za-z]'",
+            name='check_images_file_starts_with_letter'
         ),
     )
 
@@ -53,7 +53,10 @@ class Images(Base):
         This validation is only at application level since content types
         are dynamically registered.
         """
-        if value and value.strip() and value not in self.CONTENT_TYPE_TO_CLASS:
+        if not isinstance(value, str):
+            return value
+        value = value.strip()
+        if value and value not in self.CONTENT_TYPE_TO_CLASS:
             raise ValueError(
                 f"Invalid content_type: {value}. Must be one of "
                 f"{set(self.CONTENT_TYPE_TO_CLASS.keys())}"
@@ -67,6 +70,8 @@ class Images(Base):
 
         Database constraint serves as backup for data integrity.
         """
+        if not isinstance(value, str):
+            return value
         value = value.strip()
         if value == "":
             raise ValueError(f"Column {key} cannot be empty")

@@ -40,18 +40,6 @@ class Suppliers(Base):
     # Relationships
     products = relationship("Products", back_populates="supplier")
 
-    # Database constraints
-    # __table_args__ = (
-    #     CheckConstraint(
-    #         "contact ~ '^[0-9]+$'",
-    #         name='check_contact_digits_only'
-    #     ),
-    #     CheckConstraint(
-    #         "email ~ '^[^@]+@[^@]+$'",
-    #         name='check_email_format'
-    #     ),
-    # )
-
     def __str__(self) -> str:
         """String representation of the supplier."""
         return f"Suppliers({self.name})"
