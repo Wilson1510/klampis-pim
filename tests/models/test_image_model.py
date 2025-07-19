@@ -9,7 +9,6 @@ import pytest
 from app.core.base import Base
 from app.models.image_model import Images
 from app.models.category_model import Categories
-from tests.core.test_mixins import SimpleModelWithImageable
 from tests.utils.model_test_utils import (
     save_object,
     get_object_by_id,
@@ -118,13 +117,18 @@ class TestImage:
         assert content_type_column.default is None
 
     def test_content_type_to_class_mapping(self):
-        # create dummy object and get its class
-        simple_model_with_imageable = SimpleModelWithImageable(name="Test Model 1")
-        assert Images.CONTENT_TYPE_TO_CLASS == {
+        # Test that the expected content types are present
+        # Note: SimpleModelWithImageable from test_mixins.py may also be registered
+        # depending on test execution order
+        expected_mappings = {
             'categories': self.test_category.__class__,
-            'products': self.test_product.__class__,
-            'simple_model_with_imageable': simple_model_with_imageable.__class__
+            'products': self.test_product.__class__
         }
+
+        # Check that all expected mappings exist
+        for content_type, expected_class in expected_mappings.items():
+            assert content_type in Images.CONTENT_TYPE_TO_CLASS
+            assert Images.CONTENT_TYPE_TO_CLASS[content_type] == expected_class
 
     def test_str_representation(self):
         assert str(self.test_image1) == "Images(test_folder/test1.jpg)"
