@@ -7,8 +7,8 @@ from app.core.base import Base
 from tests.utils.model_test_utils import save_object
 
 
-class SampleModelConstraint(Base):
-    """Sample model for testing constraint."""
+class SampleModelRealConstraint(Base):
+    """Sample model for testing real constraints."""
     # String with multiple constraints + index
     constraint_string = Column(String(20), unique=True, nullable=False, index=True)
 
@@ -28,11 +28,11 @@ class TestConstraintBehavior:
     async def test_unique_constraint(self, db_session: AsyncSession):
         """Test unique constraint prevents duplicate values."""
         # Create first record
-        obj1 = SampleModelConstraint(constraint_string="unique_value")
+        obj1 = SampleModelRealConstraint(constraint_string="unique_value")
         await save_object(db_session, obj1)
 
         # Try to create duplicate
-        obj2 = SampleModelConstraint(constraint_string="unique_value")
+        obj2 = SampleModelRealConstraint(constraint_string="unique_value")
 
         with pytest.raises(DBAPIError):
             await save_object(db_session, obj2)
@@ -41,13 +41,13 @@ class TestConstraintBehavior:
     async def test_not_null_constraint(self, db_session: AsyncSession):
         """Test not null constraint prevents null values."""
         # Try to create record with null value for not-null field
-        obj = SampleModelConstraint(constraint_string=None)
+        obj = SampleModelRealConstraint(constraint_string=None)
 
         with pytest.raises(DBAPIError):
             await save_object(db_session, obj)
         await db_session.rollback()
 
-        obj = SampleModelConstraint(constraint_string="")
+        obj = SampleModelRealConstraint(constraint_string="")
         with pytest.raises(ValueError):
             await save_object(db_session, obj)
         await db_session.rollback()
@@ -55,7 +55,7 @@ class TestConstraintBehavior:
     async def test_foreign_key_constraint(self, db_session: AsyncSession):
         """Test foreign key constraint prevents invalid references."""
         # Try to create record with invalid foreign key
-        obj = SampleModelConstraint(
+        obj = SampleModelRealConstraint(
             constraint_string="valid_string",
             fk_field=99999  # Non-existent user ID
         )
@@ -67,11 +67,11 @@ class TestConstraintBehavior:
     async def test_string_length_constraint(self, db_session: AsyncSession):
         """Test string length constraint behavior."""
         # Test valid length (exactly 20 chars)
-        valid_obj = SampleModelConstraint(constraint_string="A" * 20)
+        valid_obj = SampleModelRealConstraint(constraint_string="A" * 20)
         await save_object(db_session, valid_obj)
 
         # Test invalid length (21 chars)
-        invalid_obj = SampleModelConstraint(constraint_string="A" * 21)
+        invalid_obj = SampleModelRealConstraint(constraint_string="A" * 21)
         with pytest.raises(DBAPIError):
             await save_object(db_session, invalid_obj)
 
@@ -84,7 +84,7 @@ class TestIndexBehavior:
     def test_index_exists_in_database_metadata(self):
         """Test that indexes exist in database metadata."""
         # This is more of a configuration test, but validates index creation
-        table = SampleModelConstraint.__table__
+        table = SampleModelRealConstraint.__table__
 
         # Check that indexed columns are marked as indexed
         indexed_columns = [
