@@ -2,9 +2,10 @@ from sqlalchemy import Column, String, Text, Integer, ForeignKey, CheckConstrain
 from sqlalchemy.orm import relationship
 
 from app.core.base import Base
+from app.utils.mixins import Imageable
 
 
-class Categories(Base):
+class Categories(Base, Imageable):
     """
     Categories model representing product categories.
 
@@ -43,6 +44,12 @@ class Categories(Base):
         back_populates="children"
     )
     children = relationship("Categories", back_populates="parent")
+    products = relationship("Products", back_populates="category")
+    attribute_sets = relationship(
+        "AttributeSets",
+        secondary="category_attribute_set",
+        back_populates="categories"
+    )
 
     # Database constraint to enforce hierarchy rules
     __table_args__ = (
@@ -59,7 +66,7 @@ class Categories(Base):
 
     def __str__(self) -> str:
         """String representation of the category."""
-        return f"Categories(name={self.name}, slug={self.slug})"
+        return f"Categories({self.name})"
 
     def __repr__(self) -> str:
         """Official string representation of the category."""

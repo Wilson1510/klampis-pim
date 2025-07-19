@@ -1,11 +1,20 @@
+import enum
 from datetime import datetime
 
-from sqlalchemy import Column, String, Integer, Boolean, Float, DateTime, Text
+from sqlalchemy import (
+    Column, String, Integer, Boolean, Float, DateTime, Text, Enum, Numeric
+)
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.exc import DBAPIError, StatementError
 import pytest
 
 from app.core.base import Base
+
+
+class SampleEnum(str, enum.Enum):
+    FIRST = "FIRST"
+    SECOND = "SECOND"
+    THIRD = "THIRD"
 
 
 class SampleModelDataType(Base):
@@ -14,9 +23,11 @@ class SampleModelDataType(Base):
     sample_string = Column(String)
     sample_boolean = Column(Boolean)
     sample_float = Column(Float)
+    sample_numeric = Column(Numeric(15, 2))
     sample_datetime = Column(DateTime(timezone=True))
     sample_jsonb = Column(JSONB)
     sample_text = Column(Text)
+    sample_enum = Column(Enum(SampleEnum))
 
 
 class TestDataType:
@@ -35,7 +46,10 @@ class TestDataType:
             await session.rollback()
 
     async def test_string_field_validation(self, db_session):
-        valid_data = ["test", "test with spaces", "  test with whitespace   ", ("test")]
+        valid_data = [
+            "test", "test with spaces", "  test with whitespace   ", ("test"), "",
+            "    "
+        ]
         invalid_data = [
             # [data, error_type, error_message]
             [123, DBAPIError, "expected str, got int"],
@@ -51,8 +65,6 @@ class TestDataType:
             [('test1', 'test2'), DBAPIError, "expected str, got tuple"],
             [(), DBAPIError, "expected str, got tuple"],
             [datetime.now(), DBAPIError, "expected str, got datetime"],
-            ["", ValueError, "Column 'sample_string' cannot be empty."],
-            ["   ", ValueError, "Column 'sample_string' cannot be empty."],
             ["1test", ValueError, "Column 'sample_string' must start with a letter."],
             [
                 'test*',
@@ -157,7 +169,11 @@ class TestDataType:
     async def test_float_field_validation(self, db_session):
         valid_data = [-99999999999.99, 88.14, 2025, 99999999999.99, (88.0)]
         invalid_data = [
-            [False, TypeError, "Column 'sample_float' must be a float, not a boolean."],
+            [
+                False,
+                TypeError,
+                "Column 'sample_float' must be a float or numeric, not a boolean."
+            ],
             ["9999.99", DBAPIError, "(must be real number, not str)"],
             ["9999", DBAPIError, "(must be real number, not str)"],
             [[9999.99], DBAPIError, "(must be real number, not list)"],
@@ -177,6 +193,54 @@ class TestDataType:
         ]
 
         await self.create_item(valid_data, invalid_data, "sample_float", db_session)
+
+    async def test_numeric_field_validation(self, db_session):
+        valid_data = [
+            8887776665554.44, 77777.4, 77777.444, 8887776665554, 888777666555.4,
+            2067, "3174.12", "1556", (77777.55)
+        ]
+        invalid_data = [
+            [888777666555444, DBAPIError, "field numerik melebihi jangkauan"],
+            [8887776665554443, DBAPIError, "field numerik melebihi jangkauan"],
+            [888777666555444.2, DBAPIError, "field numerik melebihi jangkauan"],
+            ["test123", DBAPIError, "class 'decimal.ConversionSyntax'"],
+            [
+                False,
+                TypeError,
+                "Column 'sample_numeric' must be a float or numeric, not a boolean."
+            ],
+            [[5732.21], DBAPIError, "argument must be a sequence of length 3"],
+            [
+                [3306.12, 5432, 12],
+                DBAPIError,
+                "(sign must be an integer with the value 0 or 1)"
+            ],
+            [[], DBAPIError, "(argument must be a sequence of length 3)"],
+            [
+                {1589.744},
+                DBAPIError,
+                "(conversion from set to Decimal is not supported)"
+            ],
+            [
+                {2912.74, 1830.45},
+                DBAPIError,
+                "(conversion from set to Decimal is not supported)"
+            ],
+            [
+                {9092.87: 9200.32},
+                DBAPIError,
+                "(conversion from dict to Decimal is not supported)"
+            ],
+            [{}, DBAPIError, "(conversion from dict to Decimal is not supported)"],
+            [(1898.14, 1892.74), DBAPIError, "argument must be a sequence of length 3"],
+            [(), DBAPIError, "(argument must be a sequence of length 3)"],
+            [
+                datetime.now(),
+                DBAPIError,
+                "(conversion from datetime.datetime to Decimal is not supported)"
+            ]
+        ]
+        await self.create_item(valid_data, invalid_data, "sample_numeric", db_session)
 
     async def test_datetime_field_validation(self, db_session):
         valid_data = [
@@ -315,3 +379,75 @@ class TestDataType:
         ]
 
         await self.create_item(valid_data, invalid_data, "sample_jsonb", db_session)
+
+    async def test_enum_field_validation(self, db_session):
+        valid_data = [
+            SampleEnum.FIRST, "FIRST",
+            SampleEnum.SECOND, "SECOND",
+            SampleEnum.THIRD, "THIRD",
+            "   THIRD   ",
+            (SampleEnum.FIRST),
+        ]
+        invalid_data = [
+            [
+                "second", DBAPIError,
+                "nilai masukan tidak valid untuk enum sampleenum : « second »"
+            ],
+            [
+                "aaaaaaaaa", DBAPIError,
+                "nilai masukan tidak valid untuk enum sampleenum : « aaaaaaaaa »"
+            ],
+            [
+                "aaa", DBAPIError,
+                "nilai masukan tidak valid untuk enum sampleenum : « aaa »"
+            ],
+            [
+                123, StatementError,
+                "'123' is not among the defined enum values. Enum name: "
+                "sampleenum. Possible values: FIRST, SECOND, THIRD"
+            ],
+            [
+                12.3, StatementError,
+                "'12.3' is not among the defined enum values. Enum name: "
+                "sampleenum. Possible values: FIRST, SECOND, THIRD"
+            ],
+            [
+                True, StatementError,
+                "'True' is not among the defined enum values. Enum name: "
+                "sampleenum. Possible values: FIRST, SECOND, THIRD"
+            ],
+            [
+                datetime(2025, 7, 5, 8, 24, 30, 157344), StatementError,
+                "'2025-07-05 08:24:30.157344' is not among the defined enum "
+                "values. Enum name: sampleenum. Possible values: FIRST, "
+                "SECOND, THIRD"
+            ],
+            [[SampleEnum.FIRST], StatementError, "unhashable type: 'list'"],
+            [[], StatementError, "unhashable type: 'list'"],
+            [
+                [SampleEnum.SECOND, SampleEnum.THIRD], StatementError,
+                "unhashable type: 'list'"
+            ],
+            [{SampleEnum.FIRST}, StatementError, "unhashable type: 'set'"],
+            [
+                {SampleEnum.SECOND, SampleEnum.THIRD}, StatementError,
+                "unhashable type: 'set'"
+            ],
+            [{}, StatementError, "unhashable type: 'dict'"],
+            [
+                {SampleEnum.FIRST: SampleEnum.SECOND}, StatementError,
+                "unhashable type: 'dict'"
+            ],
+            [
+                (SampleEnum.SECOND, SampleEnum.THIRD), StatementError,
+                "is not among the defined enum values. Enum name: "
+                "sampleenum. Possible values: FIRST, SECOND, THIRD"
+            ],
+            [
+                (), StatementError,
+                "is not among the defined enum values. Enum name: "
+                "sampleenum. Possible values: FIRST, SECOND, THIRD"
+            ],
+        ]
+
+        await self.create_item(valid_data, invalid_data, "sample_enum", db_session)

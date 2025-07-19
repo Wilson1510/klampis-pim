@@ -34,23 +34,23 @@ ERD structure:
 │ sequence        │
 └─────────────────┘
 
-┌─────────────────┐    1:N    ┌─────────────────┐    1:N    ┌─────────────────┐
-│  CategoryTypes  │◄──────────│   Categories    │◄──────────│    Products     │
-│─────────────────│           │─────────────────│           │─────────────────│
-│ id (PK)         │           │ id (PK)         │           │ id (PK)         │
-│ name            │           │ name            │           │ name            │
-│ slug            │           │ slug            │           │ slug            │
-│ created_at      │           │ description     │           │ description     │
-│ updated_at      │           │category_type_id │           │ category_id (FK)│
-│ created_by (FK) │           │     (FK)        │           │ supplier_id (FK)│
-│ updated_by (FK) │           │ parent_id (FK)  │           │ created_at      │
-│ is_active       │           │ created_at      │           │ updated_at      │
-│ sequence        │           │ updated_at      │           │ created_by (FK) │
-└─────────────────┘           │ created_by (FK) │           │ updated_by (FK) │
-                              │ updated_by (FK) │           │ is_active       │
-                              │ is_active       │           │ sequence        │
-                              │ sequence        │           └─────────────────┘
-                              └─────────────────┘                          │
+┌─────────────────┐    1:N    ┌─────────────────┐    1:N    ┌─────────────────┐    N:1    ┌─────────────────┐
+│  CategoryTypes  │◄──────────│   Categories    │◄──────────│    Products     │──────────►│    Suppliers    │
+│─────────────────│           │─────────────────│           │─────────────────│           │─────────────────│
+│ id (PK)         │           │ id (PK)         │           │ id (PK)         │           │ id (PK)         │
+│ name            │           │ name            │           │ name            │           │ name            │
+│ slug            │           │ slug            │           │ slug            │           │ slug            │
+│ created_at      │           │ description     │           │ description     │           │ company_type    │
+│ updated_at      │           │category_type_id │           │ category_id (FK)│           │ address         │
+│ created_by (FK) │           │     (FK)        │           │ supplier_id (FK)│           │ contact         │
+│ updated_by (FK) │           │ parent_id (FK)  │           │ created_at      │           │ email           │
+│ is_active       │           │ created_at      │           │ updated_at      │           │ created_at      │
+│ sequence        │           │ updated_at      │           │ created_by (FK) │           │ updated_at      │
+└─────────────────┘           │ created_by (FK) │           │ updated_by (FK) │           │ created_by (FK) │
+                              │ updated_by (FK) │           │ is_active       │           │ updated_by (FK) │
+                              │ is_active       │           │ sequence        │           │ is_active       │
+                              │ sequence        │           └─────────────────┘           │ sequence        │
+                              └─────────────────┘                          │              └─────────────────┘
                                        │                                   │ 1:N
                                        │ 1:N (self-referencing)            ▼
                                        ▼                          ┌─────────────────┐
@@ -61,7 +61,6 @@ ERD structure:
                               │ parent_id (FK)  │                 │ slug            │
                               └─────────────────┘                 │ description     │
                                                                   │ sku_number      │
-                                                                  │ attributes (JSON)│
                                                                   │ product_id (FK) │
                                                                   │ created_at      │
                                                                   │ updated_at      │
@@ -105,39 +104,79 @@ ERD structure:
                                                             │ sequence        │
                                                             └─────────────────┘
 
-┌─────────────────┐    1:N    ┌─────────────────┐
-│    Suppliers    │◄──────────│    Products     │
-│─────────────────│           │─────────────────│
-│ id (PK)         │           └─────────────────┘
-│ name            │
-│ slug            │
-│ company_type    │
-│ address         │
-│ contact         │
-| email           |
-│ created_at      │
-│ updated_at      │
-│ created_by (FK) │
-│ updated_by (FK) │
-│ is_active       │
-│ sequence        │
-└─────────────────┘
+
+# Attribute Management System
 
 ┌─────────────────┐    M:N    ┌─────────────────┐    M:N    ┌─────────────────┐
-│   Attributes    │◄──────────│Product_Attributes│──────────►│    Products     │
-│─────────────────│           │─────────────────│           │─────────────────│
-│ id (PK)         │           │ id (PK)         │           └─────────────────┘
-│ name            │           │ product_id (FK) │
-│ code            │           │ attribute_id(FK)│
-│ data_type       │           └─────────────────┘
-│ uom             │
-│ created_at      │
-│ updated_at      │
-│ created_by (FK) │
-│ updated_by (FK) │
-│ is_active       │
-│ sequence        │
-└─────────────────┘
+│   Categories    │◄──────────│CategoryAttribute│──────────►│ AttributeSets   │
+│─────────────────│           │     Set         │           │─────────────────│
+│ id (PK)         │           │─────────────────│           │ id (PK)         │
+│ name            │           │ category_id (FK)│           │ name            │
+│ slug            │           │attribute_set_id │           │ created_at      │
+│ description     │           │       (FK)      │           │ updated_at      │
+│ ...             │           └─────────────────┘           │ created_by (FK) │
+└─────────────────┘                                         │ updated_by (FK) │
+                                                            │ is_active       │
+                                                            │ sequence        │
+                                                            └─────────────────┘
+                                                                     │
+                                                                     │ M:N
+                                                                     ▼
+                                                            ┌─────────────────┐
+                                                            │AttributeSet     │
+                                                            │   Attribute     │
+                                                            │─────────────────│
+                                                            │ attribute_set_id│
+                                                            │       (FK)      │
+                                                            │ attribute_id(FK)│
+                                                            └─────────────────┘
+                                                                     ▲
+                                                                     │ M:N
+                                                            ┌─────────────────┐
+                                                            │   Attributes    │
+                                                            │─────────────────│
+                                                            │ id (PK)         │
+                                                            │ name            │
+                                                            │ code            │
+                                                            │ data_type       │
+                                                            │ uom             │
+                                                            │ created_at      │
+                                                            │ updated_at      │
+                                                            │ created_by (FK) │
+                                                            │ updated_by (FK) │
+                                                            │ is_active       │
+                                                            │ sequence        │
+                                                            └─────────────────┘
+                                                                     │
+                                                                     │
+                                                                     ▼
+                                                            ┌─────────────────┐
+                                                            │SkuAttributeValue│
+                                                            │─────────────────│
+                                                            │ id (PK)         │
+                                                            │ sku_id (FK)     │
+                                                            │ attribute_id(FK)│
+                                                            │ value           │
+                                                            │ created_at      │
+                                                            │ updated_at      │
+                                                            │ created_by (FK) │
+                                                            │ updated_by (FK) │
+                                                            │ is_active       │
+                                                            │ sequence        │
+                                                            └─────────────────┘
+                                                                     ▲
+                                                                     │
+                                                            ┌─────────────────┐
+                                                            │      Skus       │
+                                                            │─────────────────│
+                                                            │ id (PK)         │
+                                                            │ name            │
+                                                            │ slug            │
+                                                            │ description     │
+                                                            │ sku_number      │
+                                                            │ product_id (FK) │
+                                                            │ ...             │
+                                                            └─────────────────┘
 
 ┌─────────────────┐    Generic FK    ┌─────────────────┐
 │     Images      │◄─────────────────│   Products      │
@@ -163,8 +202,28 @@ ERD structure:
 - **Categories** → **Categories** (1:N self-referencing via parent_id)
 - **Categories** → **Products** (1:N)
 - **Products** → **Skus** (1:N)
-- **Products** ↔ **Attributes** (M:N via Product_Attributes)
+- **Categories** ↔ **AttributeSets** (M:N via CategoryAttributeSet)
+- **AttributeSets** ↔ **Attributes** (M:N via AttributeSetAttribute)
+- **Skus** ↔ **Attributes** (M:N via SkuAttributeValue with value data)
 - **Suppliers** → **Products** (1:N)
 - **Skus** → **PriceDetails** (1:N)
 - **Pricelists** → **PriceDetails** (1:N)
 - **Images** → **Products/Skus** (Generic Foreign Key)
+
+# Attribute System Explanation:
+
+## 1. Category ↔ AttributeSet (M:N)
+- **Categories** can use multiple **AttributeSets** as templates
+- **AttributeSets** can be used by multiple **Categories**
+- Junction table: **CategoryAttributeSet**
+
+## 2. AttributeSet ↔ Attribute (M:N)
+- **AttributeSets** contain collections of **Attributes**
+- **Attributes** can be part of multiple **AttributeSets**
+- Junction table: **AttributeSetAttribute**
+
+## 3. Sku ← SkuAttributeValue → Attribute (Association Object)
+- **Skus** have many **SkuAttributeValue** records
+- **Attributes** are connected to many **SkuAttributeValue** records
+- **SkuAttributeValue** stores the specific value of an attribute for a SKU
+- This is a Many-to-Many relationship with additional data (value)

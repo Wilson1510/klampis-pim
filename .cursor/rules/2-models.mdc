@@ -33,7 +33,7 @@ alwaysApply: false
 - Column names: singular, snake_case (e.g., category_id, created_at)
 - Primary keys: id
 - Foreign keys: entity_name_id (e.g., category_id)
-- Junction tables: SingularSingular (e.g., ProductAttributes)
+- Junction tables: SingularSingular (e.g., ProductAttribute)
 
 ## Migration Strategy
 - Use Alembic for database migrations

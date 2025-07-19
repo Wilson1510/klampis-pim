@@ -1,10 +1,10 @@
-from sqlalchemy import String, event, DateTime
+from sqlalchemy import String, event, DateTime, Enum
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime
 import pytest
 
 from app.core.base import Base
-from app.models.user import Users
+from app.models.user_model import Users, Role
 from app.core.listeners import _hash_new_password_listener
 from app.core.security import verify_password
 from tests.utils.model_test_utils import (
@@ -51,16 +51,8 @@ class TestUser:
 
     def test_fields_with_validation(self):
         """Test that the model has the expected validation"""
-        assert hasattr(Users, 'validate_email')
-        assert hasattr(Users, 'validate_role')
-        assert not hasattr(Users, 'validate_last_login')
-        assert not hasattr(Users, 'validate_created_by')
-
-        assert 'email' in Users.__mapper__.validators
-        assert 'role' in Users.__mapper__.validators
-        assert len(Users.__mapper__.validators) == 2
-        assert 'last_login' not in Users.__mapper__.validators
-        assert 'created_by' not in Users.__mapper__.validators
+        assert not hasattr(Users, 'validate_email')
+        assert len(Users.__mapper__.validators) == 0
 
     def test_has_listeners(self):
         """Test that the model has the expected listeners"""
@@ -95,7 +87,7 @@ class TestUser:
         email_column = Users.__table__.columns.get('email')
         assert email_column is not None
         assert isinstance(email_column.type, String)
-        assert email_column.type.length == 100
+        assert email_column.type.length == 50
         assert email_column.nullable is False
         assert email_column.unique is True
         assert email_column.index is True
@@ -116,8 +108,8 @@ class TestUser:
         """Test the properties of the role field"""
         role_column = Users.__table__.columns.get('role')
         assert role_column is not None
-        assert isinstance(role_column.type, String)
-        assert role_column.type.length is None
+        assert isinstance(role_column.type, Enum)
+        assert role_column.type.enum_class == Role
         assert role_column.nullable is False
         assert role_column.unique is None
         assert role_column.index is None
@@ -138,7 +130,7 @@ class TestUser:
         str_repr = str(self.test_user1)
 
         # Should follow the pattern: Users(username=<username>)
-        assert str_repr == "Users(username=testuser, name=Test User)"
+        assert str_repr == "Users(Test User)"
 
     def test_init_method(self):
         """Test the init method"""
@@ -320,92 +312,6 @@ class TestUser:
         assert retrieved_item.updated_by == 3
         assert retrieved_item.name == "Updated Test User 4"
         assert retrieved_item.role == "ADMIN"
-
-    # Email Validation Tests
-    @pytest.mark.asyncio
-    async def test_email_validation_valid_formats(self, db_session: AsyncSession):
-        """Test email validator with valid email formats by saving to database"""
-        # Test various valid email formats
-        valid_emails = [
-            ("test2@example.com", "test2@example.com"),
-            ("user.name@domain.co.uk", "user.name@domain.co.uk"),
-            ("test+tag@gmail.com", "test+tag@gmail.com"),
-            ("user_123@sub.domain.com", "user_123@sub.domain.com"),
-            ("TEST3@EXAMPLE.COM", "test3@example.com"),
-            # Should be converted to lowercase
-            ("  test4@example.com  ", "test4@example.com"),  # Should be trimmed
-        ]
-
-        for i, (input_email, expected_email) in enumerate(valid_emails, 1):
-            user = Users(
-                username=f"emailtest{i}",
-                email=input_email,
-                name=f"Email Test {i}",
-                password="testpassword",
-                role="USER"
-            )
-            await save_object(db_session, user)
-
-            # Verify email was processed correctly
-            assert user.email == expected_email
-            assert '@' in user.email
-
-    @pytest.mark.asyncio
-    async def test_email_validation_invalid_formats(self, db_session: AsyncSession):
-        """Test email validator with invalid email formats"""
-        # Test invalid email formats
-        invalid_emails = [
-            "invalid-email",
-            "test@",
-            "@example.com",
-            "",
-            "   ",
-        ]
-
-        for i, email in enumerate(invalid_emails, 1):
-            with pytest.raises(ValueError, match="Invalid email format"):
-                Users(
-                    username=f"invalidemail{i}",
-                    email=email,
-                    name=f"Invalid Email {i}",
-                    password="testpassword",
-                    role="USER"
-                )
-            await db_session.rollback()
-
-    # Role Validation Tests
-    @pytest.mark.asyncio
-    async def test_role_validation_valid_roles(self, db_session: AsyncSession):
-        """Test role validator with valid roles by saving to database"""
-        valid_roles = ["USER", "ADMIN", "SYSTEM", "MANAGER"]
-
-        for i, role in enumerate(valid_roles, 1):
-            user = Users(
-                username=f"roletest{i}",
-                email=f"roletest{i}@test.local",
-                name=f"Role Test {i}",
-                password="testpassword",
-                role=role
-            )
-
-            # Verify role was set correctly
-            assert user.role == role
-
-    @pytest.mark.asyncio
-    async def test_role_validation_invalid_roles(self, db_session: AsyncSession):
-        """Test role validator with invalid roles"""
-        invalid_roles = ["INVALID", "user", "admin", "Guest", "SuperAdmin", ""]
-
-        for i, role in enumerate(invalid_roles, 1):
-            with pytest.raises(ValueError, match="Invalid role"):
-                Users(
-                    username=f"invalidrole{i}",
-                    email=f"invalidrole{i}@test.local",
-                    name=f"Invalid Role {i}",
-                    password="testpassword",
-                    role=role
-                )
-            await db_session.rollback()
 
     @pytest.mark.asyncio
     async def test_password_update_hashing(self, db_session: AsyncSession):
