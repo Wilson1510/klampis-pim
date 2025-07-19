@@ -1,7 +1,10 @@
 from datetime import datetime
 import re
 
-from sqlalchemy import event, String, Integer, Boolean, DateTime, Float, Text, Numeric
+from sqlalchemy import (
+    event, String, Integer, Boolean, DateTime, Float, Text, Numeric, Enum,
+    CheckConstraint
+)
 from sqlalchemy.orm.attributes import get_history
 
 from app.core.base import Base
@@ -113,26 +116,17 @@ def _validate_all_types_on_save(mapper, connection, target):
                     f"{type(value).__name__}."
                 )
 
-        # Validation for Float type
-        elif isinstance(column.type, Float):
+        # Validation for Float and Numeric types
+        elif isinstance(column.type, (Float, Numeric)):
             if isinstance(value, bool):
                 raise TypeError(
                     f"Column '{column.key}' must be a float, not a boolean."
                 )
 
-        # Validation for Numeric type
-        elif isinstance(column.type, Numeric):
-            if isinstance(value, bool):
-                raise TypeError(
-                    f"Column '{column.key}' must be a numeric, not a boolean."
-                )
-
         # Validation for Integer and Numeric types - AUTOMATIC positive validation
-        elif isinstance(column.type, (Integer, Numeric, Float)):
+        elif isinstance(column.type, (Integer, Float, Numeric)):
             # Auto-detect positive columns based on common patterns
-            positive_patterns = [
-                'quantity', 'minimum_', 'price'
-            ]
+            positive_patterns = ['quantity', 'minimum_', 'price']
 
             if any(pattern in column.key.lower() for pattern in positive_patterns):
                 if isinstance(value, (int, float)) and value <= 0:
@@ -176,6 +170,137 @@ def _validate_all_types_on_save(mapper, connection, target):
                     raise ValueError(f"Invalid datetime format: {value}")
 
 
+def _apply_automatic_constraints(target, connection, **kw):
+    """
+    Event listener that automatically applies database constraints
+    based on column names and types when table is created.
+    """
+    # Target is MetaData, iterate through all tables
+    for table in target.tables.values():
+        _apply_constraints_to_table(table)
+
+
+def _apply_constraints_to_table(table):
+    """
+    Apply automatic constraints to a single table.
+    """
+    constraints_to_add = []
+    table_name = table.name
+
+    # Get existing constraint names for this table
+    existing_constraint_names = [
+        c.name for c in table.constraints if hasattr(c, 'name') and c.name
+    ]
+
+    for column in table.columns:
+        column_name = column.name
+        column_type = column.type
+
+        # Skip system columns
+        system_columns = {
+            'id', 'created_at', 'updated_at', 'created_by',
+            'updated_by', 'is_active', 'sequence'
+        }
+
+        # Skip columns that already have explicit constraints or should be excluded
+        excluded_columns = {'password', 'last_login'}
+
+        if column_name in system_columns or column_name in excluded_columns:
+            continue
+
+        # Check if this column already has constraints defined
+        column_constraint_prefixes = [
+            f'check_{table_name}_{column_name}_',
+            f'{table_name}_{column_name}_'
+        ]
+
+        has_existing_constraints = any(
+            any(prefix in constraint_name for prefix in column_constraint_prefixes)
+            for constraint_name in existing_constraint_names
+        )
+
+        if has_existing_constraints:
+            continue
+
+        # Handle Enum and Text columns first (no constraints needed)
+        if isinstance(column_type, (Enum, Text)):
+            # Enum is part of String type but does not have TRIM which causes error.
+            # Text does not need character validation constraints.
+            continue
+
+        # Handle String columns
+        elif isinstance(column_type, String):
+            # Email constraints - auto-detect
+            if column.nullable is False:
+                constraints_to_add.extend([
+                    CheckConstraint(
+                        f"LENGTH(TRIM({column_name})) > 0",
+                        name=f'check_{table_name}_{column_name}_not_empty'
+                    )
+                ])
+
+            if 'email' in column_name.lower():
+                constraints_to_add.extend([
+                    CheckConstraint(
+                        f"{column_name} ~ '^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$'",
+                        name=f'check_{table_name}_{column_name}_format'
+                    )
+                ])
+
+            else:
+                constraints_to_add.extend([
+                    CheckConstraint(
+                        f"{column_name} ~ '^[A-Za-z0-9_ -]*$'",
+                        name=f'check_{table_name}_{column_name}_valid_chars'
+                    )
+                ])
+
+            # Phone/contact constraints - auto-detect
+            phone_patterns = ['contact', 'phone', 'mobile', 'telp']
+            phone_match = any(
+                pattern in column_name.lower() for pattern in phone_patterns
+            )
+            if phone_match:
+                constraints_to_add.extend([
+                    CheckConstraint(
+                        f"{column_name} ~ '^[0-9]+$'",
+                        name=f'check_{table_name}_{column_name}_digits_only'
+                    )
+                ])
+            else:
+                # Apply general string validation constraints for non-phone fields
+                constraints_to_add.extend([
+                    CheckConstraint(
+                        f"{column_name} ~ '^[A-Za-z].*'",
+                        name=f'check_{table_name}_{column_name}_starts_with_letter'
+                    ),
+                ])
+
+        # Handle Numeric columns
+        elif isinstance(column_type, (Integer, Numeric, Float)):
+            # Positive number constraints - auto-detect
+            positive_patterns = ['price', 'quantity', 'minimum_']
+            positive_match = any(
+                pattern in column_name.lower() for pattern in positive_patterns
+            )
+            if positive_match:
+                constraints_to_add.append(
+                    CheckConstraint(
+                        f"{column_name} > 0",
+                        name=f'check_{table_name}_{column_name}_positive'
+                    )
+                )
+
+    # Add all constraints to the table
+    for constraint in constraints_to_add:
+        # Check if constraint with same name already exists
+        existing_names = [
+            c.name for c in table.constraints if hasattr(c, 'name') and c.name
+        ]
+        if constraint.name not in existing_names:
+            table.append_constraint(constraint)
+
+
 def _hash_new_password_listener(mapper, connection, target):
     """Listener for hashing password ONLY on User model."""
     # Check if 'password' field is actually changed to avoid re-hashing
@@ -216,6 +341,12 @@ def register_listeners():
     """
     event.listen(Base, 'before_insert', _validate_all_types_on_save, propagate=True)
     event.listen(Base, 'before_update', _validate_all_types_on_save, propagate=True)
+    event.listen(
+        Base.metadata,
+        'before_create',
+        _apply_automatic_constraints,
+        propagate=True
+    )
 
     event.listen(Users, 'before_insert', _hash_new_password_listener)
     event.listen(Users, 'before_update', _hash_new_password_listener)

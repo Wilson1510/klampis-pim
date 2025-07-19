@@ -8,7 +8,6 @@ from app.api.v1.routes import api_router
 from app.core.config import settings
 from app.core.exceptions import setup_exception_handlers
 from app.core.listeners import register_listeners
-from app.core.constraint_listeners import register_constraint_listeners
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -27,7 +26,6 @@ app.add_middleware(
 )
 
 register_listeners()
-register_constraint_listeners()
 
 # Include API router
 app.include_router(api_router, prefix=settings.API_V1_PREFIX)
