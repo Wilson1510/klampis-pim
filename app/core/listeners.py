@@ -32,11 +32,7 @@ VALIDATION_PATTERNS = {
 
 class BaseValidator:
     """Base validator class with common functionality."""
-
-    @staticmethod
-    def _get_model_name(target) -> str:
-        """Get model name for error messages."""
-        return target.__class__.__name__
+    pass
 
 
 class StringValidator(BaseValidator):
@@ -315,7 +311,7 @@ class DatabaseConstraintValidator:
     }
 
     # Excluded columns
-    EXCLUDED_COLUMNS = {'password', 'last_login'}
+    EXCLUDED_COLUMNS = {'password'}
 
     @staticmethod
     def should_skip_column(column_name: str) -> bool:
@@ -386,7 +382,9 @@ class StringConstraintGenerator:
             # Email-specific constraints only
             constraints_to_add.extend([
                 CheckConstraint(
-                    f"{column_name} ~ '^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$'",
+                    f"{column_name} LIKE '%@%' AND {column_name} NOT LIKE"
+                    f" '@%' AND {column_name} NOT LIKE '%@'",
+                    # f"{column_name} ~ '^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$'",
                     name=_truncate_constraint_name_refactored(
                         f'check_{table_name}_{column_name}_format'
                     )
