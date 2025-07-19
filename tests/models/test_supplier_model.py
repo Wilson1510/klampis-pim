@@ -50,15 +50,8 @@ class TestSupplier:
 
     def test_fields_with_validation(self):
         """Test that the fields have the expected validation"""
-        assert hasattr(Suppliers, 'validate_contact')
-        assert hasattr(Suppliers, 'validate_email')
         assert not hasattr(Suppliers, 'validate_name')
-
-        assert 'contact' in Suppliers.__mapper__.validators
-        assert 'email' in Suppliers.__mapper__.validators
-        assert 'name' not in Suppliers.__mapper__.validators
-
-        assert len(Suppliers.__mapper__.validators) == 2
+        assert len(Suppliers.__mapper__.validators) == 0
 
     def test_has_listeners(self):
         """Test that the model has the expected listeners"""

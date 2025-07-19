@@ -270,7 +270,7 @@ class TestPricelistPriceDetailRelationship:
         """Test adding multiple price details to a pricelist"""
         for i in range(5):
             price_detail = PriceDetails(
-                price=i * 100.00,
+                price=(i + 1) * 100.00,
                 minimum_quantity=i + 1,
                 sku_id=self.test_sku.id,
                 pricelist_id=self.test_pricelist1.id
@@ -287,7 +287,7 @@ class TestPricelistPriceDetailRelationship:
         assert len(retrieved_pricelist.price_details) == 5
         for i in range(5):
             assert retrieved_pricelist.price_details[i].id == i + 1
-            assert retrieved_pricelist.price_details[i].price == i * 100.00
+            assert retrieved_pricelist.price_details[i].price == (i + 1) * 100.00
             assert retrieved_pricelist.price_details[i].minimum_quantity == i + 1
             assert retrieved_pricelist.price_details[i].sku_id == self.test_sku.id
 

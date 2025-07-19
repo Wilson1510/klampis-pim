@@ -169,7 +169,11 @@ class TestDataType:
     async def test_float_field_validation(self, db_session):
         valid_data = [-99999999999.99, 88.14, 2025, 99999999999.99, (88.0)]
         invalid_data = [
-            [False, TypeError, "Column 'sample_float' must be a float, not a boolean."],
+            [
+                False,
+                TypeError,
+                "Column 'sample_float' must be a float or numeric, not a boolean."
+            ],
             ["9999.99", DBAPIError, "(must be real number, not str)"],
             ["9999", DBAPIError, "(must be real number, not str)"],
             [[9999.99], DBAPIError, "(must be real number, not list)"],
@@ -203,7 +207,7 @@ class TestDataType:
             [
                 False,
                 TypeError,
-                "Column 'sample_numeric' must be a numeric, not a boolean."
+                "Column 'sample_numeric' must be a float or numeric, not a boolean."
             ],
             [[5732.21], DBAPIError, "argument must be a sequence of length 3"],
             [

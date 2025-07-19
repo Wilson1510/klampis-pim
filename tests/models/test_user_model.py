@@ -51,14 +51,8 @@ class TestUser:
 
     def test_fields_with_validation(self):
         """Test that the model has the expected validation"""
-        assert hasattr(Users, 'validate_email')
-        assert not hasattr(Users, 'validate_last_login')
-        assert not hasattr(Users, 'validate_created_by')
-
-        assert 'email' in Users.__mapper__.validators
-        assert len(Users.__mapper__.validators) == 1
-        assert 'last_login' not in Users.__mapper__.validators
-        assert 'created_by' not in Users.__mapper__.validators
+        assert not hasattr(Users, 'validate_email')
+        assert len(Users.__mapper__.validators) == 0
 
     def test_has_listeners(self):
         """Test that the model has the expected listeners"""

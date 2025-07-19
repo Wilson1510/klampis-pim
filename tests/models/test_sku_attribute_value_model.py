@@ -1,4 +1,6 @@
-from sqlalchemy import String, Integer, UniqueConstraint, Index, text, select
+from sqlalchemy import (
+    String, Integer, UniqueConstraint, Index, text, select, CheckConstraint
+)
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
 import pytest
@@ -76,17 +78,20 @@ class TestSkuAttributeValue:
         table_args = SkuAttributeValue.__table_args__
 
         # Check that we have exactly 2 constraints
-        assert len(table_args) == 2
+        assert len(table_args) == 3
 
         # Check constraint types and names
         unique_constraint = table_args[0]
         composite_index = table_args[1]
+        check_constraint = table_args[2]
 
         assert isinstance(unique_constraint, UniqueConstraint)
         assert isinstance(composite_index, Index)
+        assert isinstance(check_constraint, CheckConstraint)
 
         assert unique_constraint.name == 'uq_sku_attribute'
         assert composite_index.name == 'idx_sku_attribute_composite'
+        assert check_constraint.name == 'check_sku_attribute_value_value_not_empty'
 
         # Check unique constraint columns
         assert set(unique_constraint.columns.keys()) == {'sku_id', 'attribute_id'}
@@ -95,8 +100,8 @@ class TestSkuAttributeValue:
         index_columns = set(col.name for col in composite_index.columns)
         assert index_columns == {'sku_id', 'attribute_id'}
 
-        assert not hasattr(unique_constraint, 'sqltext')
-        assert not hasattr(composite_index, 'sqltext')
+        # Check check constraint SQL text
+        assert str(check_constraint.sqltext) == "LENGTH(TRIM(value)) > 0"
 
     def test_sku_id_field_properties(self):
         """Test the properties of the sku_id field"""
