@@ -325,9 +325,19 @@ def _apply_constraints_to_table(table):
                 ])
             else:
                 # Apply general string validation constraints for non-phone fields
+                # For nullable columns, allow empty strings
+                if column.nullable:
+                    # Allow empty strings OR strings that start with a letter
+                    constraint_pattern = (
+                        f"({column_name} = '' OR {column_name} ~ '^[A-Za-z].*')"
+                    )
+                else:
+                    # Non-nullable columns must start with a letter
+                    constraint_pattern = f"{column_name} ~ '^[A-Za-z].*'"
+
                 constraints_to_add.extend([
                     CheckConstraint(
-                        f"{column_name} ~ '^[A-Za-z].*'",
+                        constraint_pattern,
                         name=_truncate_constraint_name(
                             f'check_{table_name}_{column_name}_starts_with_letter'
                         )
