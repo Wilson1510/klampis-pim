@@ -23,13 +23,13 @@ class BaseUpdateSchema(BaseModel):
 
 class BaseInDB(BaseSchema):
     """Base schema with database audit fields."""
-    id: int = Field(..., description="Unique identifier")
-    created_at: datetime = Field(..., description="Creation timestamp")
-    updated_at: datetime = Field(..., description="Last update timestamp")
-    created_by: int = Field(..., description="ID of user who created this record")
-    updated_by: int = Field(..., description="ID of user who last updated this record")
-    is_active: bool = Field(True, description="Whether the record is active")
-    sequence: int = Field(0, description="Sequence number for ordering")
+    id: int = Field(..., ge=1, description="Unique identifier")
+    created_at: datetime
+    updated_at: datetime
+    created_by: int
+    updated_by: int
+    is_active: bool
+    sequence: int
 
     model_config = {
         "from_attributes": True,

@@ -2,17 +2,15 @@ from typing import Optional
 
 from pydantic import Field
 
-from app.schemas.base import BaseCreateSchema, BaseUpdateSchema, BaseInDB
+from app.schemas.base import BaseSchema, BaseInDB, BaseCreateSchema, BaseUpdateSchema
 
 
-class CategoryTypeBase(BaseCreateSchema):
+class CategoryTypeBase(BaseSchema):
     """Base schema for CategoryType with common fields."""
-    name: str = Field(
-        ..., min_length=1, max_length=100, description="Category type name"
-    )
+    name: str = Field(..., min_length=1, max_length=100)
 
 
-class CategoryTypeCreate(CategoryTypeBase):
+class CategoryTypeCreate(CategoryTypeBase, BaseCreateSchema):
     """Schema for creating a new category type.
 
     Used in: POST endpoints
@@ -21,15 +19,13 @@ class CategoryTypeCreate(CategoryTypeBase):
     pass
 
 
-class CategoryTypeUpdate(BaseUpdateSchema):
+class CategoryTypeUpdate(CategoryTypeBase, BaseUpdateSchema):
     """Schema for updating an existing category type.
 
     Used in: PUT/PATCH endpoints
     Contains: Optional fields that can be updated
     """
-    name: Optional[str] = Field(
-        None, min_length=1, max_length=100, description="Category type name"
-    )
+    name: Optional[str] = Field(None, min_length=1, max_length=100)
 
 
 class CategoryTypeInDB(CategoryTypeBase, BaseInDB):
@@ -39,7 +35,7 @@ class CategoryTypeInDB(CategoryTypeBase, BaseInDB):
     Contains: All database fields including auto-generated ones
     Purpose: Complete representation of database record
     """
-    slug: str = Field(..., description="URL-friendly slug (auto-generated)")
+    slug: str
 
 
 class CategoryTypeResponse(CategoryTypeInDB):
