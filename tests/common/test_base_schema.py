@@ -3,7 +3,7 @@ from datetime import datetime
 
 from sqlalchemy import Column, String, Text, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from pydantic import BaseModel
+from pydantic import BaseModel, NonNegativeInt
 from pydantic_core import PydanticUndefined
 import pytest
 
@@ -89,6 +89,7 @@ class TestSampleSchemaCreate:
         sequence = fields['sequence']
         assert sequence.is_required() is False
         assert sequence.annotation == int
+        assert sequence.metadata[0].ge == 0
         assert sequence.default == 0
 
     def test_base_schema_create_input(self):
@@ -148,7 +149,7 @@ class TestSampleSchemaUpdate:
 
         sequence = fields['sequence']
         assert sequence.is_required() is False
-        assert sequence.annotation == Optional[int]
+        assert sequence.annotation == Optional[NonNegativeInt]
         assert sequence.default is None
 
     def test_base_schema_update_input(self):
@@ -203,8 +204,7 @@ class TestSampleSchemaInDB:
         assert id.is_required() is True
         assert id.annotation == int
         assert id.default is PydanticUndefined
-        assert id.metadata[0].ge == 1
-        assert id.description == "Unique identifier"
+        assert id.metadata[0].gt == 0
 
         created_at = fields['created_at']
         assert created_at.is_required() is True
@@ -234,6 +234,7 @@ class TestSampleSchemaInDB:
         sequence = fields['sequence']
         assert sequence.is_required() is True
         assert sequence.annotation == int
+        assert sequence.metadata[0].ge == 0
         assert sequence.default is PydanticUndefined
 
         model_config = SampleSchemaInDB.model_config
@@ -288,8 +289,7 @@ class TestSampleSchemaResponse:
         assert id.is_required() is True
         assert id.annotation == int
         assert id.default is PydanticUndefined
-        assert id.metadata[0].ge == 1
-        assert id.description == "Unique identifier"
+        assert id.metadata[0].gt == 0
 
         created_at = fields['created_at']
         assert created_at.is_required() is True
@@ -319,6 +319,7 @@ class TestSampleSchemaResponse:
         sequence = fields['sequence']
         assert sequence.is_required() is True
         assert sequence.annotation == int
+        assert sequence.metadata[0].ge == 0
         assert sequence.default is PydanticUndefined
 
         model_config = SampleSchemaResponse.model_config

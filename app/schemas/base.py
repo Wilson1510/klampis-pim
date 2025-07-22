@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, NonNegativeInt, PositiveInt
 
 
 class BaseSchema(BaseModel):
@@ -12,23 +12,23 @@ class BaseSchema(BaseModel):
 class BaseCreateSchema(BaseSchema):
     """Base schema for creating entities."""
     is_active: bool = True
-    sequence: int = 0
+    sequence: NonNegativeInt = 0
 
 
 class BaseUpdateSchema(BaseSchema):
     """Base schema for updating entities with optional fields."""
     is_active: Optional[bool] = None
-    sequence: Optional[int] = None
+    sequence: Optional[NonNegativeInt] = None
 
 
 class BaseInDB(BaseSchema):
     """Base schema with database audit fields."""
-    id: int = Field(..., ge=1, description="Unique identifier")
+    id: PositiveInt
     created_at: datetime
     updated_at: datetime
     created_by: int
     updated_by: int
     is_active: bool
-    sequence: int
+    sequence: NonNegativeInt
 
     model_config = {"from_attributes": True}
