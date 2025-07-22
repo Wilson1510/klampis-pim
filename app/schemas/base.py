@@ -15,7 +15,7 @@ class BaseCreateSchema(BaseSchema):
     sequence: int = 0
 
 
-class BaseUpdateSchema(BaseModel):
+class BaseUpdateSchema(BaseSchema):
     """Base schema for updating entities with optional fields."""
     is_active: Optional[bool] = None
     sequence: Optional[int] = None
@@ -31,9 +31,4 @@ class BaseInDB(BaseSchema):
     is_active: bool
     sequence: int
 
-    model_config = {
-        "from_attributes": True,
-        "json_encoders": {
-            datetime: lambda v: v.isoformat()
-        }
-    }
+    model_config = {"from_attributes": True}

@@ -25,7 +25,7 @@ class CategoryTypeUpdate(CategoryTypeBase, BaseUpdateSchema):
     Used in: PUT/PATCH endpoints
     Contains: Optional fields that can be updated
     """
-    name: Optional[str] = Field(None, min_length=1, max_length=100)
+    name: Optional[str] = Field(default=None, min_length=1, max_length=100)
 
 
 class CategoryTypeInDB(CategoryTypeBase, BaseInDB):
