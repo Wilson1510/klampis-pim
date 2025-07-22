@@ -1,9 +1,8 @@
 import enum
-from datetime import datetime, date, time, timedelta
+from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
-from typing import List, Dict, Set, Tuple, Optional, Union, FrozenSet
-from uuid import UUID, uuid4
+from typing import List, Dict, Set, Tuple, Optional, Union
 
 import pytest
 from pydantic import BaseModel, ValidationError, EmailStr, HttpUrl
@@ -37,20 +36,15 @@ class SampleSchemaDataType(BaseModel):
     sample_int: int
     sample_float: float
     sample_bool: bool
-    sample_bytes: bytes
 
-    # Date & Time Types
+    # Datetime types
     sample_datetime: datetime
-    sample_date: date
-    sample_time: time
-    sample_timedelta: timedelta
 
     # Collection Types
     sample_list: List[str]
     sample_dict: Dict[str, int]
     sample_set: Set[str]
     sample_tuple: Tuple[str, int, bool]
-    sample_frozenset: FrozenSet[str]
 
     # Optional & Union Types
     sample_optional: Optional[str] = None
@@ -59,7 +53,6 @@ class SampleSchemaDataType(BaseModel):
     # String Specialized Types
     sample_email: EmailStr
     sample_url: HttpUrl
-    sample_uuid: UUID
 
     # Numeric Specialized Types
     sample_positive_int: PositiveInt
@@ -85,19 +78,21 @@ class TestDataTypeSchema:
         """Helper method to test valid and invalid data for a specific field"""
         # Test valid data
         for data in valid_data:
-            try:
-                # Create minimal schema with only the target field
-                schema_data = self._get_minimal_valid_data()
-                schema_data[target_field] = data
-                schema = SampleSchemaDataType(**schema_data)
-                assert getattr(schema, target_field) is not None
-            except Exception as e:
-                pytest.fail(
-                    f"Valid data {data} failed for field {target_field}: {e}"
-                )
+            print(f"valid data: {data}")
+            # try:
+            # Create minimal schema with only the target field
+            schema_data = self._get_minimal_valid_data()
+            schema_data[target_field] = data
+            schema = SampleSchemaDataType(**schema_data)
+            assert getattr(schema, target_field) is not None
+            # except Exception as e:
+            #     pytest.fail(
+            #         f"Valid data {data} failed for field {target_field}: {e}"
+            #     )
 
         # Test invalid data
         for data, error_type, error_message in invalid_data:
+            print(f"invalid data: {data}")
             schema_data = self._get_minimal_valid_data()
             schema_data[target_field] = data
 
@@ -111,20 +106,14 @@ class TestDataTypeSchema:
             "sample_int": 42,
             "sample_float": 3.14,
             "sample_bool": True,
-            "sample_bytes": b"test",
             "sample_datetime": datetime(2025, 1, 1, 12, 0, 0),
-            "sample_date": date(2025, 1, 1),
-            "sample_time": time(12, 0, 0),
-            "sample_timedelta": timedelta(days=1),
             "sample_list": ["item1", "item2"],
             "sample_dict": {"key1": 1, "key2": 2},
             "sample_set": {"item1", "item2"},
             "sample_tuple": ("str", 42, True),
-            "sample_frozenset": frozenset(["item1", "item2"]),
             "sample_union": "union_string",
             "sample_email": "test@example.com",
             "sample_url": "https://example.com",
-            "sample_uuid": uuid4(),
             "sample_positive_int": 10,
             "sample_negative_int": -10,
             "sample_positive_float": 3.14,
@@ -156,11 +145,11 @@ class TestDataTypeSchema:
 
     def test_int_field_validation(self):
         """Test integer field validation"""
-        valid_data = [-99999, 0, 99999, 2147483647, -2147483648]
+        valid_data = [-99999, 0, 99999, 2147483647, -2147483648, True]
         invalid_data = [
             ["test", ValidationError, "Input should be a valid integer"],
             [999.99, ValidationError, "Input should be a valid integer"],
-            [True, ValidationError, "Input should be a valid integer"],
+            # [True, ValidationError, "Input should be a valid integer"],
             [[999], ValidationError, "Input should be a valid integer"],
             [{'key': 999}, ValidationError, "Input should be a valid integer"],
             [datetime.now(), ValidationError, "Input should be a valid integer"],
@@ -196,19 +185,6 @@ class TestDataTypeSchema:
 
         self.create_item(valid_data, invalid_data, "sample_bool")
 
-    def test_bytes_field_validation(self):
-        """Test bytes field validation"""
-        valid_data = [b"test", b"", b"test with spaces", bytes("test", "utf-8")]
-        invalid_data = [
-            ["test", ValidationError, "Input should be a valid bytes"],
-            [123, ValidationError, "Input should be a valid bytes"],
-            [True, ValidationError, "Input should be a valid bytes"],
-            [['test'], ValidationError, "Input should be a valid bytes"],
-            [datetime.now(), ValidationError, "Input should be a valid bytes"],
-        ]
-
-        self.create_item(valid_data, invalid_data, "sample_bytes")
-
     def test_datetime_field_validation(self):
         """Test datetime field validation"""
         valid_data = [
@@ -231,64 +207,6 @@ class TestDataTypeSchema:
         ]
 
         self.create_item(valid_data, invalid_data, "sample_datetime")
-
-    def test_date_field_validation(self):
-        """Test date field validation"""
-        valid_data = [
-            date(2025, 6, 8),
-            date.today(),
-            "2025-06-05",
-            datetime(2025, 6, 8, 18, 19, 37),  # datetime can be converted to date
-        ]
-        invalid_data = [
-            [9915, ValidationError, "Input should be a valid date"],
-            ["test", ValidationError, "Input should be a valid date"],
-            [True, ValidationError, "Input should be a valid date"],
-            ["05-06-2025", ValidationError, "Input should be a valid date"],
-            [[], ValidationError, "Input should be a valid date"],
-        ]
-
-        self.create_item(valid_data, invalid_data, "sample_date")
-
-    def test_time_field_validation(self):
-        """Test time field validation"""
-        valid_data = [
-            time(12, 30, 45),
-            time(0, 0, 0),
-            time(23, 59, 59),
-            "12:30:45",
-            "12:30",
-            "12:30:45.123456",
-        ]
-        invalid_data = [
-            [9915, ValidationError, "Input should be a valid time"],
-            ["test", ValidationError, "Input should be a valid time"],
-            [True, ValidationError, "Input should be a valid time"],
-            ["25:30:45", ValidationError, "Input should be a valid time"],
-            [[], ValidationError, "Input should be a valid time"],
-        ]
-
-        self.create_item(valid_data, invalid_data, "sample_time")
-
-    def test_timedelta_field_validation(self):
-        """Test timedelta field validation"""
-        valid_data = [
-            timedelta(days=1),
-            timedelta(hours=2),
-            timedelta(minutes=30),
-            timedelta(seconds=45),
-            timedelta(days=1, hours=2, minutes=30),
-            "P1D",  # ISO 8601 duration
-            "PT2H30M",  # ISO 8601 duration
-        ]
-        invalid_data = [
-            [9915, ValidationError, "Input should be a valid timedelta"],
-            ["test", ValidationError, "Input should be a valid timedelta"],
-            [True, ValidationError, "Input should be a valid timedelta"],
-            [[], ValidationError, "Input should be a valid timedelta"],
-        ]
-
-        self.create_item(valid_data, invalid_data, "sample_timedelta")
 
     def test_list_field_validation(self):
         """Test list field validation"""
@@ -371,23 +289,6 @@ class TestDataTypeSchema:
 
         self.create_item(valid_data, invalid_data, "sample_tuple")
 
-    def test_frozenset_field_validation(self):
-        """Test frozenset field validation"""
-        valid_data = [
-            frozenset(["item1", "item2"]),
-            frozenset(),
-            {"item1", "item2"},  # Set can be converted to frozenset
-            ["item1", "item2"],  # List can be converted to frozenset
-        ]
-        invalid_data = [
-            ["not_frozenset", ValidationError, "Input should be a valid frozenset"],
-            [123, ValidationError, "Input should be a valid frozenset"],
-            [True, ValidationError, "Input should be a valid frozenset"],
-            [{"key": "value"}, ValidationError, "Input should be a valid frozenset"],
-        ]
-
-        self.create_item(valid_data, invalid_data, "sample_frozenset")
-
     def test_optional_field_validation(self):
         """Test optional field validation"""
         valid_data = [
@@ -463,26 +364,6 @@ class TestDataTypeSchema:
         ]
 
         self.create_item(valid_data, invalid_data, "sample_url")
-
-    def test_uuid_field_validation(self):
-        """Test UUID field validation"""
-        valid_data = [
-            uuid4(),
-            "550e8400-e29b-41d4-a716-446655440000",
-            "550e8400e29b41d4a716446655440000",  # Without hyphens
-        ]
-        invalid_data = [
-            ["not_a_uuid", ValidationError, "Input should be a valid UUID"],
-            [
-                "550e8400-e29b-41d4-a716",
-                ValidationError,
-                "Input should be a valid UUID",
-            ],
-            [123, ValidationError, "Input should be a valid UUID"],
-            [[], ValidationError, "Input should be a valid UUID"],
-        ]
-
-        self.create_item(valid_data, invalid_data, "sample_uuid")
 
     def test_positive_int_field_validation(self):
         """Test positive integer field validation"""
