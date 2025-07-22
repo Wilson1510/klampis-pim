@@ -97,6 +97,15 @@ class TestSampleSchemaCreate:
         assert schema.is_active is False
         assert schema.sequence == 1
 
+    def test_base_schema_create_input_updated(self):
+        schema = SampleSchemaCreate(**self.sample_dict)
+        assert schema.sequence == 1
+        assert schema.is_active is False
+
+        schema.sequence = 2
+        assert schema.sequence == 2
+        assert schema.is_active is False
+
     def test_base_schema_create_model_dump(self):
         schema = SampleSchemaCreate(**self.sample_dict)
         assert schema.model_dump() == {
@@ -156,6 +165,15 @@ class TestSampleSchemaUpdate:
         schema = SampleSchemaUpdate(**self.sample_dict)
         assert schema.is_active is False
         assert schema.sequence == 1
+
+    def test_base_schema_update_input_updated(self):
+        schema = SampleSchemaUpdate(**self.sample_dict)
+        assert schema.is_active is False
+        assert schema.sequence == 1
+
+        schema.sequence = 2
+        assert schema.sequence == 2
+        assert schema.is_active is False
 
     def test_base_schema_update_model_dump(self):
         schema = SampleSchemaUpdate(**self.sample_dict)
@@ -262,6 +280,33 @@ class TestSampleSchemaInDB:
             updated_by=schema.updated_by
         )
 
+    @pytest.mark.asyncio
+    async def test_base_schema_in_db_model_validate_updated(
+        self, db_session: AsyncSession
+    ):
+        """Test that the base schema in db model validate"""
+        schema = SampleModelBase(name="Test Sample", description="Test Description")
+        await save_object(db_session, schema)
+
+        stmt = select(SampleModelBase).where(SampleModelBase.id == schema.id)
+        result = await db_session.execute(stmt)
+        db_schema = result.scalar_one_or_none()
+
+        db_schema.name = "Test Sample Updated"
+
+        db_schema_object = SampleSchemaInDB.model_validate(db_schema)
+        assert db_schema_object == SampleSchemaInDB(
+            name="Test Sample Updated",
+            description="Test Description",
+            id=schema.id,
+            is_active=True,
+            sequence=0,
+            created_at=schema.created_at,
+            updated_at=schema.updated_at,
+            created_by=schema.created_by,
+            updated_by=schema.updated_by
+        )
+
 
 class TestSampleSchemaResponse:
     """Test cases for the sample schema response"""
@@ -337,6 +382,33 @@ class TestSampleSchemaResponse:
         db_schema_object = SampleSchemaResponse.model_validate(db_schema)
         assert db_schema_object == SampleSchemaResponse(
             name="Test Sample",
+            description="Test Description",
+            id=schema.id,
+            is_active=True,
+            sequence=0,
+            created_at=schema.created_at,
+            updated_at=schema.updated_at,
+            created_by=schema.created_by,
+            updated_by=schema.updated_by
+        )
+
+    @pytest.mark.asyncio
+    async def test_base_schema_response_model_validate_updated(
+        self, db_session: AsyncSession
+    ):
+        """Test that the base schema response model validate"""
+        schema = SampleModelBase(name="Test Sample", description="Test Description")
+        await save_object(db_session, schema)
+
+        stmt = select(SampleModelBase).where(SampleModelBase.id == schema.id)
+        result = await db_session.execute(stmt)
+        db_schema = result.scalar_one_or_none()
+
+        db_schema.name = "Test Sample Updated"
+
+        db_schema_object = SampleSchemaResponse.model_validate(db_schema)
+        assert db_schema_object == SampleSchemaResponse(
+            name="Test Sample Updated",
             description="Test Description",
             id=schema.id,
             is_active=True,
