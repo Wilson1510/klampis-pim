@@ -26,7 +26,8 @@ from slugify import slugify
 VALIDATION_PATTERNS = {
     'email': ['email'],  # Original only checked 'email' in column name
     'phone': ['contact', 'phone', 'mobile', 'telp'],  # Same as original
-    'positive': ['quantity', 'minimum_', 'price']  # Same as original
+    'positive': ['quantity', 'minimum_', 'price'],  # Same as original
+    'non_negative': ['sequence']  # Same as original
 }
 
 
@@ -134,6 +135,21 @@ class NumericValidator(BaseValidator):
                     "(greater than 0)."
                 )
 
+    @staticmethod
+    def validate_non_negative_number(target, column, value: Any) -> None:
+        """Validate non-negative number column value"""
+        column_key = column.key
+
+        # Auto-detect non-negative columns
+        non_negative_patterns = VALIDATION_PATTERNS['non_negative']
+
+        if any(pattern in column_key.lower() for pattern in non_negative_patterns):
+            if isinstance(value, (int, float)) and value < 0:
+                raise ValueError(
+                    f"Column '{column_key}' must be a non-negative number "
+                    "(greater than or equal to 0)."
+                )
+
 
 class BooleanValidator(BaseValidator):
     """Handles validation for Boolean columns"""
@@ -239,6 +255,7 @@ def _validate_all_types_on_save(mapper, connection, target):
         elif isinstance(column.type, Integer):
             NumericValidator.validate_integer(target, column, value)
             NumericValidator.validate_positive_number(target, column, value)
+            NumericValidator.validate_non_negative_number(target, column, value)
 
         # Validation for Boolean type
         elif isinstance(column.type, Boolean):
@@ -248,6 +265,7 @@ def _validate_all_types_on_save(mapper, connection, target):
         elif isinstance(column.type, (Float, Numeric)):
             NumericValidator.validate_float_numeric(target, column, value)
             NumericValidator.validate_positive_number(target, column, value)
+            NumericValidator.validate_non_negative_number(target, column, value)
 
         # Validation for DateTime type
         elif isinstance(column.type, DateTime):
@@ -446,6 +464,21 @@ class NumericConstraintGenerator:
                     f"{column_name} > 0",
                     name=_truncate_constraint_name_refactored(
                         f'check_{table_name}_{column_name}_positive'
+                    )
+                )
+            )
+
+        # Use VALIDATION_PATTERNS for non-negative detection - consistent order
+        non_negative_patterns = VALIDATION_PATTERNS['non_negative']
+        non_negative_match = any(
+            pattern in column_name.lower() for pattern in non_negative_patterns
+        )
+        if non_negative_match:
+            constraints_to_add.append(
+                CheckConstraint(
+                    f"{column_name} >= 0",
+                    name=_truncate_constraint_name_refactored(
+                        f'check_{table_name}_{column_name}_non_negative'
                     )
                 )
             )
