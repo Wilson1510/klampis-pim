@@ -1,13 +1,14 @@
 from typing import Optional
 
-from pydantic import Field
+from pydantic import Field, StrictStr
 
 from app.schemas.base import BaseSchema, BaseInDB, BaseCreateSchema, BaseUpdateSchema
 
 
 class CategoryTypeBase(BaseSchema):
     """Base schema for CategoryType with common fields."""
-    name: str = Field(..., min_length=1, max_length=100)
+    # Use StrictStr to prevent automatic conversion from numbers
+    name: StrictStr = Field(..., min_length=1, max_length=100)
 
 
 class CategoryTypeCreate(CategoryTypeBase, BaseCreateSchema):
@@ -25,7 +26,7 @@ class CategoryTypeUpdate(CategoryTypeBase, BaseUpdateSchema):
     Used in: PUT/PATCH endpoints
     Contains: Optional fields that can be updated
     """
-    name: Optional[str] = Field(default=None, min_length=1, max_length=100)
+    name: Optional[StrictStr] = Field(default=None, min_length=1, max_length=100)
 
 
 class CategoryTypeInDB(CategoryTypeBase, BaseInDB):

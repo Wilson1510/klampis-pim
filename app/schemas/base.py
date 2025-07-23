@@ -1,7 +1,9 @@
 from datetime import datetime
-from typing import Optional
+from typing import Annotated, Optional
 
-from pydantic import BaseModel, NonNegativeInt, PositiveInt
+from pydantic import BaseModel, StrictBool, StrictInt, Field
+
+StrictNonNegativeInt = Annotated[StrictInt, Field(ge=0)]
 
 
 class BaseSchema(BaseModel):
@@ -11,24 +13,23 @@ class BaseSchema(BaseModel):
 
 class BaseCreateSchema(BaseSchema):
     """Base schema for creating entities."""
-    is_active: bool = True
-    sequence: NonNegativeInt = 0
+    is_active: StrictBool = True
+    sequence: StrictNonNegativeInt = 0
 
 
 class BaseUpdateSchema(BaseSchema):
     """Base schema for updating entities with optional fields."""
-    is_active: Optional[bool] = None
-    sequence: Optional[NonNegativeInt] = None
+    is_active: Optional[StrictBool] = None
+    sequence: Optional[StrictNonNegativeInt] = None
 
 
 class BaseInDB(BaseSchema):
     """Base schema with database audit fields."""
-    id: PositiveInt
+    id: int
     created_at: datetime
     updated_at: datetime
     created_by: int
     updated_by: int
     is_active: bool
-    sequence: NonNegativeInt
-
+    sequence: int
     model_config = {"from_attributes": True}
