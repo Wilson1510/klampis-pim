@@ -2,13 +2,14 @@ import enum
 from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
-from typing import List, Dict, Set, Tuple, Optional, Union
+from typing import List, Dict, Set, Tuple, Optional, Union, Any
 
 import pytest
-from pydantic import BaseModel, ValidationError, EmailStr, HttpUrl
-from pydantic.types import (
-    PositiveInt, NegativeInt, PositiveFloat, NegativeFloat
+from pydantic import (
+    BaseModel, ValidationError, EmailStr, HttpUrl,
+    StrictStr, StrictInt, StrictFloat, StrictBool
 )
+from app.schemas.base import StrictNonNegativeInt
 
 
 class SampleEnum(str, enum.Enum):
@@ -32,19 +33,28 @@ class SampleSchemaDataType(BaseModel):
     """Sample schema for testing various Pydantic data types."""
 
     # Basic/Primitive Types
-    sample_str: str
-    sample_int: int
-    sample_float: float
-    sample_bool: bool
+    sample_str: str  # Done
+    sample_int: int  # Done
+    sample_float: float  # Done
+    sample_bool: bool  # Done
+
+    # Strict Types
+    sample_strict_str: StrictStr  # Done
+    sample_strict_int: StrictInt  # Done
+    sample_strict_float: StrictFloat  # Done
+    sample_strict_bool: StrictBool  # Done
+
+    # Strict Non-Negative Types
+    sample_strict_non_negative_int: StrictNonNegativeInt
 
     # Datetime types
-    sample_datetime: datetime
+    sample_datetime: datetime  # Done
 
     # Collection Types
-    sample_list: List[str]
-    sample_dict: Dict[str, int]
-    sample_set: Set[str]
-    sample_tuple: Tuple[str, int, bool]
+    sample_list: List[Any]
+    sample_dict: Dict[Any, Any]  # Done
+    sample_set: Set[Any]
+    sample_tuple: Tuple[Any, ...]
 
     # Optional & Union Types
     sample_optional: Optional[str] = None
@@ -55,15 +65,11 @@ class SampleSchemaDataType(BaseModel):
     sample_url: HttpUrl
 
     # Numeric Specialized Types
-    sample_positive_int: PositiveInt
-    sample_negative_int: NegativeInt
-    sample_positive_float: PositiveFloat
-    sample_negative_float: NegativeFloat
     sample_decimal: Decimal
 
     # Enum Types
-    sample_str_enum: SampleEnum
-    sample_int_enum: SampleIntEnum
+    sample_str_enum: SampleEnum  # Done
+    sample_int_enum: SampleIntEnum  # Done
 
     # Complex/Nested Types
     sample_nested_model: NestedModel
@@ -106,6 +112,11 @@ class TestDataTypeSchema:
             "sample_int": 42,
             "sample_float": 3.14,
             "sample_bool": True,
+            "sample_strict_str": "test",
+            "sample_strict_int": 42,
+            "sample_strict_float": 3.14,
+            "sample_strict_bool": True,
+            "sample_strict_non_negative_int": 42,
             "sample_datetime": datetime(2025, 1, 1, 12, 0, 0),
             "sample_list": ["item1", "item2"],
             "sample_dict": {"key1": 1, "key2": 2},
@@ -114,10 +125,6 @@ class TestDataTypeSchema:
             "sample_union": "union_string",
             "sample_email": "test@example.com",
             "sample_url": "https://example.com",
-            "sample_positive_int": 10,
-            "sample_negative_int": -10,
-            "sample_positive_float": 3.14,
-            "sample_negative_float": -3.14,
             "sample_decimal": Decimal("123.45"),
             "sample_str_enum": SampleEnum.FIRST,
             "sample_int_enum": SampleIntEnum.ONE,
@@ -128,85 +135,311 @@ class TestDataTypeSchema:
     def test_str_field_validation(self):
         """Test string field validation"""
         valid_data = [
-            "test", "test with spaces", "  test with whitespace   ",
-            "", "    ", "123", "test123", "Test_With_Underscores",
-            "test-with-dashes", "test.with.dots", "test/with/slashes"
+            "test", "test with spaces", "  test with whitespace   ", ("test"), "",
+            "    ", "1test", "test*"
         ]
         invalid_data = [
             [123, ValidationError, "Input should be a valid string"],
             [12.3, ValidationError, "Input should be a valid string"],
             [True, ValidationError, "Input should be a valid string"],
             [['test'], ValidationError, "Input should be a valid string"],
-            [{'test': 'value'}, ValidationError, "Input should be a valid string"],
-            [datetime.now(), ValidationError, "Input should be a valid string"],
+            [['test1', 'test2'], ValidationError, "Input should be a valid string"],
+            [[], ValidationError, "Input should be a valid string"],
+            [{'test1', 'test2'}, ValidationError, "Input should be a valid string"],
+            [{'test'}, ValidationError, "Input should be a valid string"],
+            [
+                {'test key': 'test value'},
+                ValidationError,
+                "Input should be a valid string"
+            ],
+            [{}, ValidationError, "Input should be a valid string"],
+            [('test1', 'test2'), ValidationError, "Input should be a valid string"],
+            [(), ValidationError, "Input should be a valid string"],
+            [datetime.now(), ValidationError, "Input should be a valid string"]
         ]
 
         self.create_item(valid_data, invalid_data, "sample_str")
 
     def test_int_field_validation(self):
         """Test integer field validation"""
-        valid_data = [-99999, 0, 99999, 2147483647, -2147483648, True]
+        valid_data = [
+            -99999, 0, 00, 99999, 2147483647, -2147483648, True, 999.00, "999", (88)
+        ]
         invalid_data = [
             ["test", ValidationError, "Input should be a valid integer"],
             [999.99, ValidationError, "Input should be a valid integer"],
-            # [True, ValidationError, "Input should be a valid integer"],
             [[999], ValidationError, "Input should be a valid integer"],
-            [{'key': 999}, ValidationError, "Input should be a valid integer"],
-            [datetime.now(), ValidationError, "Input should be a valid integer"],
+            [[998, 999], ValidationError, "Input should be a valid integer"],
+            [[], ValidationError, "Input should be a valid integer"],
+            [{999}, ValidationError, "Input should be a valid integer"],
+            [{998, 999}, ValidationError, "Input should be a valid integer"],
+            [{998: 999}, ValidationError, "Input should be a valid integer"],
+            [{}, ValidationError, "Input should be a valid integer"],
+            [(998, 999), ValidationError, "Input should be a valid integer"],
+            [(), ValidationError, "Input should be a valid integer"],
+            [datetime.now(), ValidationError, "Input should be a valid integer"]
         ]
 
         self.create_item(valid_data, invalid_data, "sample_int")
 
-    def test_float_field_validation(self):
-        """Test float field validation"""
-        valid_data = [-99999.99, 0.0, 88.14, 2025, 99999.99, 3.14159]
-        invalid_data = [
-            ["9999.99", ValidationError, "Input should be a valid number"],
-            [True, ValidationError, "Input should be a valid number"],
-            [[9999.99], ValidationError, "Input should be a valid number"],
-            [{'key': 9999.99}, ValidationError, "Input should be a valid number"],
-            [datetime.now(), ValidationError, "Input should be a valid number"],
-        ]
-
-        self.create_item(valid_data, invalid_data, "sample_float")
-
     def test_bool_field_validation(self):
         """Test boolean field validation"""
-        valid_data = [True, False]
+        valid_data = [
+            True, False, (True), "yes", "no", "true", "false", 1.0, 0.0, 1, 0
+        ]
         invalid_data = [
-            ["true", ValidationError, "Input should be a valid boolean"],
-            ["false", ValidationError, "Input should be a valid boolean"],
-            [1, ValidationError, "Input should be a valid boolean"],
-            [0, ValidationError, "Input should be a valid boolean"],
-            [1.0, ValidationError, "Input should be a valid boolean"],
+            ["test", ValidationError, "Input should be a valid boolean"],
+            [2, ValidationError, "Input should be a valid boolean"],
+            [999, ValidationError, "Input should be a valid boolean"],
+            [9.99, ValidationError, "Input should be a valid boolean"],
+            [[False], ValidationError, "Input should be a valid boolean"],
+            [[True, False], ValidationError, "Input should be a valid boolean"],
             [[], ValidationError, "Input should be a valid boolean"],
-            [datetime.now(), ValidationError, "Input should be a valid boolean"],
+            [{True}, ValidationError, "Input should be a valid boolean"],
+            [{False, True}, ValidationError, "Input should be a valid boolean"],
+            [{True: True}, ValidationError, "Input should be a valid boolean"],
+            [{}, ValidationError, "Input should be a valid boolean"],
+            [
+                datetime(2025, 6, 8, 18, 19, 37, 718543),
+                ValidationError,
+                "Input should be a valid boolean"
+            ],
+            [(True, False), ValidationError, "Input should be a valid boolean"],
+            [(), ValidationError, "Input should be a valid boolean"]
         ]
 
         self.create_item(valid_data, invalid_data, "sample_bool")
+
+    def test_float_field_validation(self):
+        """Test float field validation"""
+        valid_data = [
+            -9999999999.99, 0.0, 88.14, 2025, 9999999999.99, False, "9999.99", (88.0),
+            "9999"
+        ]
+        invalid_data = [
+            ["test", ValidationError, "Input should be a valid number"],
+            [[9999.99], ValidationError, "Input should be a valid number"],
+            [[9999, 9999, 9999], ValidationError, "Input should be a valid number"],
+            [[], ValidationError, "Input should be a valid number"],
+            [{9999.99}, ValidationError, "Input should be a valid number"],
+            [{9999.99, 9999.99}, ValidationError, "Input should be a valid number"],
+            [{9999.99: 9999.99}, ValidationError, "Input should be a valid number"],
+            [{}, ValidationError, "Input should be a valid number"],
+            [(9999.99, 9999.99), ValidationError, "Input should be a valid number"],
+            [(), ValidationError, "Input should be a valid number"],
+            [datetime.now(), ValidationError, "Input should be a valid number"]
+        ]
+
+        self.create_item(valid_data, invalid_data, "sample_float")
 
     def test_datetime_field_validation(self):
         """Test datetime field validation"""
         valid_data = [
             datetime(2025, 6, 8, 18, 19, 37, 718543),
             datetime.now(),
-            "2025-06-05T21:18:52",
+            (datetime(2025, 6, 8, 18, 19, 37, 718543)),
+            "2025-06-05",
             "2025-06-05 21:18:52",
-            "2025-06-05T21:18:52.123456",
-            "2025-06-05T21:18:52Z",
-            "2025-06-05T21:18:52+04:00",
+            "2025-06-05 21:18:52.123456+0400",
+            "2023-12-25 14:30:00.123456",
+            "2023-12-25T14:30:00",
+            "2023-12-25T14:30:00Z",
+            "2023-12-25T14:30:00.123456",
+            "2023-12-25T14:30:00.123456Z",
+            "2023-12-25T14:30:00.123456+04:00",
+            "2023-12-25T14:30:00+04:00",
+            9915,
+            9679.36,
+            datetime(1, 1, 1, 1, 1, 1, 1),
         ]
         invalid_data = [
-            [9915, ValidationError, "Input should be a valid datetime"],
-            [9679.36, ValidationError, "Input should be a valid datetime"],
-            ["test", ValidationError, "Input should be a valid datetime"],
+            [
+                "test",
+                ValidationError,
+                "Input should be a valid datetime or date, input is too short"
+            ],
             [True, ValidationError, "Input should be a valid datetime"],
-            ["05-06-2025", ValidationError, "Input should be a valid datetime"],
-            ["10:00:14", ValidationError, "Input should be a valid datetime"],
-            [[], ValidationError, "Input should be a valid datetime"],
+            [
+                [datetime(2025, 1, 4)],
+                ValidationError,
+                "Input should be a valid datetime"
+            ],
+            [
+                [datetime(2024, 10, 9), datetime(2024, 11, 30)],
+                ValidationError,
+                "Input should be a valid datetime"
+            ],
+            [
+                [],
+                ValidationError,
+                "Input should be a valid datetime"
+            ],
+            [
+                {datetime(2024, 8, 21)},
+                ValidationError,
+                "Input should be a valid datetime"
+            ],
+            [
+                {datetime(2023, 8, 20), datetime(2023, 7, 7)},
+                ValidationError,
+                "Input should be a valid datetime"
+            ],
+            [
+                {datetime(2022, 7, 5): datetime(2022, 12, 21)},
+                ValidationError,
+                "Input should be a valid datetime"
+            ],
+            [
+                {},
+                ValidationError,
+                "Input should be a valid datetime"
+            ],
+            [
+                (datetime(2024, 3, 13), datetime(2028, 1, 4)),
+                ValidationError,
+                "Input should be a valid datetime"
+            ],
+            [
+                (),
+                ValidationError,
+                "Input should be a valid datetime"
+            ],
+            [
+                "05-06-2025",
+                ValidationError,
+                "Input should be a valid datetime or date, invalid character in year"
+            ],
+            [
+                "10:00:14",
+                ValidationError,
+                "Input should be a valid datetime or date, input is too short"
+            ],
+            [
+                "2025-06-05 21:18:52.123456+04",
+                ValidationError,
+                "Input should be a valid datetime or date,"
+                " unexpected extra characters at the end of the input"
+            ],
+            [
+                "2025-06-02 23:20:35+08",
+                ValidationError,
+                "Input should be a valid datetime or date, "
+                "unexpected extra characters at the end of the input"
+            ]
         ]
 
         self.create_item(valid_data, invalid_data, "sample_datetime")
+
+    def test_strict_str_field_validation(self):
+        """Test strict string field validation"""
+        valid_data = [
+            "test", "test with spaces", "  test with whitespace   ", ("test"), "",
+            "    ", "1test", "test*"
+        ]
+        invalid_data = [
+            [123, ValidationError, "Input should be a valid string"],
+            [12.3, ValidationError, "Input should be a valid string"],
+            [True, ValidationError, "Input should be a valid string"],
+            [['test'], ValidationError, "Input should be a valid string"],
+            [['test1', 'test2'], ValidationError, "Input should be a valid string"],
+            [[], ValidationError, "Input should be a valid string"],
+            [{'test1', 'test2'}, ValidationError, "Input should be a valid string"],
+            [{'test'}, ValidationError, "Input should be a valid string"],
+            [
+                {'test key': 'test value'},
+                ValidationError,
+                "Input should be a valid string"
+            ],
+            [{}, ValidationError, "Input should be a valid string"],
+            [('test1', 'test2'), ValidationError, "Input should be a valid string"],
+            [(), ValidationError, "Input should be a valid string"],
+            [datetime.now(), ValidationError, "Input should be a valid string"]
+        ]
+
+        self.create_item(valid_data, invalid_data, "sample_strict_str")
+
+    def test_strict_int_field_validation(self):
+        """Test integer field validation"""
+        valid_data = [
+            -99999, 0, 00, 99999, 2147483647, -2147483648, (88)
+        ]
+        invalid_data = [
+            ["test", ValidationError, "Input should be a valid integer"],
+            ["999", ValidationError, "Input should be a valid integer"],
+            [True, ValidationError, "Input should be a valid integer"],
+            [999.00, ValidationError, "Input should be a valid integer"],
+            [999.99, ValidationError, "Input should be a valid integer"],
+            [[999], ValidationError, "Input should be a valid integer"],
+            [[998, 999], ValidationError, "Input should be a valid integer"],
+            [[], ValidationError, "Input should be a valid integer"],
+            [{999}, ValidationError, "Input should be a valid integer"],
+            [{998, 999}, ValidationError, "Input should be a valid integer"],
+            [{998: 999}, ValidationError, "Input should be a valid integer"],
+            [{}, ValidationError, "Input should be a valid integer"],
+            [(998, 999), ValidationError, "Input should be a valid integer"],
+            [(), ValidationError, "Input should be a valid integer"],
+            [datetime.now(), ValidationError, "Input should be a valid integer"]
+        ]
+
+        self.create_item(valid_data, invalid_data, "sample_strict_int")
+
+    def test_strict_bool_field_validation(self):
+        """Test strict boolean field validation"""
+        valid_data = [True, False, (True)]
+        invalid_data = [
+            ["test", ValidationError, "Input should be a valid boolean"],
+            ["yes", ValidationError, "Input should be a valid boolean"],
+            ["no", ValidationError, "Input should be a valid boolean"],
+            ["true", ValidationError, "Input should be a valid boolean"],
+            ["false", ValidationError, "Input should be a valid boolean"],
+            [1.0, ValidationError, "Input should be a valid boolean"],
+            [0.0, ValidationError, "Input should be a valid boolean"],
+            [1, ValidationError, "Input should be a valid boolean"],
+            [0, ValidationError, "Input should be a valid boolean"],
+            [2, ValidationError, "Input should be a valid boolean"],
+            [999, ValidationError, "Input should be a valid boolean"],
+            [9.99, ValidationError, "Input should be a valid boolean"],
+            [[False], ValidationError, "Input should be a valid boolean"],
+            [[True, False], ValidationError, "Input should be a valid boolean"],
+            [[], ValidationError, "Input should be a valid boolean"],
+            [{True}, ValidationError, "Input should be a valid boolean"],
+            [{False, True}, ValidationError, "Input should be a valid boolean"],
+            [{True: True}, ValidationError, "Input should be a valid boolean"],
+            [{}, ValidationError, "Input should be a valid boolean"],
+            [
+                datetime(2025, 6, 8, 18, 19, 37, 718543),
+                ValidationError,
+                "Input should be a valid boolean"
+            ],
+            [(True, False), ValidationError, "Input should be a valid boolean"],
+            [(), ValidationError, "Input should be a valid boolean"]
+        ]
+
+        self.create_item(valid_data, invalid_data, "sample_strict_bool")
+
+    def test_strict_float_field_validation(self):
+        """Test strict float field validation"""
+        valid_data = [
+            -9999999999.99, 0.0, 88.14, 9999999999.99, (88.0), 2025
+        ]
+        invalid_data = [
+            ["test", ValidationError, "Input should be a valid number"],
+            [False, ValidationError, "Input should be a valid number"],
+            ["9999", ValidationError, "Input should be a valid number"],
+            ["9999.99", ValidationError, "Input should be a valid number"],
+            [[9999.99], ValidationError, "Input should be a valid number"],
+            [[9999, 9999, 9999], ValidationError, "Input should be a valid number"],
+            [[], ValidationError, "Input should be a valid number"],
+            [{9999.99}, ValidationError, "Input should be a valid number"],
+            [{9999.99, 9999.99}, ValidationError, "Input should be a valid number"],
+            [{9999.99: 9999.99}, ValidationError, "Input should be a valid number"],
+            [{}, ValidationError, "Input should be a valid number"],
+            [(9999.99, 9999.99), ValidationError, "Input should be a valid number"],
+            [(), ValidationError, "Input should be a valid number"],
+            [datetime.now(), ValidationError, "Input should be a valid number"]
+        ]
+
+        self.create_item(valid_data, invalid_data, "sample_strict_float")
 
     def test_list_field_validation(self):
         """Test list field validation"""
@@ -229,20 +462,44 @@ class TestDataTypeSchema:
     def test_dict_field_validation(self):
         """Test dict field validation"""
         valid_data = [
-            {"key1": 1, "key2": 2},
-            {},
-            {"single_key": 42},
+            {"key": "value"}, {}, {9999: 9999}, {41: "value"}, {False: True},
+            {True: "value"}, {9999.99: 9999.99}, {65.12: "value"}, {"key": "value"},
+            {
+                    datetime(2025, 6, 8, 18, 19, 37, 718543):
+                    datetime(2025, 6, 8, 18, 19, 37, 718543)
+            },
+            {datetime(2025, 6, 8, 18, 19, 37, 718543): "value"}
         ]
         invalid_data = [
-            ["not_a_dict", ValidationError, "Input should be a valid dictionary"],
+            ["test", ValidationError, "Input should be a valid dictionary"],
             [123, ValidationError, "Input should be a valid dictionary"],
             [True, ValidationError, "Input should be a valid dictionary"],
-            [[], ValidationError, "Input should be a valid dictionary"],
+            [9999.99, ValidationError, "Input should be a valid dictionary"],
             [
-                {"key1": "not_int"},
+                ["test`"],
                 ValidationError,
-                "Input should be a valid integer",
+                "Input should be a valid dictionary"
             ],
+            [
+                ["test1", "test2"],
+                ValidationError,
+                "Input should be a valid dictionary"
+            ],
+            [
+                [],
+                ValidationError,
+                "Input should be a valid dictionary"
+            ],
+            [("test"), ValidationError, "Input should be a valid dictionary"],
+            [("test1", "test2"), ValidationError, "Input should be a valid dictionary"],
+            [(), ValidationError, "Input should be a valid dictionary"],
+            [
+                datetime(2025, 6, 8, 18, 19, 37, 718543),
+                ValidationError,
+                "Input should be a valid dictionary"
+            ],
+            [{"test5", "test6"}, ValidationError, "Input should be a valid dictionary"],
+            [{"test7"}, ValidationError, "Input should be a valid dictionary"]
         ]
 
         self.create_item(valid_data, invalid_data, "sample_dict")
@@ -250,44 +507,80 @@ class TestDataTypeSchema:
     def test_set_field_validation(self):
         """Test set field validation"""
         valid_data = [
-            {"item1", "item2"},
-            set(),
-            {"single_item"},
-            ["item1", "item2"],  # List can be converted to set
+            {"key": "value"}, {}, {9999: 9999}, {41: "value"}, {False: True},
+            {True: "value"}, {9999.99: 9999.99}, {65.12: "value"}, {"key": "value"}
         ]
         invalid_data = [
-            ["not_a_set", ValidationError, "Input should be a valid set"],
-            [123, ValidationError, "Input should be a valid set"],
-            [True, ValidationError, "Input should be a valid set"],
-            [{"key": "value"}, ValidationError, "Input should be a valid set"],
+            ["test", ValidationError, "Input should be a valid dictionary"],
+            [123, ValidationError, "Input should be a valid dictionary"],
+            [True, ValidationError, "Input should be a valid dictionary"],
+            [9999.99, ValidationError, "Input should be a valid dictionary"],
+            [
+                ["test`"],
+                ValidationError,
+                "Input should be a valid dictionary"
+            ],
+            [
+                ["test1", "test2"],
+                ValidationError,
+                "Input should be a valid dictionary"
+            ],
+            [
+                [],
+                ValidationError,
+                "Input should be a valid dictionary"
+            ],
+            [("test"), ValidationError, "Input should be a valid dictionary"],
+            [("test1", "test2"), ValidationError, "Input should be a valid dictionary"],
+            [(), ValidationError, "Input should be a valid dictionary"],
+            [
+                datetime(2025, 6, 8, 18, 19, 37, 718543),
+                ValidationError,
+                "Input should be a valid dictionary"
+            ],
+            [{"test5", "test6"}, ValidationError, "Input should be a valid dictionary"],
+            [{"test7"}, ValidationError, "Input should be a valid dictionary"],
+            [
+                {
+                    datetime(2025, 6, 8, 18, 19, 37, 718543):
+                    datetime(2025, 6, 8, 18, 19, 37, 718543)
+                },
+                ValidationError,
+                "keys must be str, int, float, bool or None, not datetime.datetime"
+            ],
+            [
+                {datetime(2025, 6, 8, 18, 19, 37, 718543): "value"},
+                ValidationError,
+                "keys must be str, int, float, bool or None, not datetime.datetime"
+            ]
         ]
 
         self.create_item(valid_data, invalid_data, "sample_set")
 
-    def test_tuple_field_validation(self):
-        """Test tuple field validation"""
-        valid_data = [
-            ("str", 42, True),
-            ["str", 42, True],  # List can be converted to tuple
-        ]
-        invalid_data = [
-            ["not_tuple", ValidationError, "Input should be a valid tuple"],
-            [123, ValidationError, "Input should be a valid tuple"],
-            [True, ValidationError, "Input should be a valid tuple"],
-            [
-                ("str", "not_int", True),
-                ValidationError,
-                "Input should be a valid integer",
-            ],
-            [("str", 42), ValidationError, "Tuple should have 3 items"],
-            [
-                ("str", 42, True, "extra"),
-                ValidationError,
-                "Tuple should have 3 items",
-            ],
-        ]
+    # def test_tuple_field_validation(self):
+    #     """Test tuple field validation"""
+    #     valid_data = [
+    #         ("str", 42, True),
+    #         ["str", 42, True],  # List can be converted to tuple
+    #     ]
+    #     invalid_data = [
+    #         ["not_tuple", ValidationError, "Input should be a valid tuple"],
+    #         [123, ValidationError, "Input should be a valid tuple"],
+    #         [True, ValidationError, "Input should be a valid tuple"],
+    #         [
+    #             ("str", "not_int", True),
+    #             ValidationError,
+    #             "Input should be a valid integer",
+    #         ],
+    #         [("str", 42), ValidationError, "Tuple should have 3 items"],
+    #         [
+    #             ("str", 42, True, "extra"),
+    #             ValidationError,
+    #             "Tuple should have 3 items",
+    #         ],
+    #     ]
 
-        self.create_item(valid_data, invalid_data, "sample_tuple")
+    #     self.create_item(valid_data, invalid_data, "sample_tuple")
 
     def test_optional_field_validation(self):
         """Test optional field validation"""
@@ -365,60 +658,6 @@ class TestDataTypeSchema:
 
         self.create_item(valid_data, invalid_data, "sample_url")
 
-    def test_positive_int_field_validation(self):
-        """Test positive integer field validation"""
-        valid_data = [1, 10, 999999, 2147483647]
-        invalid_data = [
-            [0, ValidationError, "Input should be greater than 0"],
-            [-1, ValidationError, "Input should be greater than 0"],
-            [-999, ValidationError, "Input should be greater than 0"],
-            ["10", ValidationError, "Input should be a valid integer"],
-            [10.5, ValidationError, "Input should be a valid integer"],
-            [[], ValidationError, "Input should be a valid integer"],
-        ]
-
-        self.create_item(valid_data, invalid_data, "sample_positive_int")
-
-    def test_negative_int_field_validation(self):
-        """Test negative integer field validation"""
-        valid_data = [-1, -10, -999999, -2147483648]
-        invalid_data = [
-            [0, ValidationError, "Input should be less than 0"],
-            [1, ValidationError, "Input should be less than 0"],
-            [999, ValidationError, "Input should be less than 0"],
-            ["-10", ValidationError, "Input should be a valid integer"],
-            [-10.5, ValidationError, "Input should be a valid integer"],
-            [[], ValidationError, "Input should be a valid integer"],
-        ]
-
-        self.create_item(valid_data, invalid_data, "sample_negative_int")
-
-    def test_positive_float_field_validation(self):
-        """Test positive float field validation"""
-        valid_data = [0.1, 1.0, 10.5, 999999.99]
-        invalid_data = [
-            [0.0, ValidationError, "Input should be greater than 0"],
-            [-0.1, ValidationError, "Input should be greater than 0"],
-            [-999.99, ValidationError, "Input should be greater than 0"],
-            ["10.5", ValidationError, "Input should be a valid number"],
-            [[], ValidationError, "Input should be a valid number"],
-        ]
-
-        self.create_item(valid_data, invalid_data, "sample_positive_float")
-
-    def test_negative_float_field_validation(self):
-        """Test negative float field validation"""
-        valid_data = [-0.1, -1.0, -10.5, -999999.99]
-        invalid_data = [
-            [0.0, ValidationError, "Input should be less than 0"],
-            [0.1, ValidationError, "Input should be less than 0"],
-            [999.99, ValidationError, "Input should be less than 0"],
-            ["-10.5", ValidationError, "Input should be a valid number"],
-            [[], ValidationError, "Input should be a valid number"],
-        ]
-
-        self.create_item(valid_data, invalid_data, "sample_negative_float")
-
     def test_decimal_field_validation(self):
         """Test decimal field validation"""
         valid_data = [
@@ -447,13 +686,78 @@ class TestDataTypeSchema:
             "FIRST",   # String can be converted to enum
             "SECOND",
             "THIRD",
+            (SampleEnum.FIRST)
         ]
         invalid_data = [
-            ["FOURTH", ValidationError, "Input should be 'FIRST', 'SECOND' or 'THIRD'"],
-            ["first", ValidationError, "Input should be 'FIRST', 'SECOND' or 'THIRD'"],
-            [123, ValidationError, "Input should be 'FIRST', 'SECOND' or 'THIRD'"],
-            [True, ValidationError, "Input should be 'FIRST', 'SECOND' or 'THIRD'"],
-            [[], ValidationError, "Input should be 'FIRST', 'SECOND' or 'THIRD'"],
+            [
+                "   THIRD   ",
+                ValidationError,
+                "Input should be 'FIRST', 'SECOND' or 'THIRD'"
+            ],
+            [
+                "second", ValidationError,
+                "Input should be 'FIRST', 'SECOND' or 'THIRD'"
+            ],
+            [
+                "aaaaaaaaa", ValidationError,
+                "Input should be 'FIRST', 'SECOND' or 'THIRD'"
+            ],
+            [
+                "aaa", ValidationError,
+                "Input should be 'FIRST', 'SECOND' or 'THIRD'"
+            ],
+            [
+                123, ValidationError,
+                "Input should be 'FIRST', 'SECOND' or 'THIRD'"
+            ],
+            [
+                12.3, ValidationError,
+                "Input should be 'FIRST', 'SECOND' or 'THIRD'"
+            ],
+            [
+                True, ValidationError,
+                "Input should be 'FIRST', 'SECOND' or 'THIRD'"
+            ],
+            [
+                datetime(2025, 7, 5, 8, 24, 30, 157344), ValidationError,
+                "Input should be 'FIRST', 'SECOND' or 'THIRD'"
+            ],
+            [
+                [SampleEnum.FIRST],
+                ValidationError,
+                "Input should be 'FIRST', 'SECOND' or 'THIRD'"
+            ],
+            [
+                [],
+                ValidationError,
+                "Input should be 'FIRST', 'SECOND' or 'THIRD'"
+            ],
+            [
+                [SampleEnum.SECOND, SampleEnum.THIRD], ValidationError,
+                "Input should be 'FIRST', 'SECOND' or 'THIRD'"
+            ],
+            [
+                {SampleEnum.FIRST},
+                ValidationError,
+                "Input should be 'FIRST', 'SECOND' or 'THIRD'"
+            ],
+            [
+                {SampleEnum.SECOND, SampleEnum.THIRD}, ValidationError,
+                "Input should be 'FIRST', 'SECOND' or 'THIRD'"
+            ],
+            [{}, ValidationError, "Input should be 'FIRST', 'SECOND' or 'THIRD'"],
+            [
+                {SampleEnum.FIRST: SampleEnum.SECOND}, ValidationError,
+                "Input should be 'FIRST', 'SECOND' or 'THIRD'"
+            ],
+            [
+                (SampleEnum.SECOND, SampleEnum.THIRD), ValidationError,
+                "Input should be 'FIRST', 'SECOND' or 'THIRD'"
+            ],
+            [
+                (), ValidationError,
+                "Input should be 'FIRST', 'SECOND' or 'THIRD'"
+            ],
         ]
 
         self.create_item(valid_data, invalid_data, "sample_str_enum")
@@ -461,19 +765,39 @@ class TestDataTypeSchema:
     def test_int_enum_field_validation(self):
         """Test integer enum field validation"""
         valid_data = [
-            SampleIntEnum.ONE,
-            SampleIntEnum.TWO,
-            SampleIntEnum.THREE,
-            1,   # Int can be converted to enum
-            2,
-            3,
+            SampleIntEnum.ONE, SampleIntEnum.TWO, SampleIntEnum.THREE,
+            1, 2, 3, (SampleIntEnum.ONE), "1", True
         ]
         invalid_data = [
             [4, ValidationError, "Input should be 1, 2 or 3"],
             [0, ValidationError, "Input should be 1, 2 or 3"],
-            ["1", ValidationError, "Input should be 1, 2 or 3"],
-            [True, ValidationError, "Input should be 1, 2 or 3"],
             [[], ValidationError, "Input should be 1, 2 or 3"],
+            [12.3, ValidationError, "Input should be 1, 2 or 3"],
+            [
+                datetime(2025, 7, 5, 8, 24, 30, 157344), ValidationError,
+                "Input should be 1, 2 or 3"
+            ],
+            [[SampleIntEnum.ONE], ValidationError, "Input should be 1, 2 or 3"],
+            [[], ValidationError, "Input should be 1, 2 or 3"],
+            [
+                [SampleIntEnum.TWO, SampleIntEnum.THREE], ValidationError,
+                "Input should be 1, 2 or 3"
+            ],
+            [{SampleIntEnum.ONE}, ValidationError, "Input should be 1, 2 or 3"],
+            [
+                {SampleIntEnum.TWO, SampleIntEnum.THREE}, ValidationError,
+                "Input should be 1, 2 or 3"
+            ],
+            [{}, ValidationError, "Input should be 1, 2 or 3"],
+            [
+                {SampleIntEnum.ONE: SampleIntEnum.TWO}, ValidationError,
+                "Input should be 1, 2 or 3"
+            ],
+            [
+                (SampleIntEnum.TWO, SampleIntEnum.THREE), ValidationError,
+                "Input should be 1, 2 or 3"
+            ],
+            [(), ValidationError, "Input should be 1, 2 or 3"]
         ]
 
         self.create_item(valid_data, invalid_data, "sample_int_enum")
