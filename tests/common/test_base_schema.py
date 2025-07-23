@@ -14,7 +14,7 @@ from app.schemas.base import (
 from tests.utils.model_test_utils import save_object
 
 
-class SampleModelBase(Base):
+class SampleModelBase2(Base):
     """Sample model for Base functionality testing."""
     name = Column(String, nullable=False)
     description = Column(Text)
@@ -263,10 +263,10 @@ class TestSampleSchemaInDB:
     @pytest.mark.asyncio
     async def test_base_schema_in_db_model_validate(self, db_session: AsyncSession):
         """Test that the base schema in db model validate"""
-        schema = SampleModelBase(name="Test Sample", description="Test Description")
+        schema = SampleModelBase2(name="Test Sample", description="Test Description")
         await save_object(db_session, schema)
 
-        stmt = select(SampleModelBase).where(SampleModelBase.id == schema.id)
+        stmt = select(SampleModelBase2).where(SampleModelBase2.id == schema.id)
         result = await db_session.execute(stmt)
         db_schema = result.scalar_one_or_none()
         db_schema_object = SampleSchemaInDB.model_validate(db_schema)
@@ -287,10 +287,10 @@ class TestSampleSchemaInDB:
         self, db_session: AsyncSession
     ):
         """Test that the base schema in db model validate"""
-        schema = SampleModelBase(name="Test Sample", description="Test Description")
+        schema = SampleModelBase2(name="Test Sample", description="Test Description")
         await save_object(db_session, schema)
 
-        stmt = select(SampleModelBase).where(SampleModelBase.id == schema.id)
+        stmt = select(SampleModelBase2).where(SampleModelBase2.id == schema.id)
         result = await db_session.execute(stmt)
         db_schema = result.scalar_one_or_none()
 
@@ -373,10 +373,10 @@ class TestSampleSchemaResponse:
     @pytest.mark.asyncio
     async def test_base_schema_response_model_validate(self, db_session: AsyncSession):
         """Test that the base schema response model validate"""
-        schema = SampleModelBase(name="Test Sample", description="Test Description")
+        schema = SampleModelBase2(name="Test Sample", description="Test Description")
         await save_object(db_session, schema)
 
-        stmt = select(SampleModelBase).where(SampleModelBase.id == schema.id)
+        stmt = select(SampleModelBase2).where(SampleModelBase2.id == schema.id)
         result = await db_session.execute(stmt)
         db_schema = result.scalar_one_or_none()
         db_schema_object = SampleSchemaResponse.model_validate(db_schema)
@@ -397,10 +397,10 @@ class TestSampleSchemaResponse:
         self, db_session: AsyncSession
     ):
         """Test that the base schema response model validate"""
-        schema = SampleModelBase(name="Test Sample", description="Test Description")
+        schema = SampleModelBase2(name="Test Sample", description="Test Description")
         await save_object(db_session, schema)
 
-        stmt = select(SampleModelBase).where(SampleModelBase.id == schema.id)
+        stmt = select(SampleModelBase2).where(SampleModelBase2.id == schema.id)
         result = await db_session.execute(stmt)
         db_schema = result.scalar_one_or_none()
 
