@@ -1,10 +1,19 @@
-from typing import Optional, List, Self
+from typing import Optional, List
+from typing_extensions import Self
 
 from pydantic import Field, StrictStr, model_validator
 
 from app.schemas.base import (
     BaseSchema, BaseInDB, BaseCreateSchema, BaseUpdateSchema, StrictPositiveInt
 )
+
+
+class CategoryPathItem(BaseSchema):
+    """Schema for individual items in the category path."""
+    name: str
+    slug: str
+    category_type: Optional[str] = None
+    type: str = "Category"
 
 
 class CategoryBase(BaseSchema):
@@ -71,7 +80,11 @@ class CategoryInDB(CategoryBase, BaseInDB):
     slug: str
     category_type_id: Optional[int] = None
     parent_id: Optional[int] = None
-    children: List["CategoryInDB"] = []
+    children: List["CategoryInDB"] = Field(default_factory=list)
+    full_path: List[CategoryPathItem] = Field(
+        default_factory=list,
+        description="Complete path from root to current category"
+    )
 
 
 class CategoryResponse(CategoryInDB):
@@ -85,4 +98,5 @@ class CategoryResponse(CategoryInDB):
 
 
 # Enable forward references for self-referencing models
+CategoryInDB.model_rebuild()
 CategoryResponse.model_rebuild()
