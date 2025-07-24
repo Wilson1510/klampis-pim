@@ -14,6 +14,13 @@ from app.schemas.category_type_schema import (
     CategoryTypeInDB,
 )
 
+from app.schemas.category_schema import (
+    CategoryResponse,
+    CategoryCreate,
+    CategoryUpdate,
+    CategoryInDB,
+)
+
 __all__ = [
     # Base schemas
     "BaseSchema",
@@ -25,4 +32,8 @@ __all__ = [
     "CategoryTypeCreate",
     "CategoryTypeUpdate",
     "CategoryTypeInDB",
+    "CategoryResponse",
+    "CategoryCreate",
+    "CategoryUpdate",
+    "CategoryInDB",
 ]
