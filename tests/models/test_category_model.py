@@ -298,6 +298,31 @@ class TestCategory:
         assert item is None
         assert await count_model_objects(db_session, Categories) == 1
 
+    def test_full_path_property(self):
+        """Test the full_path property"""
+        assert self.test_category1.full_path == [
+            {
+                'name': 'Test Category 1',
+                'slug': 'test-category-1',
+                'category_type': 'Test Category Type',
+                'type': 'Category'
+            }
+        ]
+        assert self.test_category2.full_path == [
+            {
+                'name': 'Test Category 1',
+                'slug': 'test-category-1',
+                'category_type': 'Test Category Type',
+                'type': 'Category'
+            },
+            {
+                'name': 'Test Category 2',
+                'slug': 'test-category-2',
+                'category_type': None,
+                'type': 'Category'
+            }
+        ]
+
 
 class TestCategoryValidationDatabase:
     """Test suite for Category model constraints"""

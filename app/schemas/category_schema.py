@@ -8,14 +8,6 @@ from app.schemas.base import (
 )
 
 
-class CategoryPathItem(BaseSchema):
-    """Schema for individual items in the category path."""
-    name: str
-    slug: str
-    category_type: Optional[str] = None
-    type: str = "Category"
-
-
 class CategoryBase(BaseSchema):
     """Base schema for Category with common fields."""
     name: StrictStr = Field(..., min_length=1, max_length=100)
@@ -61,15 +53,6 @@ class CategoryUpdate(CategoryBase, BaseUpdateSchema):
     parent_id: Optional[StrictPositiveInt] = None
 
 
-class CategoryTypeSchema(BaseSchema):
-    """Nested schema for category type information."""
-    id: int
-    name: str
-    slug: str
-
-    model_config = {"from_attributes": True}
-
-
 class CategoryInDB(CategoryBase, BaseInDB):
     """Schema for Category as stored in database.
 
@@ -81,10 +64,14 @@ class CategoryInDB(CategoryBase, BaseInDB):
     category_type_id: Optional[int] = None
     parent_id: Optional[int] = None
     children: List["CategoryInDB"] = Field(default_factory=list)
-    full_path: List[CategoryPathItem] = Field(
-        default_factory=list,
-        description="Complete path from root to current category"
-    )
+
+
+class CategoryPathItem(BaseSchema):
+    """Schema for individual items in the category path."""
+    name: str
+    slug: str
+    category_type: Optional[str] = None
+    type: str = "Category"
 
 
 class CategoryResponse(CategoryInDB):
@@ -94,7 +81,8 @@ class CategoryResponse(CategoryInDB):
     Contains: All fields that should be returned to client
     Purpose: Explicit response model for API documentation
     """
-    pass
+    children: List["CategoryResponse"] = Field(default_factory=list)
+    full_path: List[CategoryPathItem]
 
 
 # Enable forward references for self-referencing models
