@@ -1,4 +1,5 @@
-from typing import Optional, List, Self
+from typing import Optional, List
+from typing_extensions import Self
 
 from pydantic import Field, StrictStr, model_validator
 
@@ -52,15 +53,6 @@ class CategoryUpdate(CategoryBase, BaseUpdateSchema):
     parent_id: Optional[StrictPositiveInt] = None
 
 
-class CategoryTypeSchema(BaseSchema):
-    """Nested schema for category type information."""
-    id: int
-    name: str
-    slug: str
-
-    model_config = {"from_attributes": True}
-
-
 class CategoryInDB(CategoryBase, BaseInDB):
     """Schema for Category as stored in database.
 
@@ -71,7 +63,15 @@ class CategoryInDB(CategoryBase, BaseInDB):
     slug: str
     category_type_id: Optional[int] = None
     parent_id: Optional[int] = None
-    children: List["CategoryInDB"] = []
+    children: List["CategoryInDB"] = Field(default_factory=list)
+
+
+class CategoryPathItem(BaseSchema):
+    """Schema for individual items in the category path."""
+    name: str
+    slug: str
+    category_type: Optional[str] = None
+    type: str = "Category"
 
 
 class CategoryResponse(CategoryInDB):
@@ -81,8 +81,10 @@ class CategoryResponse(CategoryInDB):
     Contains: All fields that should be returned to client
     Purpose: Explicit response model for API documentation
     """
-    pass
+    children: List["CategoryResponse"] = Field(default_factory=list)
+    full_path: List[CategoryPathItem]
 
 
 # Enable forward references for self-referencing models
+CategoryInDB.model_rebuild()
 CategoryResponse.model_rebuild()

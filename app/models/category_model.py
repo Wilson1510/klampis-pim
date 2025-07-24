@@ -64,6 +64,30 @@ class Categories(Base, Imageable):
         )
     )
 
+    @property
+    def full_path(self):
+        """
+        Computes the full hierarchical path from the root to this category.
+        The path is returned in order from root -> parent -> self.
+        """
+        path = []
+        current = self
+        while current:
+            if current.category_type:
+                category_type = current.category_type.name
+            else:
+                category_type = None
+            path_item = {
+                'name': current.name,
+                'slug': current.slug,
+                'category_type': category_type,
+                'type': 'Category'
+            }
+            path.append(path_item)
+            current = current.parent
+        # Reverse the path to get it from root -> self
+        return list(reversed(path))
+
     def __str__(self) -> str:
         """String representation of the category."""
         return f"Categories({self.name})"
