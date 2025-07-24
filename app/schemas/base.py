@@ -4,6 +4,7 @@ from typing import Annotated, Optional
 from pydantic import BaseModel, StrictBool, StrictInt, Field
 
 StrictNonNegativeInt = Annotated[StrictInt, Field(ge=0)]
+StrictPositiveInt = Annotated[StrictInt, Field(gt=0)]
 
 
 class BaseSchema(BaseModel):

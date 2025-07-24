@@ -457,7 +457,21 @@ class TestCategoryValidationDatabase:
         assert category.category_type_id == self.test_category_type.id
 
     @pytest.mark.asyncio
-    async def test_invalid_self_reference_constraint(self, db_session: AsyncSession):
+    async def test_create_item_with_same_id_as_parent(self, db_session: AsyncSession):
+        """Test create item with same id as parent"""
+        # Create valid child category
+        category = Categories(
+            name="test same id as parent",
+            description="test description",
+            parent_id=self.test_category2.id + 1
+        )
+
+        with pytest.raises(IntegrityError):
+            await save_object(db_session, category)
+        await db_session.rollback()
+
+    @pytest.mark.asyncio
+    async def test_update_parent_id_to_itself(self, db_session: AsyncSession):
         """Test invalid self-reference: category cannot reference itself as parent"""
         # Create category first
         category = Categories(
