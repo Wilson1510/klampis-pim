@@ -1,7 +1,7 @@
 from typing import Optional
 from datetime import datetime
 
-from sqlalchemy import Column, String, Text, select
+from sqlalchemy import Column, String, Text
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel, StrictBool
 from pydantic_core import PydanticUndefined
@@ -11,7 +11,7 @@ from app.core.base import Base
 from app.schemas.base import (
     BaseSchema, BaseInDB, BaseCreateSchema, BaseUpdateSchema, StrictNonNegativeInt
 )
-from tests.utils.model_test_utils import save_object
+from tests.utils.model_test_utils import save_object, get_object_by_id
 
 
 class SampleModelBase2(Base):
@@ -263,23 +263,21 @@ class TestSampleSchemaInDB:
     @pytest.mark.asyncio
     async def test_base_schema_in_db_model_validate(self, db_session: AsyncSession):
         """Test that the base schema in db model validate"""
-        schema = SampleModelBase2(name="Test Sample", description="Test Description")
-        await save_object(db_session, schema)
+        model = SampleModelBase2(name="Test Sample", description="Test Description")
+        await save_object(db_session, model)
 
-        stmt = select(SampleModelBase2).where(SampleModelBase2.id == schema.id)
-        result = await db_session.execute(stmt)
-        db_schema = result.scalar_one_or_none()
-        db_schema_object = SampleSchemaInDB.model_validate(db_schema)
+        db_model = await get_object_by_id(db_session, SampleModelBase2, model.id)
+        db_schema_object = SampleSchemaInDB.model_validate(db_model)
         assert db_schema_object == SampleSchemaInDB(
             name="Test Sample",
             description="Test Description",
-            id=schema.id,
+            id=model.id,
             is_active=True,
             sequence=0,
-            created_at=schema.created_at,
-            updated_at=schema.updated_at,
-            created_by=schema.created_by,
-            updated_by=schema.updated_by
+            created_at=model.created_at,
+            updated_at=model.updated_at,
+            created_by=model.created_by,
+            updated_by=model.updated_by
         )
 
     @pytest.mark.asyncio
@@ -287,26 +285,23 @@ class TestSampleSchemaInDB:
         self, db_session: AsyncSession
     ):
         """Test that the base schema in db model validate"""
-        schema = SampleModelBase2(name="Test Sample", description="Test Description")
-        await save_object(db_session, schema)
+        model = SampleModelBase2(name="Test Sample", description="Test Description")
+        await save_object(db_session, model)
 
-        stmt = select(SampleModelBase2).where(SampleModelBase2.id == schema.id)
-        result = await db_session.execute(stmt)
-        db_schema = result.scalar_one_or_none()
+        db_model = await get_object_by_id(db_session, SampleModelBase2, model.id)
+        db_model.name = "Test Sample Updated"
 
-        db_schema.name = "Test Sample Updated"
-
-        db_schema_object = SampleSchemaInDB.model_validate(db_schema)
+        db_schema_object = SampleSchemaInDB.model_validate(db_model)
         assert db_schema_object == SampleSchemaInDB(
             name="Test Sample Updated",
             description="Test Description",
-            id=schema.id,
+            id=model.id,
             is_active=True,
             sequence=0,
-            created_at=schema.created_at,
-            updated_at=schema.updated_at,
-            created_by=schema.created_by,
-            updated_by=schema.updated_by
+            created_at=model.created_at,
+            updated_at=model.updated_at,
+            created_by=model.created_by,
+            updated_by=model.updated_by
         )
 
 
@@ -373,23 +368,21 @@ class TestSampleSchemaResponse:
     @pytest.mark.asyncio
     async def test_base_schema_response_model_validate(self, db_session: AsyncSession):
         """Test that the base schema response model validate"""
-        schema = SampleModelBase2(name="Test Sample", description="Test Description")
-        await save_object(db_session, schema)
+        model = SampleModelBase2(name="Test Sample", description="Test Description")
+        await save_object(db_session, model)
 
-        stmt = select(SampleModelBase2).where(SampleModelBase2.id == schema.id)
-        result = await db_session.execute(stmt)
-        db_schema = result.scalar_one_or_none()
-        db_schema_object = SampleSchemaResponse.model_validate(db_schema)
+        db_model = await get_object_by_id(db_session, SampleModelBase2, model.id)
+        db_schema_object = SampleSchemaResponse.model_validate(db_model)
         assert db_schema_object == SampleSchemaResponse(
             name="Test Sample",
             description="Test Description",
-            id=schema.id,
+            id=model.id,
             is_active=True,
             sequence=0,
-            created_at=schema.created_at,
-            updated_at=schema.updated_at,
-            created_by=schema.created_by,
-            updated_by=schema.updated_by
+            created_at=model.created_at,
+            updated_at=model.updated_at,
+            created_by=model.created_by,
+            updated_by=model.updated_by
         )
 
     @pytest.mark.asyncio
@@ -397,24 +390,21 @@ class TestSampleSchemaResponse:
         self, db_session: AsyncSession
     ):
         """Test that the base schema response model validate"""
-        schema = SampleModelBase2(name="Test Sample", description="Test Description")
-        await save_object(db_session, schema)
+        model = SampleModelBase2(name="Test Sample", description="Test Description")
+        await save_object(db_session, model)
 
-        stmt = select(SampleModelBase2).where(SampleModelBase2.id == schema.id)
-        result = await db_session.execute(stmt)
-        db_schema = result.scalar_one_or_none()
+        db_model = await get_object_by_id(db_session, SampleModelBase2, model.id)
+        db_model.name = "Test Sample Updated"
 
-        db_schema.name = "Test Sample Updated"
-
-        db_schema_object = SampleSchemaResponse.model_validate(db_schema)
+        db_schema_object = SampleSchemaResponse.model_validate(db_model)
         assert db_schema_object == SampleSchemaResponse(
             name="Test Sample Updated",
             description="Test Description",
-            id=schema.id,
+            id=model.id,
             is_active=True,
             sequence=0,
-            created_at=schema.created_at,
-            updated_at=schema.updated_at,
-            created_by=schema.created_by,
-            updated_by=schema.updated_by
+            created_at=model.created_at,
+            updated_at=model.updated_at,
+            created_by=model.created_by,
+            updated_by=model.updated_by
         )
