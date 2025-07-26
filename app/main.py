@@ -4,7 +4,7 @@ FastAPI application entry point for the PIM system.
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.v1.routes import api_router
+from app.api.router import api_router
 from app.core.config import settings
 from app.core.exceptions import setup_exception_handlers
 from app.core.listeners import register_listeners
