@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from unittest.mock import patch
 
 from sqlalchemy import Column, String, Integer, Text, event
@@ -6,6 +6,7 @@ from sqlalchemy import Column, String, Integer, Text, event
 from app.core.base import Base
 from app.core.config import settings
 from app.core.listeners import _validate_all_types_on_save
+from tests.utils.model_test_utils import save_object
 
 
 # Test model untuk testing Base functionality
@@ -202,8 +203,7 @@ class TestBaseModel:
         """Test creating model instances with default values."""
         # Create instance with explicit default values
         default_instance = SampleModelBase(name="Test Item")
-        db_session.add(default_instance)
-        await db_session.commit()
+        await save_object(db_session, default_instance)
 
         # Verify values are set correctly
         assert default_instance.id == 1
@@ -229,8 +229,7 @@ class TestBaseModel:
             created_at="2025-01-03 15:23:10",
             updated_at="2025-01-04 15:23:10"
         )
-        db_session.add(explicit_instance)
-        await db_session.commit()
+        await save_object(db_session, explicit_instance)
 
         # Verify values are set correctly
         assert explicit_instance.id == 2
@@ -240,15 +239,51 @@ class TestBaseModel:
         assert explicit_instance.sequence == 10
         assert explicit_instance.created_by == settings.SYSTEM_USER_ID
         assert explicit_instance.updated_by == settings.SYSTEM_USER_ID
-        assert explicit_instance.created_at == datetime(2025, 1, 3, 15, 23, 10)
-        assert explicit_instance.updated_at == datetime(2025, 1, 4, 15, 23, 10)
+
+        # Time must be 8 (your timezone) hours behind UTC
+        assert explicit_instance.created_at == datetime(
+            2025, 1, 3, 7, 23, 10, tzinfo=timezone.utc
+        )
+        assert explicit_instance.updated_at == datetime(
+            2025, 1, 4, 7, 23, 10, tzinfo=timezone.utc
+        )
+
+    async def test_model_instance_update(self, db_session):
+        """Test updating model instances."""
+        # Create instance with explicit default values
+        instance = SampleModelBase(name="Test Item")
+        await save_object(db_session, instance)
+
+        # Verify values are set correctly
+        assert instance.id == 1
+        assert instance.name == "Test Item"
+        assert instance.description is None
+        assert instance.created_at == instance.updated_at
+        assert instance.created_by == settings.SYSTEM_USER_ID
+        assert instance.updated_by == settings.SYSTEM_USER_ID
+        assert instance.is_active is True
+        assert instance.sequence == 0
+
+        # Update the instance
+        instance.name = "Updated Test Item"
+        instance.is_active = False
+        await save_object(db_session, instance)
+
+        # Verify values are updated correctly
+        assert instance.id == 1
+        assert instance.name == "Updated Test Item"
+        assert instance.description is None
+        assert instance.created_at != instance.updated_at
+        assert instance.created_by == settings.SYSTEM_USER_ID
+        assert instance.updated_by == settings.SYSTEM_USER_ID
+        assert instance.is_active is False
+        assert instance.sequence == 0
 
     async def test_string_representation(self, db_session):
         """Test __str__ and __repr__ methods."""
         # with id and saved to the database
         instance = SampleModelBase(id=123, name="Test Item")
-        db_session.add(instance)
-        await db_session.commit()
+        await save_object(db_session, instance)
 
         # Test __str__
         str_repr = str(instance)
@@ -260,8 +295,7 @@ class TestBaseModel:
 
         # without id and saved to the database
         instance = SampleModelBase(name="Test Item 1")
-        db_session.add(instance)
-        await db_session.commit()  # save the instance to the database
+        await save_object(db_session, instance)
 
         # Test __str__
         str_repr = str(instance)
@@ -273,8 +307,7 @@ class TestBaseModel:
 
         # with id and not saved to the database
         instance = SampleModelBase(id=2, name="Test Item 2")
-        db_session.add(instance)
-        await db_session.commit()
+        await save_object(db_session, instance)
 
         # Test __str__
         str_repr = str(instance)
