@@ -1,8 +1,9 @@
 from typing import Any, Dict, Generic, List, Type, TypeVar, Union
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, update
 from app.core.base import Base
+from fastapi import HTTPException, status
 
 # Definisikan tipe generik untuk model dan skema
 ModelType = TypeVar("ModelType", bound=Base)
@@ -37,9 +38,22 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         obj_in_data = obj_in.model_dump()
         db_obj = self.model(**obj_in_data)
         db.add(db_obj)
-        await db.commit()
-        await db.refresh(db_obj)
-        return db_obj
+        try:
+            await db.commit()
+            await db.refresh(db_obj)
+            return db_obj
+        except (ValueError, TypeError) as e:
+            await db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=str(e)
+            )
+        except Exception:
+            await db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Internal server error"
+            )
 
     async def update(
         self,
@@ -55,16 +69,48 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
             # exclude_unset=True agar hanya field yang dikirim yang di-update
             update_data = obj_in.model_dump(exclude_unset=True)
 
+        if not update_data:
+            return db_obj
+
         for field in obj_data:
             if field in update_data:
                 setattr(db_obj, field, update_data[field])
 
         db.add(db_obj)
-        await db.commit()
-        await db.refresh(db_obj)
-        return db_obj
+        try:
+            await db.commit()
+            await db.refresh(db_obj)
+            return db_obj
+        except (ValueError, TypeError) as e:
+            await db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=str(e)
+            )
+        except Exception:
+            await db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Internal server error"
+            )
 
-    async def remove(self, db: AsyncSession, *, id: int) -> ModelType | None:
+    async def soft_delete(self, db: AsyncSession, id: int) -> ModelType | None:
+        """Soft delete an object by setting is_active to False."""
+        obj = await self.get(db, id=id)
+        if obj:
+            query = (
+                update(self.model)
+                .where(self.model.id == id)
+                .values(is_active=False)
+            )
+            await db.execute(query)
+            await db.commit()
+            await db.refresh(obj)
+            return obj
+        return None
+
+    async def hard_delete(self, db: AsyncSession, *, id: int) -> ModelType | None:
+        """Hard delete an object by deleting it from the database."""
         obj = await db.get(self.model, id)
         if obj:
             db.delete(obj)

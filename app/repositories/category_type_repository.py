@@ -1,6 +1,6 @@
 from typing import List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, func, update
+from sqlalchemy import select, and_, func
 
 from app.models.category_type_model import CategoryTypes
 from app.schemas.category_type_schema import CategoryTypeCreate, CategoryTypeUpdate
@@ -54,22 +54,6 @@ class CategoryTypeRepository(
         query = select(self.model).where(self.model.name == name)
         result = await db.execute(query)
         return result.scalar_one_or_none()
-
-    async def soft_delete(
-        self, db: AsyncSession, id: int
-    ) -> CategoryTypes | None:
-        """Soft delete category type by setting is_active to False."""
-        db_obj = await self.get(db, id=id)
-        if db_obj:
-            query = (
-                update(self.model)
-                .where(self.model.id == id)
-                .values(is_active=False)
-            )
-            await db.execute(query)
-            await db.commit()
-            await db.refresh(db_obj)
-        return db_obj
 
     async def count_categories(
         self, db: AsyncSession, category_type_id: int
