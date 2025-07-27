@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Tuple
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException
 
@@ -18,9 +18,11 @@ class CategoryTypeService:
 
     async def get_all_category_types(
         self, db: AsyncSession, skip: int = 0, limit: int = 100
-    ) -> List[CategoryTypes]:
-        """Get all category types with pagination."""
-        return await self.repository.get_multi(db, skip=skip, limit=limit)
+    ) -> Tuple[List[CategoryTypes], int]:
+        """Get all category types with pagination and total count."""
+        data = await self.repository.get_multi(db, skip=skip, limit=limit)
+        total = len(data)
+        return data, total
 
     async def get_category_types_with_filter(
         self,
@@ -30,18 +32,20 @@ class CategoryTypeService:
         limit: int = 100,
         slug: Optional[str] = None,
         is_active: Optional[bool] = None
-    ) -> List[CategoryTypes]:
-        """Get category types with filtering support."""
+    ) -> Tuple[List[CategoryTypes], int]:
+        """Get category types with filtering support and total count."""
         if slug is None and is_active is None:
             return await self.get_all_category_types(db, skip=skip, limit=limit)
 
-        return await self.repository.get_multi_with_filter(
+        data = await self.repository.get_multi_with_filter(
             db,
             skip=skip,
             limit=limit,
             slug=slug,
             is_active=is_active
         )
+        total = len(data)
+        return data, total
 
     async def get_category_type_by_id(
         self, db: AsyncSession, category_type_id: int
@@ -132,8 +136,8 @@ class CategoryTypeService:
         category_type_id: int,
         skip: int = 0,
         limit: int = 100
-    ) -> List:
-        """Get all categories under a specific category type."""
+    ) -> Tuple[List, int]:
+        """Get all categories under a specific category type with total count."""
         # Verify category type exists
         category_type = await self.repository.get(db, id=category_type_id)
         if not category_type:
@@ -142,9 +146,11 @@ class CategoryTypeService:
                 detail=f"Category type with id {category_type_id} not found"
             )
 
-        return await self.repository.get_categories_by_type(
+        data = await self.repository.get_categories_by_type(
             db, category_type_id=category_type_id, skip=skip, limit=limit
         )
+        total = len(data)
+        return data, total
 
 
 # Create instance to be used as dependency

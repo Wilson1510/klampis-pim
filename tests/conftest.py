@@ -145,15 +145,17 @@ async def db_session(db_engine) -> AsyncGenerator[AsyncSession, None]:
 
 
 @pytest.fixture
-async def async_client(db_session) -> AsyncGenerator:
-    """
-    Function-scoped fixture that provides an async test client
-    with a database session dependency for FastAPI testing.
-    """
+async def async_client(db_engine) -> AsyncGenerator:
+    """Test client with isolated DB session per request."""
 
-    # Override the get_db dependency to use our test db_session
+    async_session = sessionmaker(
+        db_engine, class_=AsyncSession, expire_on_commit=False
+    )
+
+    # Override get_db to create a new session for each request
     async def override_get_db():
-        yield db_session
+        async with async_session() as session:
+            yield session
 
     # Apply the override
     app.dependency_overrides[get_db] = override_get_db
