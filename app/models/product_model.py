@@ -35,6 +35,28 @@ class Products(Base, Imageable):
 
     skus = relationship("Skus", back_populates="product")
 
+    @property
+    def full_path(self):
+        """
+        Computes the full hierarchical path from the root category to this product.
+        The path includes the complete category hierarchy plus the product itself.
+        The path is returned in order from root -> category -> ... -> product.
+        """
+        # Start with the category's full path
+        path = []
+        if self.category:
+            path = self.category.full_path
+
+        # Add the product to the path (product only has 3 keys: name, slug, type)
+        product_item = {
+            'name': self.name,
+            'slug': self.slug,
+            'type': 'Product'
+        }
+        path.append(product_item)
+
+        return path
+
     def __str__(self) -> str:
         """String representation of the product."""
         return f"Products({self.name})"
