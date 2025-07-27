@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -10,11 +10,20 @@ from app.schemas.category_type_schema import (
     CategoryTypeUpdate
 )
 from app.schemas.category_schema import CategoryResponse
+from app.schemas.base import SingleItemResponse, MultipleItemsResponse
+from app.utils.response_helpers import (
+    create_single_item_response,
+    create_multiple_items_response
+)
 
 router = APIRouter()
 
 
-@router.get("/", response_model=List[CategoryTypeResponse])
+@router.get(
+        "/",
+        response_model=MultipleItemsResponse[CategoryTypeResponse],
+        status_code=status.HTTP_200_OK
+)
 async def get_category_types(
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(
@@ -32,15 +41,24 @@ async def get_category_types(
     - **slug**: Filter by slug (exact match)
     - **is_active**: Filter by active status (true/false)
     """
-    category_types = await category_type_service.get_category_types_with_filter(
+    category_types, total = await category_type_service.get_category_types_with_filter(
         db=db, skip=skip, limit=limit, slug=slug, is_active=is_active
     )
-    return category_types
+
+    # Calculate page number (1-based)
+    page = (skip // limit) + 1
+
+    return create_multiple_items_response(
+        data=category_types,
+        page=page,
+        limit=limit,
+        total=total
+    )
 
 
 @router.post(
     "/",
-    response_model=CategoryTypeResponse,
+    response_model=SingleItemResponse[CategoryTypeResponse],
     status_code=status.HTTP_201_CREATED
 )
 async def create_category_type(
@@ -55,10 +73,14 @@ async def create_category_type(
     category_type = await category_type_service.create_category_type(
         db=db, category_type_create=category_type_create
     )
-    return category_type
+    return create_single_item_response(data=category_type)
 
 
-@router.get("/{category_type_id}", response_model=CategoryTypeResponse)
+@router.get(
+    "/{category_type_id}",
+    response_model=SingleItemResponse[CategoryTypeResponse],
+    status_code=status.HTTP_200_OK
+)
 async def get_category_type(
     category_type_id: int,
     db: AsyncSession = Depends(get_db)
@@ -76,10 +98,14 @@ async def get_category_type(
             status_code=404,
             detail=f"Category type with id {category_type_id} not found"
         )
-    return category_type
+    return create_single_item_response(data=category_type)
 
 
-@router.put("/{category_type_id}", response_model=CategoryTypeResponse)
+@router.put(
+    "/{category_type_id}",
+    response_model=SingleItemResponse[CategoryTypeResponse],
+    status_code=status.HTTP_200_OK
+)
 async def update_category_type(
     category_type_id: int,
     category_type_update: CategoryTypeUpdate,
@@ -96,10 +122,13 @@ async def update_category_type(
         category_type_id=category_type_id,
         category_type_update=category_type_update
     )
-    return category_type
+    return create_single_item_response(data=category_type)
 
 
-@router.delete("/{category_type_id}", response_model=CategoryTypeResponse)
+@router.delete(
+    "/{category_type_id}",
+    status_code=status.HTTP_204_NO_CONTENT
+)
 async def delete_category_type(
     category_type_id: int,
     db: AsyncSession = Depends(get_db)
@@ -111,13 +140,16 @@ async def delete_category_type(
 
     Note: Category type cannot be deleted if it has associated categories.
     """
-    category_type = await category_type_service.delete_category_type(
+    await category_type_service.delete_category_type(
         db=db, category_type_id=category_type_id
     )
-    return category_type
 
 
-@router.get("/{category_type_id}/categories/", response_model=List[CategoryResponse])
+@router.get(
+    "/{category_type_id}/categories/",
+    response_model=MultipleItemsResponse[CategoryResponse],
+    status_code=status.HTTP_200_OK
+)
 async def get_categories_by_type(
     category_type_id: int,
     skip: int = Query(0, ge=0, description="Number of records to skip"),
@@ -133,10 +165,19 @@ async def get_categories_by_type(
     - **skip**: Number of records to skip (default: 0)
     - **limit**: Maximum number of records to return (default: 100, max: 1000)
     """
-    categories = await category_type_service.get_categories_by_type(
+    categories, total = await category_type_service.get_categories_by_type(
         db=db,
         category_type_id=category_type_id,
         skip=skip,
         limit=limit
     )
-    return categories
+
+    # Calculate page number (1-based)
+    page = (skip // limit) + 1
+
+    return create_multiple_items_response(
+        data=categories,
+        page=page,
+        limit=limit,
+        total=total
+    )

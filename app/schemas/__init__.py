@@ -4,6 +4,10 @@ from app.schemas.base import (
     BaseCreateSchema,
     BaseUpdateSchema,
     BaseInDB,
+    MetaSchema,
+    ErrorDetailSchema,
+    SingleItemResponse,
+    MultipleItemsResponse,
 )
 
 # Export entity schemas
@@ -27,6 +31,11 @@ __all__ = [
     "BaseCreateSchema",
     "BaseUpdateSchema",
     "BaseInDB",
+    # Response wrappers
+    "MetaSchema",
+    "ErrorDetailSchema",
+    "SingleItemResponse",
+    "MultipleItemsResponse",
     # Entity schemas
     "CategoryTypeResponse",
     "CategoryTypeCreate",
