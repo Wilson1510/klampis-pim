@@ -1,10 +1,12 @@
 from typing import List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, func
+from sqlalchemy.orm import selectinload
 
 from app.models.category_type_model import CategoryTypes
 from app.schemas.category_type_schema import CategoryTypeCreate, CategoryTypeUpdate
 from app.repositories.base import CRUDBase
+from app.repositories.category_repository import category_repository
 
 
 class CategoryTypeRepository(
@@ -84,6 +86,7 @@ class CategoryTypeRepository(
 
         query = (
             select(Categories)
+            .options(selectinload(Categories.category_type))
             .where(
                 and_(
                     Categories.category_type_id == category_type_id,
@@ -94,7 +97,10 @@ class CategoryTypeRepository(
             .limit(limit)
         )
         result = await db.execute(query)
-        return result.scalars().all()
+        categories = result.scalars().all()
+        for category in categories:
+            await category_repository.load_children_recursively(db, category)
+        return categories
 
 
 # Create instance to be used as dependency
