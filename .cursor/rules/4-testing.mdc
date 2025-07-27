@@ -26,6 +26,7 @@ alwaysApply: false
 - Use fixtures for test setup
 - Keep tests independent and idempotent
 - Make sure asyncio_mode for pytest is set auto at pytest.ini
+- Do not use try catch cause we expect that we already know the result
 
 ## Test Types
 
@@ -46,5 +47,5 @@ alwaysApply: false
 - Test migrations
 - Validate constraints and indexes
 - Using real database, create testing database
-
-
+- Always rollback object when raises Error
+- When create relationship tests, check test_relationships_with_other_models. Add new assertion if it does not exist

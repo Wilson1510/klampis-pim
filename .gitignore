@@ -172,3 +172,7 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+alembic.ini
+test_config.py
+debug_file.py
+klampis_key.json
