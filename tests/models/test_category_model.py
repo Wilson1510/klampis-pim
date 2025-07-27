@@ -298,6 +298,31 @@ class TestCategory:
         assert item is None
         assert await count_model_objects(db_session, Categories) == 1
 
+    def test_full_path_property(self):
+        """Test the full_path property"""
+        assert self.test_category1.full_path == [
+            {
+                'name': 'Test Category 1',
+                'slug': 'test-category-1',
+                'category_type': 'Test Category Type',
+                'type': 'Category'
+            }
+        ]
+        assert self.test_category2.full_path == [
+            {
+                'name': 'Test Category 1',
+                'slug': 'test-category-1',
+                'category_type': 'Test Category Type',
+                'type': 'Category'
+            },
+            {
+                'name': 'Test Category 2',
+                'slug': 'test-category-2',
+                'category_type': None,
+                'type': 'Category'
+            }
+        ]
+
 
 class TestCategoryValidationDatabase:
     """Test suite for Category model constraints"""
@@ -457,7 +482,21 @@ class TestCategoryValidationDatabase:
         assert category.category_type_id == self.test_category_type.id
 
     @pytest.mark.asyncio
-    async def test_invalid_self_reference_constraint(self, db_session: AsyncSession):
+    async def test_create_item_with_same_id_as_parent(self, db_session: AsyncSession):
+        """Test create item with same id as parent"""
+        # Create valid child category
+        category = Categories(
+            name="test same id as parent",
+            description="test description",
+            parent_id=self.test_category2.id + 1
+        )
+
+        with pytest.raises(IntegrityError):
+            await save_object(db_session, category)
+        await db_session.rollback()
+
+    @pytest.mark.asyncio
+    async def test_update_parent_id_to_itself(self, db_session: AsyncSession):
         """Test invalid self-reference: category cannot reference itself as parent"""
         # Create category first
         category = Categories(

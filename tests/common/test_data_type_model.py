@@ -63,6 +63,7 @@ class TestDataType:
             [{'test key': 'test value'}, DBAPIError, "expected str, got dict"],
             [{}, DBAPIError, "expected str, got dict"],
             [('test1', 'test2'), DBAPIError, "expected str, got tuple"],
+            [('test1',), DBAPIError, "expected str, got tuple"],
             [(), DBAPIError, "expected str, got tuple"],
             [datetime.now(), DBAPIError, "expected str, got datetime"],
             ["1test", ValueError, "Column 'sample_string' must start with a letter."],
@@ -122,6 +123,7 @@ class TestDataType:
                 DBAPIError,
                 "'tuple' object cannot be interpreted as an integer"
             ],
+            [(998,), DBAPIError, "'tuple' object cannot be interpreted as an integer"],
             [(), DBAPIError, "'tuple' object cannot be interpreted as an integer"],
             [
                 datetime.now(),
@@ -161,6 +163,7 @@ class TestDataType:
                 "2025, 6, 8, 18, 19, 37, 718543\\)"
             ],
             [(True, False), StatementError, "Not a boolean value: \\(True, False\\)"],
+            [(True,), StatementError, "Not a boolean value: \\(True,\\)"],
             [(), StatementError, "Not a boolean value: \\(\\)"]
         ]
 
@@ -184,6 +187,7 @@ class TestDataType:
             [{9999.99: 9999.99}, DBAPIError, "(must be real number, not dict)"],
             [{}, DBAPIError, "(must be real number, not dict)"],
             [(9999.99, 9999.99), DBAPIError, "(must be real number, not tuple)"],
+            [(9999.99,), DBAPIError, "(must be real number, not tuple)"],
             [(), DBAPIError, "(must be real number, not tuple)"],
             [
                 datetime(2025, 6, 8, 18, 19, 37, 718543),
@@ -233,6 +237,7 @@ class TestDataType:
             ],
             [{}, DBAPIError, "(conversion from dict to Decimal is not supported)"],
             [(1898.14, 1892.74), DBAPIError, "argument must be a sequence of length 3"],
+            [(1898.14,), DBAPIError, "(argument must be a sequence of length 3)"],
             [(), DBAPIError, "(argument must be a sequence of length 3)"],
             [
                 datetime.now(),
@@ -321,6 +326,11 @@ class TestDataType:
                 "(expected a datetime.date or datetime.datetime instance, got 'tuple')"
             ],
             [
+                (datetime(2024, 3, 13),),
+                DBAPIError,
+                "(expected a datetime.date or datetime.datetime instance, got 'tuple')"
+            ],
+            [
                 (),
                 DBAPIError,
                 "(expected a datetime.date or datetime.datetime instance, got 'tuple')"
@@ -345,7 +355,7 @@ class TestDataType:
             "test", 9999, True, 9999.99, ["test"], ["test1", "test2"], [],
             {"key": "value"}, {}, {9999: 9999}, {41: "value"}, {False: True},
             {True: "value"}, {9999.99: 9999.99}, {65.12: "value"}, {"key": "value"},
-            ("test"), ("test1", "test2"), ()
+            ("test"), ("test",), ("test1", "test2"), ()
         ]
         invalid_data = [
             [
@@ -440,6 +450,11 @@ class TestDataType:
             ],
             [
                 (SampleEnum.SECOND, SampleEnum.THIRD), StatementError,
+                "is not among the defined enum values. Enum name: "
+                "sampleenum. Possible values: FIRST, SECOND, THIRD"
+            ],
+            [
+                (SampleEnum.SECOND,), StatementError,
                 "is not among the defined enum values. Enum name: "
                 "sampleenum. Possible values: FIRST, SECOND, THIRD"
             ],

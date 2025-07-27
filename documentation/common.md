@@ -14,6 +14,7 @@ app/
 ├── core/                  # Core configuration
 │   ├── config.py         # Settings and configuration
 │   ├── security.py       # Authentication & authorization
+│   ├── listeners.py      # Validation and automatic set
 │   ├── session.py        # Database connection and sessions
 │   ├── exceptions.py     # Custom exception classes and error handlers
 │   └── base.py           # Base classes and common utilities

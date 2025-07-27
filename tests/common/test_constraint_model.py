@@ -36,6 +36,10 @@ class ModelCustomConstraint(Base):
     quantity_test = Column(Float)
     test_quantity_test = Column(Numeric(10, 2))
 
+    test_sequence = Column(Float)
+    sequence_test = Column(Float)
+    test_sequence_test = Column(Float)
+
 
 class TestRealConstraint:
     """Test constraint behavior at database level."""
@@ -218,6 +222,37 @@ class TestCustomConstraintApplication:
                 valid_data, invalid_data, quantity_column, db_session
             )
 
+    async def test_sequence_field_validation(self, db_session):
+        columns = ModelCustomConstraint.__table__.columns
+        sequence_columns = [
+            column.name for column in columns
+            if 'sequence' in column.name and column.name != 'sequence'
+        ]
+        for sequence_column in sequence_columns:
+            valid_data = [52, 41.856, 0.01, 0, 10e6, 10e-3]
+            invalid_data = [
+                # [data, error_type, error_message]
+                [
+                    -10e-6,
+                    ValueError,
+                    f"Column '{sequence_column}' must be a non-negative number."
+                ],
+                [
+                    -0.01,
+                    ValueError,
+                    f"Column '{sequence_column}' must be a non-negative number."
+                ],
+                [
+                    -51,
+                    ValueError,
+                    f"Column '{sequence_column}' must be a non-negative number."
+                ],
+            ]
+
+            await self.create_item(
+                valid_data, invalid_data, sequence_column, db_session
+            )
+
 
 class TestCustomConstraintDatabase:
     """Test custom constraint database."""
@@ -369,4 +404,35 @@ class TestCustomConstraintDatabase:
 
             await self.create_item(
                 valid_data, invalid_data, quantity_column, db_session
+            )
+
+    async def test_sequence_field_validation(self, db_session):
+        columns = ModelCustomConstraint.__table__.columns
+        sequence_columns = [
+            column.name for column in columns
+            if 'sequence' in column.name and column.name != 'sequence'
+        ]
+        for sequence_column in sequence_columns:
+            valid_data = [52, 41.856, 0.01, 0, 10e6, 10e-3]
+            invalid_data = [
+                # [data, error_type, error_message]
+                [
+                    -10e-6,
+                    IntegrityError,
+                    f"check_model_custom_constraint_{sequence_column}_non_negative"
+                ],
+                [
+                    -0.01,
+                    IntegrityError,
+                    f"check_model_custom_constraint_{sequence_column}_non_negative"
+                ],
+                [
+                    -51,
+                    IntegrityError,
+                    f"check_model_custom_constraint_{sequence_column}_non_negative"
+                ],
+            ]
+
+            await self.create_item(
+                valid_data, invalid_data, sequence_column, db_session
             )
