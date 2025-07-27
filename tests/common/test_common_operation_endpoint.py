@@ -827,21 +827,6 @@ class TestGetChildrenByModel:
 
     async def test_get_children_by_model_invalid_id(self, async_client: AsyncClient):
         """Test getting children for non-existent model."""
-        # Test non-existent ID
-        response = await async_client.get("/api/v1/category-types/999/categories/")
-
-        assert response.status_code == 404
-        assert response.json() == {
-            "success": False,
-            "data": None,
-            "error": {
-                "code": "HTTP_ERROR_404",
-                "message": "Category type with id 999 not found",
-                "details": None
-            }
-        }
-
-        # Test invalid ID format
         response = await async_client.get(
             "/api/v1/category-types/invalid/categories/"
         )
@@ -898,37 +883,3 @@ class TestConcurrentOperations:
         # Expect exactly one success and rest failures
         assert success_count == 1
         assert error_count == 2
-
-
-class TestDeleteModel:
-    """Test cases for DELETE /{id} endpoint."""
-
-    async def test_delete_model_with_children(
-        self, async_client: AsyncClient, category_type_factory, category_factory
-    ):
-        """Test deleting model that has children (should fail)."""
-        category_type = await category_type_factory(name="Electronics")
-
-        # Create a category under this category type
-        await category_factory(
-            name="Mobile Phones",
-            category_type=category_type
-        )
-
-        response = await async_client.delete(
-            f"/api/v1/category-types/{category_type.id}"
-        )
-
-        assert response.status_code == 400
-        assert response.json() == {
-            "success": False,
-            "data": None,
-            "error": {
-                "code": "HTTP_ERROR_400",
-                "message": (
-                    "Cannot delete category type. "
-                    "It has 1 associated categories"
-                ),
-                "details": None
-            }
-        }

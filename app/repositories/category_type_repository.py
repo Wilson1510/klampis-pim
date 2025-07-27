@@ -20,7 +20,6 @@ class CategoryTypeRepository(
         *,
         skip: int = 0,
         limit: int = 100,
-        name: Optional[str] = None,
         slug: Optional[str] = None,
         is_active: Optional[bool] = None
     ) -> List[CategoryTypes]:
@@ -29,9 +28,6 @@ class CategoryTypeRepository(
 
         # Build filter conditions
         conditions = []
-
-        if name is not None:
-            conditions.append(self.model.name.ilike(f"%{name}%"))
 
         if slug is not None:
             conditions.append(self.model.slug == slug)
