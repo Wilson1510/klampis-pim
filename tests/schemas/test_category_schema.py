@@ -107,7 +107,7 @@ class TestCategoryCreate:
     def test_category_create_fields_inheritance(self):
         """Test that the category create schema inherits from BaseCreateSchema"""
         fields = CategoryCreate.model_fields
-        assert len(fields) == 6
+        assert len(fields) == 7
         assert 'name' in fields
         assert 'description' in fields
         assert 'category_type_id' in fields
@@ -161,7 +161,8 @@ class TestCategoryCreate:
             "name": "Test Category 1",
             "description": "Test Category 1 Description",
             "category_type_id": 1,
-            "parent_id": None
+            "parent_id": None,
+            "images": []
         }
 
     def test_category_create_schema_model_dump_json(self):
@@ -172,7 +173,8 @@ class TestCategoryCreate:
             '"name":"Test Category 2",'\
             '"description":"Test Category 2 Description",'\
             '"category_type_id":null,'\
-            '"parent_id":1'\
+            '"parent_id":1,'\
+            '"images":[]'\
             '}'
 
     def test_validate_category_hierarchy(self):
@@ -231,7 +233,7 @@ class TestCategoryUpdate:
     def test_category_update_fields_inheritance(self):
         """Test that the category update schema inherits from BaseUpdateSchema"""
         fields = CategoryUpdate.model_fields
-        assert len(fields) == 6
+        assert len(fields) == 9
         assert 'name' in fields
         assert 'description' in fields
         assert 'category_type_id' in fields
@@ -285,7 +287,10 @@ class TestCategoryUpdate:
             "name": "Test Category",
             "description": "Test Category Description",
             "category_type_id": 1,
-            "parent_id": 1
+            "parent_id": 1,
+            "images_to_create": [],
+            "images_to_update": [],
+            "images_to_delete": []
         }
 
     def test_category_update_schema_model_dump_json(self):
@@ -296,7 +301,10 @@ class TestCategoryUpdate:
             '"name":"Test Category",'\
             '"description":"Test Category Description",'\
             '"category_type_id":1,'\
-            '"parent_id":1'\
+            '"parent_id":1,'\
+            '"images_to_create":[],'\
+            '"images_to_update":[],'\
+            '"images_to_delete":[]'\
             '}'
 
 
@@ -612,7 +620,7 @@ class TestCategoryResponse:
     def test_category_response_fields_inheritance(self):
         """Test that the category response schema inherits from CategoryInDB"""
         fields = CategoryResponse.model_fields
-        assert len(fields) == 14
+        assert len(fields) == 15
         assert 'name' in fields
         assert 'description' in fields
         assert 'slug' in fields
@@ -668,22 +676,21 @@ class TestCategoryResponse:
         category_type = CategoryTypes(name="Test Category Type")
         await save_object(db_session, category_type)
 
-        model = Categories(name="Parent Category", category_type_id=category_type.id)
+        model = Categories(
+            name="Parent Category",
+            category_type_id=category_type.id
+        )
         await save_object(db_session, model)
 
         child_category = Categories(name="Child Category", parent_id=model.id)
         await save_object(db_session, child_category)
 
-        query = (
-            select(Categories)
-            .where(Categories.id == model.id)
-            .options(
-                selectinload(Categories.children)
-                .selectinload(Categories.children)
-            )
-        )
+        query = select(Categories).where(Categories.id == model.id)
         result = await db_session.execute(query)
         db_model = result.scalar_one_or_none()
+        await db_session.refresh(db_model, ['children', 'images'])
+        for child in db_model.children:
+            await db_session.refresh(child, ['children', 'images'])
 
         db_schema_object = CategoryResponse.model_validate(db_model)
 
@@ -717,6 +724,7 @@ class TestCategoryResponse:
                             type="Category"
                         )
                     ],
+                    images=[],
                     created_at=child_category.created_at,
                     updated_at=child_category.updated_at,
                     created_by=child_category.created_by,
@@ -733,6 +741,7 @@ class TestCategoryResponse:
                     type="Category"
                 )
             ],
+            images=[],
             created_at=model.created_at,
             updated_at=model.updated_at,
             created_by=model.created_by,
@@ -749,22 +758,22 @@ class TestCategoryResponse:
         category_type = CategoryTypes(name="Test Category Type")
         await save_object(db_session, category_type)
 
-        model = Categories(name="Parent Category", category_type_id=category_type.id)
+        model = Categories(
+            name="Parent Category",
+            category_type_id=category_type.id
+        )
         await save_object(db_session, model)
 
         child_category = Categories(name="Child Category", parent_id=model.id)
         await save_object(db_session, child_category)
 
-        query = (
-            select(Categories)
-            .where(Categories.id == model.id)
-            .options(
-                selectinload(Categories.children)
-                .selectinload(Categories.children)
-            )
-        )
+        query = select(Categories).where(Categories.id == model.id)
         result = await db_session.execute(query)
         db_model = result.scalar_one_or_none()
+
+        await db_session.refresh(db_model, ['children', 'images'])
+        for child in db_model.children:
+            await db_session.refresh(child, ['children', 'images'])
 
         db_model.full_path[0]['name'] = "Full Path Parent Category Updated"
         db_model.children[0].full_path[0]['name'] = "Full Path Child Category Updated"
@@ -803,6 +812,7 @@ class TestCategoryResponse:
                             type="Category"
                         )
                     ],
+                    images=[],
                     created_at=child_category.created_at,
                     updated_at=child_category.updated_at,
                     created_by=child_category.created_by,
@@ -819,6 +829,7 @@ class TestCategoryResponse:
                     type="Category"
                 )
             ],
+            images=[],
             created_at=model.created_at,
             updated_at=model.updated_at,
             created_by=model.created_by,

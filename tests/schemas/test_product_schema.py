@@ -131,7 +131,7 @@ class TestProductCreate:
     def test_product_create_fields_inheritance(self):
         """Test that the product create schema has correct fields"""
         fields = ProductCreate.model_fields
-        assert len(fields) == 6
+        assert len(fields) == 7
         assert 'name' in fields
         assert 'description' in fields
         assert 'category_id' in fields
@@ -189,7 +189,8 @@ class TestProductCreate:
             "name": "Test Product",
             "description": "Test Product Description",
             "category_id": 1,
-            "supplier_id": 1
+            "supplier_id": 1,
+            "images": []
         }
 
     def test_product_create_schema_model_dump_json(self):
@@ -200,7 +201,8 @@ class TestProductCreate:
             '"name":"Test Product",'\
             '"description":"Test Product Description",'\
             '"category_id":1,'\
-            '"supplier_id":1'\
+            '"supplier_id":1,'\
+            '"images":[]'\
             '}'
 
 
@@ -225,7 +227,7 @@ class TestProductUpdate:
     def test_product_update_fields_inheritance(self):
         """Test that the product update schema has correct fields"""
         fields = ProductUpdate.model_fields
-        assert len(fields) == 6
+        assert len(fields) == 9
         assert 'name' in fields
         assert 'description' in fields
         assert 'category_id' in fields
@@ -278,7 +280,10 @@ class TestProductUpdate:
             "name": "Test Product",
             "description": "Test Product Description",
             "category_id": 1,
-            "supplier_id": 1
+            "supplier_id": 1,
+            "images_to_create": [],
+            "images_to_update": [],
+            "images_to_delete": []
         }
 
     def test_product_update_schema_model_dump_json(self):
@@ -289,7 +294,10 @@ class TestProductUpdate:
             '"name":"Test Product",'\
             '"description":"Test Product Description",'\
             '"category_id":1,'\
-            '"supplier_id":1'\
+            '"supplier_id":1,'\
+            '"images_to_create":[],'\
+            '"images_to_update":[],'\
+            '"images_to_delete":[]'\
             '}'
 
 
@@ -521,7 +529,7 @@ class TestProductResponse:
     def test_product_response_fields_inheritance(self):
         """Test that the product response schema has correct fields"""
         fields = ProductResponse.model_fields
-        assert len(fields) == 13
+        assert len(fields) == 14
         assert 'name' in fields
         assert 'description' in fields
         assert 'category_id' in fields
@@ -607,6 +615,8 @@ class TestProductResponse:
         result = await db_session.execute(query)
         db_model = result.scalar_one_or_none()
 
+        await db_session.refresh(db_model, ['images'])
+
         db_schema_object = ProductResponse.model_validate(db_model)
 
         assert db_schema_object == ProductResponse(
@@ -635,6 +645,7 @@ class TestProductResponse:
                     type="Product"
                 )
             ],
+            images=[],
             created_at=model.created_at,
             updated_at=model.updated_at,
             created_by=model.created_by,
@@ -684,6 +695,8 @@ class TestProductResponse:
         result = await db_session.execute(query)
         db_model = result.scalar_one_or_none()
 
+        await db_session.refresh(db_model, ['images'])
+
         db_model.full_path[0]['name'] = "Full Path Parent Category Updated"
         db_model.full_path[1]['name'] = "Full Path Child Category Updated"
         db_model.full_path[2]['name'] = "Full Path Product Updated"
@@ -718,6 +731,7 @@ class TestProductResponse:
                     type="Product"
                 )
             ],
+            images=[],
             created_at=model.created_at,
             updated_at=model.updated_at,
             created_by=model.created_by,

@@ -6,6 +6,7 @@ from pydantic import Field, StrictStr, model_validator
 from app.schemas.base import (
     BaseSchema, BaseInDB, BaseCreateSchema, BaseUpdateSchema, StrictPositiveInt
 )
+from app.schemas.image_schema import ImageCreate, ImageUpdate, ImageSummary
 
 
 class CategoryBase(BaseSchema):
@@ -26,6 +27,7 @@ class CategoryCreate(CategoryBase, BaseCreateSchema):
     """
     category_type_id: Optional[StrictPositiveInt] = None
     parent_id: Optional[StrictPositiveInt] = None
+    images: List[ImageCreate] = Field(default_factory=list)
 
     @model_validator(mode='after')
     def validate_category_hierarchy(self) -> Self:
@@ -51,6 +53,9 @@ class CategoryUpdate(CategoryBase, BaseUpdateSchema):
     name: Optional[StrictStr] = Field(default=None, min_length=1, max_length=100)
     category_type_id: Optional[StrictPositiveInt] = None
     parent_id: Optional[StrictPositiveInt] = None
+    images_to_create: Optional[List[ImageCreate]] = Field(default_factory=list)
+    images_to_update: Optional[List[ImageUpdate]] = Field(default_factory=list)
+    images_to_delete: Optional[List[StrictPositiveInt]] = Field(default_factory=list)
 
 
 class CategoryInDB(CategoryBase, BaseInDB):
@@ -83,6 +88,7 @@ class CategoryResponse(CategoryInDB):
     """
     children: List["CategoryResponse"] = Field(default_factory=list)
     full_path: List[CategoryPathItem]
+    images: List[ImageSummary] = Field(default_factory=list)
 
 
 # Enable forward references for self-referencing models
