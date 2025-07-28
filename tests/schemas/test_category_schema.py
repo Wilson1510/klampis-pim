@@ -1,4 +1,4 @@
-from typing import Optional, List
+from typing import Optional, List, Literal
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -343,7 +343,7 @@ class TestCategoryPathItem:
 
         type = fields['type']
         assert type.is_required() is False
-        assert type.annotation == str
+        assert type.annotation == Literal["Category"]
         assert type.default == "Category"
 
     def test_category_path_item_schema_input(self):

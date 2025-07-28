@@ -78,6 +78,29 @@ class Skus(Base):
             raise ValueError("SKU number must only contain 0-9 or A-F characters.")
         return value
 
+    @property
+    def full_path(self):
+        """
+        Computes the full hierarchical path from the root category to this SKU.
+        The path includes the complete category hierarchy, product, and the SKU itself.
+        The path is returned in order from root -> category -> ... -> product -> sku.
+        """
+        # Start with the product's full path
+        path = []
+        if self.product:
+            path = self.product.full_path
+
+        # Add the SKU to the path (sku has 4 keys: name, slug, sku_number, type)
+        sku_item = {
+            'name': self.name,
+            'slug': self.slug,
+            'sku_number': self.sku_number,
+            'type': 'SKU'
+        }
+        path.append(sku_item)
+
+        return path
+
     def __str__(self) -> str:
         """String representation of the SKU."""
         return f"Skus({self.name})"

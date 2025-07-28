@@ -2,7 +2,7 @@ import enum
 from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
-from typing import List, Dict, Set, Tuple, Optional, Union, Any
+from typing import List, Dict, Set, Tuple, Optional, Union, Any, Literal
 
 import pytest
 from pydantic import (
@@ -59,6 +59,7 @@ class SampleSchemaDataType(BaseModel):
     # Optional & Union Types
     sample_optional: Optional[StrictStr] = None  # Done
     sample_union: Union[str, int]  # Done
+    sample_literal: Literal["test", 25, False]  # Done
 
     # String Specialized Types
     sample_email: EmailStr  # Done
@@ -126,6 +127,7 @@ class TestDataTypeSchema:
             "sample_set": {"item1", "item2"},
             "sample_tuple": ("str", 42, True),
             "sample_union": "union_string",
+            "sample_literal": "test",
             "sample_email": "test@example.com",
             "sample_url": "https://example.com",
             "sample_decimal": Decimal("123.45"),
@@ -672,6 +674,37 @@ class TestDataTypeSchema:
         ]
 
         self.create_item(valid_data, invalid_data, "sample_union")
+
+    def test_literal_field_validation(self):
+        """Test literal field validation"""
+        valid_data = ["test", 25, False, ('test'), (25), (False)]
+        invalid_data = [
+            ["aa", ValidationError, "Input should be 'test', 25 or False"],
+            [123, ValidationError, "Input should be 'test', 25 or False"],
+            [True, ValidationError, "Input should be 'test', 25 or False"],
+            [9.99, ValidationError, "Input should be 'test', 25 or False"],
+            [['test'], ValidationError, "Input should be 'test', 25 or False"],
+            [
+                ['test1', 'test2'],
+                ValidationError,
+                "Input should be 'test', 25 or False"
+            ],
+            [[], ValidationError, "Input should be 'test', 25 or False"],
+            [{'key': 'value'}, ValidationError, "Input should be 'test', 25 or False"],
+            [{'test'}, ValidationError, "Input should be 'test', 25 or False"],
+            [
+                ('test1', 'test2'),
+                ValidationError,
+                "Input should be 'test', 25 or False"
+            ],
+            [(), ValidationError, "Input should be 'test', 25 or False"],
+            [{}, ValidationError, "Input should be 'test', 25 or False"],
+            [('test1',), ValidationError, "Input should be 'test', 25 or False"],
+            [datetime.now(), ValidationError, "Input should be 'test', 25 or False"],
+            [None, ValidationError, "Input should be 'test', 25 or False"]
+        ]
+
+        self.create_item(valid_data, invalid_data, "sample_literal")
 
     def test_email_field_validation(self):
         """Test email field validation"""
