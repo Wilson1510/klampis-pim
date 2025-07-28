@@ -1,6 +1,5 @@
 from typing import Optional, Literal
 from sqlalchemy import select
-from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import StrictStr
 from pydantic_core import PydanticUndefined
@@ -604,15 +603,7 @@ class TestProductResponse:
         )
         await save_object(db_session, model)
 
-        query = (
-            select(Products)
-            .where(Products.id == model.id)
-            .options(
-                selectinload(Products.category)
-                .selectinload(Categories.parent)
-                .selectinload(Categories.category_type)
-            )
-        )
+        query = select(Products).where(Products.id == model.id)
         result = await db_session.execute(query)
         db_model = result.scalar_one_or_none()
 
@@ -689,15 +680,7 @@ class TestProductResponse:
         )
         await save_object(db_session, model)
 
-        query = (
-            select(Products)
-            .where(Products.id == model.id)
-            .options(
-                selectinload(Products.category)
-                .selectinload(Categories.parent)
-                .selectinload(Categories.category_type)
-            )
-        )
+        query = select(Products).where(Products.id == model.id)
         result = await db_session.execute(query)
         db_model = result.scalar_one_or_none()
 
