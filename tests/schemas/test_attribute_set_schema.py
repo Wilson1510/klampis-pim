@@ -406,11 +406,9 @@ class TestAttributeSetInDB:
     def test_attribute_set_in_db_fields_inheritance(self):
         """Test that the attribute set in db schema has correct fields"""
         fields = AttributeSetInDB.model_fields
-        assert len(fields) == 11  # 1 base + 3 new + 7 from BaseInDB
+        assert len(fields) == 9
         assert 'name' in fields
         assert 'slug' in fields
-        assert 'categories' in fields
-        assert 'attributes' in fields
 
         name = fields['name']
         assert name.is_required() is True
@@ -424,16 +422,6 @@ class TestAttributeSetInDB:
         assert slug.is_required() is True
         assert slug.annotation == str
         assert slug.default is PydanticUndefined
-
-        categories = fields['categories']
-        assert categories.is_required() is True
-        assert categories.annotation == List[CategorySummary]
-        assert categories.default is PydanticUndefined
-
-        attributes = fields['attributes']
-        assert attributes.is_required() is True
-        assert attributes.annotation == List[AttributeSummary]
-        assert attributes.default is PydanticUndefined
 
         model_config = AttributeSetInDB.model_config
         assert model_config['from_attributes'] is True
@@ -478,27 +466,6 @@ class TestAttributeSetInDB:
             id=attribute_set.id,
             name="Test Attribute Set InDB",
             slug="test-attribute-set-indb",
-            categories=[CategorySummary(
-                id=category.id,
-                name="Test Category",
-                slug="test-category"
-            )],
-            attributes=[
-                AttributeSummary(
-                    id=attribute1.id,
-                    name="Volume",
-                    code="VOLUME",
-                    data_type="NUMBER",
-                    uom="ml"
-                ),
-                AttributeSummary(
-                    id=attribute2.id,
-                    name="Flavor",
-                    code="FLAVOR",
-                    data_type="TEXT",
-                    uom=None
-                )
-            ],
             created_at=attribute_set.created_at,
             updated_at=attribute_set.updated_at,
             created_by=attribute_set.created_by,
@@ -553,27 +520,6 @@ class TestAttributeSetInDB:
             id=attribute_set.id,
             name="Test Attribute Set InDB Updated",
             slug="test-attribute-set-indb-updated",
-            categories=[CategorySummary(
-                id=category.id,
-                name="Test Category Updated",
-                slug="test-category-updated"
-            )],
-            attributes=[
-                AttributeSummary(
-                    id=attribute1.id,
-                    name="Volume Updated",
-                    code="VOLUME-UPDATED",
-                    data_type="NUMBER",
-                    uom="ml"
-                ),
-                AttributeSummary(
-                    id=attribute2.id,
-                    name="Flavor",
-                    code="FLAVOR",
-                    data_type="TEXT",
-                    uom=None
-                )
-            ],
             created_at=attribute_set.created_at,
             updated_at=attribute_set.updated_at,
             created_by=attribute_set.created_by,
