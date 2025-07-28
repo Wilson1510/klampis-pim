@@ -10,6 +10,7 @@ from app.schemas.base import (
     StrictPositiveInt,
 )
 from app.schemas.category_schema import CategoryPathItem
+from app.schemas.image_schema import ImageCreate, ImageUpdate, ImageSummary
 
 
 class ProductBase(BaseSchema):
@@ -27,7 +28,7 @@ class ProductCreate(ProductBase, BaseCreateSchema):
     Used in: POST endpoints
     Contains: Only fields that client can/should provide
     """
-    pass
+    images: List[ImageCreate] = Field(default_factory=list)
 
 
 class ProductUpdate(ProductBase, BaseUpdateSchema):
@@ -39,6 +40,9 @@ class ProductUpdate(ProductBase, BaseUpdateSchema):
     name: Optional[StrictStr] = Field(default=None, min_length=1, max_length=100)
     category_id: Optional[StrictPositiveInt] = None
     supplier_id: Optional[StrictPositiveInt] = None
+    images_to_create: Optional[List[ImageCreate]] = Field(default_factory=list)
+    images_to_update: Optional[List[ImageUpdate]] = Field(default_factory=list)
+    images_to_delete: Optional[List[StrictPositiveInt]] = Field(default_factory=list)
 
 
 class ProductInDB(ProductBase, BaseInDB):
@@ -70,3 +74,4 @@ class ProductResponse(ProductInDB):
             Union[CategoryPathItem, ProductPathItem], Field(discriminator='type')
         ]
     ]
+    images: List[ImageSummary] = Field(default_factory=list)
