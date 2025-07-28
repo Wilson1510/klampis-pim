@@ -36,7 +36,6 @@ class AttributeUpdate(AttributeBase, BaseUpdateSchema):
     """
     name: Optional[StrictStr] = Field(default=None, min_length=1, max_length=50)
     data_type: Optional[Literal["TEXT", "NUMBER", "BOOLEAN", "DATE"]] = None
-    uom: Optional[StrictStr] = Field(default=None, max_length=15)
 
 
 class AttributeInDB(AttributeBase, BaseInDB):

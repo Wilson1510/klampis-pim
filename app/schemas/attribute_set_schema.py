@@ -51,10 +51,9 @@ class CategorySummary(BaseSchema):
 class AttributeSetInDB(AttributeSetBase, BaseInDB):
     """Schema for AttributeSet as stored in database."""
     slug: str
-    categories: List[CategorySummary]
-    attributes: List[AttributeSummary]
 
 
 class AttributeSetResponse(AttributeSetInDB):
     """Schema for AttributeSet API responses."""
-    pass
+    categories: List[CategorySummary]
+    attributes: List[AttributeSummary]
