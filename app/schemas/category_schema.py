@@ -1,4 +1,4 @@
-from typing import Optional, List
+from typing import Optional, List, Literal
 from typing_extensions import Self
 
 from pydantic import Field, StrictStr, model_validator
@@ -71,7 +71,7 @@ class CategoryPathItem(BaseSchema):
     name: str
     slug: str
     category_type: Optional[str] = None
-    type: str = "Category"
+    type: Literal["Category"] = "Category"
 
 
 class CategoryResponse(CategoryInDB):

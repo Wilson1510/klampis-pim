@@ -1,4 +1,4 @@
-from typing import Optional, List, Union
+from typing import Optional, List, Union, Literal, Annotated
 
 from pydantic import Field, StrictStr
 
@@ -55,7 +55,7 @@ class ProductPathItem(BaseSchema):
     """Schema for product items in the product path."""
     name: str
     slug: str
-    type: str = "Product"
+    type: Literal["Product"] = "Product"
 
 
 class ProductResponse(ProductInDB):
@@ -65,4 +65,8 @@ class ProductResponse(ProductInDB):
     Contains: All fields that should be returned to client
     Purpose: Explicit response model for API documentation
     """
-    full_path: List[Union[CategoryPathItem, ProductPathItem]]
+    full_path: List[
+        Annotated[
+            Union[CategoryPathItem, ProductPathItem], Field(discriminator='type')
+        ]
+    ]
