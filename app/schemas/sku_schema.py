@@ -139,4 +139,6 @@ class SkuResponse(SkuInDB):
         ]
     ]
     price_details: List[PriceDetailSummary]
-    attribute_values: List[AttributeValueSummary]
+    attribute_values: List[AttributeValueSummary] = Field(
+        ..., alias='sku_attribute_values'
+    )
