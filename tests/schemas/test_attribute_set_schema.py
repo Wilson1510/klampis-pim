@@ -188,8 +188,8 @@ class TestAttributeSetUpdate:
 
         attribute_ids = fields['attribute_ids']
         assert attribute_ids.is_required() is False
-        assert attribute_ids.annotation == List[StrictPositiveInt]
-        assert attribute_ids.default_factory == list
+        assert attribute_ids.annotation == Optional[List[StrictPositiveInt]]
+        assert attribute_ids.default is None
 
     def test_attribute_set_update_schema_input(self):
         schema = AttributeSetUpdate(**self.attribute_set_dict)
@@ -228,7 +228,7 @@ class TestAttributeSetUpdate:
             "name": "Test Attribute Set"
         }
         schema = AttributeSetUpdate(**attribute_set_dict)
-        assert schema.attribute_ids == []
+        assert schema.attribute_ids is None
 
 
 class TestAttributeSummary:

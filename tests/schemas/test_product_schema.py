@@ -281,9 +281,9 @@ class TestProductUpdate:
             "description": "Test Product Description",
             "category_id": 1,
             "supplier_id": 1,
-            "images_to_create": [],
-            "images_to_update": [],
-            "images_to_delete": []
+            "images_to_create": None,
+            "images_to_update": None,
+            "images_to_delete": None
         }
 
     def test_product_update_schema_model_dump_json(self):
@@ -295,9 +295,9 @@ class TestProductUpdate:
             '"description":"Test Product Description",'\
             '"category_id":1,'\
             '"supplier_id":1,'\
-            '"images_to_create":[],'\
-            '"images_to_update":[],'\
-            '"images_to_delete":[]'\
+            '"images_to_create":null,'\
+            '"images_to_update":null,'\
+            '"images_to_delete":null'\
             '}'
 
 

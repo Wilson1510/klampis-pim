@@ -3,7 +3,6 @@ from typing import Optional, List
 from sqlalchemy import Column, String, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import Field
-from pydantic_core import PydanticUndefined
 import pytest
 
 from app.core.base import Base
@@ -34,9 +33,9 @@ class SampleSchemaCreate(SampleSchemaBase, BaseCreateSchema):
 class SampleSchemaUpdate(SampleSchemaBase, BaseUpdateSchema):
     """Schema for updating an existing sample"""
     name: Optional[str] = None
-    images_to_create: Optional[List[ImageCreate]] = Field(default_factory=list)
-    images_to_update: Optional[List[ImageUpdate]] = Field(default_factory=list)
-    images_to_delete: Optional[List[StrictPositiveInt]] = Field(default_factory=list)
+    images_to_create: Optional[List[ImageCreate]] = None
+    images_to_update: Optional[List[ImageUpdate]] = None
+    images_to_delete: Optional[List[StrictPositiveInt]] = None
 
 
 class SampleSchemaInDB(SampleSchemaBase, BaseInDB):
@@ -46,7 +45,7 @@ class SampleSchemaInDB(SampleSchemaBase, BaseInDB):
 
 class SampleSchemaResponse(SampleSchemaInDB):
     """Schema for Sample API responses"""
-    images: List[ImageSummary] = Field(default_factory=list)
+    images: List[ImageSummary] = None
 
 
 class TestSampleSchemaCreate:
@@ -81,7 +80,7 @@ class TestSampleSchemaCreate:
         images = fields['images']
         assert images.is_required() is False
         assert images.annotation == List[ImageCreate]
-        assert images.default is PydanticUndefined
+        assert images.default_factory == list
 
     def test_sample_schema_create_schema_input(self):
         """Test that the SampleSchemaCreate schema has correct input"""
@@ -179,17 +178,17 @@ class TestSampleSchemaUpdate:
         images_to_create = fields['images_to_create']
         assert images_to_create.is_required() is False
         assert images_to_create.annotation == Optional[List[ImageCreate]]
-        assert images_to_create.default is PydanticUndefined
+        assert images_to_create.default is None
 
         images_to_update = fields['images_to_update']
         assert images_to_update.is_required() is False
         assert images_to_update.annotation == Optional[List[ImageUpdate]]
-        assert images_to_update.default is PydanticUndefined
+        assert images_to_update.default is None
 
         images_to_delete = fields['images_to_delete']
         assert images_to_delete.is_required() is False
         assert images_to_delete.annotation == Optional[List[StrictPositiveInt]]
-        assert images_to_delete.default is PydanticUndefined
+        assert images_to_delete.default is None
 
     def test_sample_schema_update_schema_input(self):
         """Test that the SampleSchemaUpdate schema has correct input"""
@@ -291,7 +290,7 @@ class TestSampleSchemaResponse:
         images = fields['images']
         assert images.is_required() is False
         assert images.annotation == List[ImageSummary]
-        assert images.default is PydanticUndefined
+        assert images.default is None
 
     @pytest.mark.asyncio
     async def test_sample_schema_response_model_validate(
