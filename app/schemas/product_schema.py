@@ -40,9 +40,9 @@ class ProductUpdate(ProductBase, BaseUpdateSchema):
     name: Optional[StrictStr] = Field(default=None, min_length=1, max_length=100)
     category_id: Optional[StrictPositiveInt] = None
     supplier_id: Optional[StrictPositiveInt] = None
-    images_to_create: Optional[List[ImageCreate]] = Field(default_factory=list)
-    images_to_update: Optional[List[ImageUpdate]] = Field(default_factory=list)
-    images_to_delete: Optional[List[StrictPositiveInt]] = Field(default_factory=list)
+    images_to_create: Optional[List[ImageCreate]] = None
+    images_to_update: Optional[List[ImageUpdate]] = None
+    images_to_delete: Optional[List[StrictPositiveInt]] = None
 
 
 class ProductInDB(ProductBase, BaseInDB):
@@ -74,4 +74,4 @@ class ProductResponse(ProductInDB):
             Union[CategoryPathItem, ProductPathItem], Field(discriminator='type')
         ]
     ]
-    images: List[ImageSummary] = Field(default_factory=list)
+    images: List[ImageSummary]

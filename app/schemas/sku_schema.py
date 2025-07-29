@@ -62,18 +62,10 @@ class SkuUpdate(SkuBase, BaseUpdateSchema):
     """
     name: Optional[StrictStr] = Field(default=None, min_length=1, max_length=100)
     product_id: Optional[StrictPositiveInt] = None
-    price_details_to_create: Optional[List[PriceDetailCreate]] = Field(
-        default_factory=list
-    )
-    price_details_to_update: Optional[List[PriceDetailUpdate]] = Field(
-        default_factory=list
-    )
-    price_details_to_delete: Optional[List[StrictPositiveInt]] = Field(
-        default_factory=list
-    )
-    attribute_values: Optional[List[AttributeValueInput]] = Field(
-        default_factory=list
-    )
+    price_details_to_create: Optional[List[PriceDetailCreate]] = None
+    price_details_to_update: Optional[List[PriceDetailUpdate]] = None
+    price_details_to_delete: Optional[List[StrictPositiveInt]] = None
+    attribute_values: Optional[List[AttributeValueInput]] = None
 
 
 class SkuInDB(SkuBase, BaseInDB):
