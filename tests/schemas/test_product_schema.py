@@ -16,7 +16,6 @@ from app.schemas.product_schema import (
 from app.schemas.category_schema import CategoryPathItem
 from app.models.product_model import Products
 from app.models.category_model import Categories
-from app.models.category_type_model import CategoryTypes
 from app.models.supplier_model import Suppliers
 from tests.utils.model_test_utils import save_object
 
@@ -422,22 +421,13 @@ class TestProductInDB:
         assert model_config['from_attributes'] is True
 
     @pytest.mark.asyncio
-    async def test_product_in_db_model_validate(self, db_session: AsyncSession):
+    async def test_product_in_db_model_validate(
+        self, db_session: AsyncSession, category_factory, supplier_factory
+    ):
         """Test that the product in db schema model validate"""
-        category_type = CategoryTypes(name="Test Category Type")
-        await save_object(db_session, category_type)
+        category = await category_factory()
 
-        category = Categories(name="Test Category", category_type_id=category_type.id)
-        await save_object(db_session, category)
-
-        supplier = Suppliers(
-            name="Test Supplier",
-            company_type="PT",
-            address="Test Address",
-            contact="081234567890",
-            email="test@supplier.com"
-        )
-        await save_object(db_session, supplier)
+        supplier = await supplier_factory()
 
         model = Products(
             name="Test Product",
@@ -469,23 +459,12 @@ class TestProductInDB:
 
     @pytest.mark.asyncio
     async def test_product_in_db_model_validate_updated(
-        self, db_session: AsyncSession
+        self, db_session: AsyncSession, category_factory, supplier_factory
     ):
         """Test that the product in db schema model validate updated"""
-        category_type = CategoryTypes(name="Test Category Type")
-        await save_object(db_session, category_type)
+        category = await category_factory()
 
-        category = Categories(name="Test Category", category_type_id=category_type.id)
-        await save_object(db_session, category)
-
-        supplier = Suppliers(
-            name="Test Supplier",
-            company_type="PT",
-            address="Test Address",
-            contact="081234567890",
-            email="test@supplier.com"
-        )
-        await save_object(db_session, supplier)
+        supplier = await supplier_factory()
 
         model = Products(
             name="Test Product",
@@ -577,10 +556,11 @@ class TestProductResponse:
         assert model_config['from_attributes'] is True
 
     @pytest.mark.asyncio
-    async def test_product_response_model_validate(self, db_session: AsyncSession):
+    async def test_product_response_model_validate(
+        self, db_session: AsyncSession, category_type_factory
+    ):
         """Test that the product response schema model validate"""
-        category_type = CategoryTypes(name="Test Category Type")
-        await save_object(db_session, category_type)
+        category_type = await category_type_factory()
 
         parent_category = Categories(
             name="Parent Category",
@@ -656,11 +636,10 @@ class TestProductResponse:
 
     @pytest.mark.asyncio
     async def test_product_response_model_validate_updated(
-        self, db_session: AsyncSession
+        self, db_session: AsyncSession, category_type_factory
     ):
         """Test that the product response schema model validate updated"""
-        category_type = CategoryTypes(name="Test Category Type")
-        await save_object(db_session, category_type)
+        category_type = await category_type_factory()
 
         parent_category = Categories(
             name="Parent Category",
