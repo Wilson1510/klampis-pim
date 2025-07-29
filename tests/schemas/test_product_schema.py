@@ -14,9 +14,7 @@ from app.schemas.product_schema import (
     ProductResponse, ProductPathItem
 )
 from app.schemas.category_schema import CategoryPathItem
-from app.models.product_model import Products
-from app.models.category_model import Categories
-from app.models.supplier_model import Suppliers
+from app.models import Products, Categories, Suppliers
 from tests.utils.model_test_utils import save_object
 
 

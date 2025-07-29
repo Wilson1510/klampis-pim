@@ -4,8 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import pytest
 
 from app.core.base import Base
-from app.models.category_type_model import CategoryTypes
-from app.models.category_model import Categories
+from app.models import CategoryTypes, Categories
 from app.core.listeners import _set_slug
 from tests.utils.model_test_utils import (
     save_object,

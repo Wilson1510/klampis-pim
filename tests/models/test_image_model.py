@@ -7,8 +7,7 @@ from sqlalchemy.exc import IntegrityError
 import pytest
 
 from app.core.base import Base
-from app.models.image_model import Images
-from app.models.category_model import Categories
+from app.models import Images, Categories
 from tests.utils.model_test_utils import (
     save_object,
     get_object_by_id,

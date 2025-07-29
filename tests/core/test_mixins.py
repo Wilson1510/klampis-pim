@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError, DBAPIError
 
 from app.core.base import Base
-from app.models.image_model import Images
+from app.models import Images
 from app.utils.mixins import Imageable
 from tests.utils.model_test_utils import (
     save_object,

@@ -4,10 +4,7 @@ from sqlalchemy.exc import IntegrityError
 import pytest
 
 from app.core.base import Base
-from app.models.category_model import Categories
-from app.models.product_model import Products
-from app.models.sku_model import Skus
-from app.models.supplier_model import Suppliers
+from app.models import Categories, Products, Skus, Suppliers
 from app.utils.mixins import Imageable
 from app.core.listeners import _set_slug
 from tests.utils.model_test_utils import (

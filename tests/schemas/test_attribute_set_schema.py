@@ -16,9 +16,7 @@ from app.schemas.attribute_set_schema import (
     AttributeSetResponse, AttributeSummary,
     CategorySummary
 )
-from app.models.category_model import Categories
-from app.models.attribute_model import Attributes
-from app.models.attribute_set_model import AttributeSets
+from app.models import Categories, Attributes, AttributeSets
 from tests.utils.model_test_utils import save_object
 
 

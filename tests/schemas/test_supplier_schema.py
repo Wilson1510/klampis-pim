@@ -13,7 +13,7 @@ from app.schemas.supplier_schema import (
     SupplierUpdate, SupplierInDB,
     SupplierResponse
 )
-from app.models.supplier_model import Suppliers
+from app.models import Suppliers
 from tests.utils.model_test_utils import save_object
 
 

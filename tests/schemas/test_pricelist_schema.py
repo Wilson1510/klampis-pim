@@ -12,7 +12,7 @@ from app.schemas.pricelist_schema import (
     PricelistUpdate, PricelistInDB,
     PricelistResponse
 )
-from app.models.pricelist_model import Pricelists
+from app.models import Pricelists
 from tests.utils.model_test_utils import save_object, get_object_by_id
 
 

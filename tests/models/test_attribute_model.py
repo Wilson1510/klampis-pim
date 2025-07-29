@@ -6,9 +6,9 @@ import pytest
 from datetime import datetime
 
 from app.core.base import Base
-from app.models.attribute_model import Attributes, DataType
-from app.models.attribute_set_model import AttributeSets
-from app.models.sku_attribute_value_model import SkuAttributeValue
+from app.models import (
+    Attributes, DataType, AttributeSets, SkuAttributeValue
+)
 from app.core.listeners import _set_code
 from tests.utils.model_test_utils import (
     save_object,

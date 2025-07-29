@@ -14,8 +14,7 @@ from app.schemas.category_schema import (
     CategoryUpdate, CategoryInDB,
     CategoryResponse, CategoryPathItem
 )
-from app.models.category_type_model import CategoryTypes
-from app.models.category_model import Categories
+from app.models import CategoryTypes, Categories
 from tests.utils.model_test_utils import save_object
 
 

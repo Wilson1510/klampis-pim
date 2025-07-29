@@ -4,9 +4,7 @@ from sqlalchemy.exc import IntegrityError
 import pytest
 
 from app.core.base import Base
-from app.models.pricelist_model import Pricelists
-from app.models.sku_model import Skus
-from app.models.price_detail_model import PriceDetails
+from app.models import Pricelists, Skus, PriceDetails
 from tests.utils.model_test_utils import (
     save_object,
     get_object_by_id,

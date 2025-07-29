@@ -4,8 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import pytest
 
 from app.core.base import Base
-from app.models.supplier_model import Suppliers, CompanyType
-from app.models.product_model import Products
+from app.models import Suppliers, CompanyType, Products
 from app.core.listeners import _set_slug
 from tests.utils.model_test_utils import (
     save_object,

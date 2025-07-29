@@ -6,9 +6,7 @@ from sqlalchemy.exc import IntegrityError
 import pytest
 
 from app.core.base import Base
-from app.models.attribute_model import Attributes
-from app.models.sku_model import Skus
-from app.models.sku_attribute_value_model import SkuAttributeValue
+from app.models import Attributes, Skus, SkuAttributeValue
 from tests.utils.model_test_utils import (
     save_object,
     get_object_by_id,

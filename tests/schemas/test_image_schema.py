@@ -12,7 +12,7 @@ from app.schemas.base import (
 )
 from app.utils.mixins import Imageable
 from tests.utils.model_test_utils import save_object
-from app.models.image_model import Images
+from app.models import Images
 
 
 class SampleModelBase3(Base, Imageable):
