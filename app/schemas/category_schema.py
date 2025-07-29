@@ -53,9 +53,9 @@ class CategoryUpdate(CategoryBase, BaseUpdateSchema):
     name: Optional[StrictStr] = Field(default=None, min_length=1, max_length=100)
     category_type_id: Optional[StrictPositiveInt] = None
     parent_id: Optional[StrictPositiveInt] = None
-    images_to_create: Optional[List[ImageCreate]] = Field(default_factory=list)
-    images_to_update: Optional[List[ImageUpdate]] = Field(default_factory=list)
-    images_to_delete: Optional[List[StrictPositiveInt]] = Field(default_factory=list)
+    images_to_create: Optional[List[ImageCreate]] = None
+    images_to_update: Optional[List[ImageUpdate]] = None
+    images_to_delete: Optional[List[StrictPositiveInt]] = None
 
 
 class CategoryInDB(CategoryBase, BaseInDB):
@@ -68,7 +68,7 @@ class CategoryInDB(CategoryBase, BaseInDB):
     slug: str
     category_type_id: Optional[int] = None
     parent_id: Optional[int] = None
-    children: List["CategoryInDB"] = Field(default_factory=list)
+    children: List["CategoryInDB"]
 
 
 class CategoryPathItem(BaseSchema):
@@ -86,9 +86,9 @@ class CategoryResponse(CategoryInDB):
     Contains: All fields that should be returned to client
     Purpose: Explicit response model for API documentation
     """
-    children: List["CategoryResponse"] = Field(default_factory=list)
+    children: List["CategoryResponse"]
     full_path: List[CategoryPathItem]
-    images: List[ImageSummary] = Field(default_factory=list)
+    images: List[ImageSummary]
 
 
 # Enable forward references for self-referencing models

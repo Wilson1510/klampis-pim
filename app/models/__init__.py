@@ -1,8 +1,8 @@
 from app.core.base import Base
-from app.models.user_model import Users
+from app.models.user_model import Users, Role
 from app.models.category_type_model import CategoryTypes
 from app.models.category_model import Categories
-from app.models.supplier_model import Suppliers
+from app.models.supplier_model import Suppliers, CompanyType
 from app.models.product_model import Products
 from app.models.sku_model import Skus
 from app.models.attribute_model import Attributes, DataType
@@ -20,6 +20,7 @@ __all__ = [
     "Categories",
     "Base",
     "Suppliers",
+    "CompanyType",
     "Products",
     "Skus",
     "Attributes",
@@ -30,5 +31,6 @@ __all__ = [
     "SkuAttributeValue",
     "Pricelists",
     "PriceDetails",
-    "Images"
+    "Images",
+    "Role"
 ]

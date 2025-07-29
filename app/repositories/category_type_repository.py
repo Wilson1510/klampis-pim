@@ -82,7 +82,10 @@ class CategoryTypeRepository(
 
         query = (
             select(Categories)
-            .options(selectinload(Categories.category_type))
+            .options(
+                selectinload(Categories.category_type),
+                selectinload(Categories.images)
+            )
             .where(
                 and_(
                     Categories.category_type_id == category_type_id,

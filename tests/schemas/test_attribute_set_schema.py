@@ -16,10 +16,7 @@ from app.schemas.attribute_set_schema import (
     AttributeSetResponse, AttributeSummary,
     CategorySummary
 )
-from app.models.category_type_model import CategoryTypes
-from app.models.category_model import Categories
-from app.models.attribute_model import Attributes
-from app.models.attribute_set_model import AttributeSets
+from app.models import Categories, Attributes, AttributeSets
 from tests.utils.model_test_utils import save_object
 
 
@@ -188,8 +185,8 @@ class TestAttributeSetUpdate:
 
         attribute_ids = fields['attribute_ids']
         assert attribute_ids.is_required() is False
-        assert attribute_ids.annotation == List[StrictPositiveInt]
-        assert attribute_ids.default_factory == list
+        assert attribute_ids.annotation == Optional[List[StrictPositiveInt]]
+        assert attribute_ids.default is None
 
     def test_attribute_set_update_schema_input(self):
         schema = AttributeSetUpdate(**self.attribute_set_dict)
@@ -228,22 +225,11 @@ class TestAttributeSetUpdate:
             "name": "Test Attribute Set"
         }
         schema = AttributeSetUpdate(**attribute_set_dict)
-        assert schema.attribute_ids == []
+        assert schema.attribute_ids is None
 
 
 class TestAttributeSummary:
     """Test cases for the attribute summary schema"""
-
-    @pytest.fixture(autouse=True)
-    def setup_objects(self):
-        """Setup method for the test suite"""
-        self.attribute_summary_dict = {
-            "id": 1,
-            "name": "Volume",
-            "code": "VOLUME",
-            "data_type": "NUMBER",
-            "uom": "ml"
-        }
 
     def test_attribute_summary_schema_inheritance(self):
         """Test that the attribute summary schema inherits from BaseSchema"""
@@ -284,57 +270,53 @@ class TestAttributeSummary:
         assert uom.annotation == Optional[str]
         assert uom.default is None
 
-    def test_attribute_summary_schema_input(self):
-        schema = AttributeSummary(**self.attribute_summary_dict)
-        assert schema.id == 1
-        assert schema.name == "Volume"
-        assert schema.code == "VOLUME"
-        assert schema.data_type == "NUMBER"
-        assert schema.uom == "ml"
+    @pytest.mark.asyncio
+    async def test_attribute_summary_schema_model_validate(
+        self, db_session: AsyncSession
+    ):
+        """Test that the attribute summary schema model validate"""
+        attribute = Attributes(name="Volume", data_type="NUMBER", uom="ml")
+        await save_object(db_session, attribute)
 
-    def test_attribute_summary_schema_input_updated(self):
-        schema = AttributeSummary(**self.attribute_summary_dict)
-        assert schema.id == 1
-        assert schema.name == "Volume"
-        assert schema.code == "VOLUME"
-        assert schema.data_type == "NUMBER"
-        assert schema.uom == "ml"
+        query = select(Attributes).where(Attributes.id == attribute.id)
+        result = await db_session.execute(query)
+        db_model = result.scalar_one_or_none()
 
-        schema.name = "Volume Updated"
-        assert schema.name == "Volume Updated"
+        db_schema_object = AttributeSummary.model_validate(db_model)
+        assert db_schema_object == AttributeSummary(
+            id=attribute.id,
+            name="Volume",
+            code="VOLUME",
+            data_type="NUMBER",
+            uom="ml"
+        )
 
-    def test_attribute_summary_schema_model_dump(self):
-        schema = AttributeSummary(**self.attribute_summary_dict)
-        assert schema.model_dump() == {
-            "id": 1,
-            "name": "Volume",
-            "code": "VOLUME",
-            "data_type": "NUMBER",
-            "uom": "ml"
-        }
+    @pytest.mark.asyncio
+    async def test_attribute_summary_schema_model_validate_updated(
+        self, db_session: AsyncSession
+    ):
+        """Test that the attribute summary schema model validate updated"""
+        attribute = Attributes(name="Volume", data_type="NUMBER", uom="ml")
+        await save_object(db_session, attribute)
 
-    def test_attribute_summary_schema_model_dump_json(self):
-        schema = AttributeSummary(**self.attribute_summary_dict)
-        assert schema.model_dump_json() == '{'\
-            '"id":1,'\
-            '"name":"Volume",'\
-            '"code":"VOLUME",'\
-            '"data_type":"NUMBER",'\
-            '"uom":"ml"'\
-            '}'
+        query = select(Attributes).where(Attributes.id == attribute.id)
+        result = await db_session.execute(query)
+        db_model = result.scalar_one_or_none()
+
+        db_model.name = "Volume Updated"
+
+        db_schema_object = AttributeSummary.model_validate(db_model)
+        assert db_schema_object == AttributeSummary(
+            id=attribute.id,
+            name="Volume Updated",
+            code="VOLUME-UPDATED",
+            data_type="NUMBER",
+            uom="ml"
+        )
 
 
 class TestCategorySummary:
     """Test cases for the category summary schema"""
-
-    @pytest.fixture(autouse=True)
-    def setup_objects(self):
-        """Setup method for the test suite"""
-        self.category_summary_dict = {
-            "id": 1,
-            "name": "Test Category",
-            "slug": "test-category"
-        }
 
     def test_category_summary_schema_inheritance(self):
         """Test that the category summary schema inherits from BaseSchema"""
@@ -363,36 +345,49 @@ class TestCategorySummary:
         assert slug.annotation == str
         assert slug.default is PydanticUndefined
 
-    def test_category_summary_schema_input(self):
-        schema = CategorySummary(**self.category_summary_dict)
-        assert schema.id == 1
-        assert schema.name == "Test Category"
-        assert schema.slug == "test-category"
+    @pytest.mark.asyncio
+    async def test_category_summary_schema_model_validate(
+        self, db_session: AsyncSession, category_type_factory
+    ):
+        """Test that the category summary schema model validate"""
+        category_type = await category_type_factory()
 
-    def test_category_summary_schema_input_updated(self):
-        schema = CategorySummary(**self.category_summary_dict)
-        assert schema.id == 1
-        assert schema.name == "Test Category"
-        assert schema.slug == "test-category"
+        category = Categories(name="Test Category", category_type_id=category_type.id)
+        await save_object(db_session, category)
 
-        schema.name = "Test Category Updated"
-        assert schema.name == "Test Category Updated"
+        query = select(Categories).where(Categories.id == category.id)
+        result = await db_session.execute(query)
+        db_model = result.scalar_one_or_none()
 
-    def test_category_summary_schema_model_dump(self):
-        schema = CategorySummary(**self.category_summary_dict)
-        assert schema.model_dump() == {
-            "id": 1,
-            "name": "Test Category",
-            "slug": "test-category"
-        }
+        db_schema_object = CategorySummary.model_validate(db_model)
+        assert db_schema_object == CategorySummary(
+            id=category.id,
+            name="Test Category",
+            slug="test-category"
+        )
 
-    def test_category_summary_schema_model_dump_json(self):
-        schema = CategorySummary(**self.category_summary_dict)
-        assert schema.model_dump_json() == '{'\
-            '"id":1,'\
-            '"name":"Test Category",'\
-            '"slug":"test-category"'\
-            '}'
+    @pytest.mark.asyncio
+    async def test_category_summary_schema_model_validate_updated(
+        self, db_session: AsyncSession, category_type_factory
+    ):
+        """Test that the category summary schema model validate updated"""
+        category_type = await category_type_factory()
+
+        category = Categories(name="Test Category", category_type_id=category_type.id)
+        await save_object(db_session, category)
+
+        query = select(Categories).where(Categories.id == category.id)
+        result = await db_session.execute(query)
+        db_model = result.scalar_one_or_none()
+
+        db_model.name = "Test Category Updated"
+
+        db_schema_object = CategorySummary.model_validate(db_model)
+        assert db_schema_object == CategorySummary(
+            id=category.id,
+            name="Test Category Updated",
+            slug="test-category-updated"
+        )
 
 
 class TestAttributeSetInDB:
@@ -427,14 +422,12 @@ class TestAttributeSetInDB:
         assert model_config['from_attributes'] is True
 
     @pytest.mark.asyncio
-    async def test_attribute_set_in_db_model_validate(self, db_session: AsyncSession):
+    async def test_attribute_set_in_db_model_validate(
+        self, db_session: AsyncSession, category_factory
+    ):
         """Test that the attribute set in db schema model validate"""
         # Create category
-        category_type = CategoryTypes(name="Test Category Type")
-        await save_object(db_session, category_type)
-
-        category = Categories(name="Test Category", category_type_id=category_type.id)
-        await save_object(db_session, category)
+        category = await category_factory()
 
         # Create attributes
         attribute1 = Attributes(name="Volume", data_type="NUMBER", uom="ml")
@@ -476,15 +469,11 @@ class TestAttributeSetInDB:
 
     @pytest.mark.asyncio
     async def test_attribute_set_in_db_model_validate_updated(
-        self, db_session: AsyncSession
+        self, db_session: AsyncSession, category_factory
     ):
         """Test that the attribute set in db schema model validate updated"""
         # Create category
-        category_type = CategoryTypes(name="Test Category Type")
-        await save_object(db_session, category_type)
-
-        category = Categories(name="Test Category", category_type_id=category_type.id)
-        await save_object(db_session, category)
+        category = await category_factory()
 
         # Create attributes
         attribute1 = Attributes(name="Volume", data_type="NUMBER", uom="ml")
@@ -573,18 +562,11 @@ class TestAttributeSetResponse:
 
     @pytest.mark.asyncio
     async def test_attribute_set_response_model_validate(
-        self, db_session: AsyncSession
+        self, db_session: AsyncSession, category_factory
     ):
         """Test that the attribute set response schema model validate"""
         # Create category
-        category_type = CategoryTypes(name="Test Category Type")
-        await save_object(db_session, category_type)
-
-        category = Categories(
-            name="Test Category Response",
-            category_type_id=category_type.id
-        )
-        await save_object(db_session, category)
+        category = await category_factory(name="Test Category Response")
 
         # Create attributes
         attribute1 = Attributes(name="Weight", data_type="NUMBER", uom="kg")
@@ -648,18 +630,11 @@ class TestAttributeSetResponse:
 
     @pytest.mark.asyncio
     async def test_attribute_set_response_model_validate_updated(
-        self, db_session: AsyncSession
+        self, db_session: AsyncSession, category_factory
     ):
         """Test that the attribute set response schema model validate updated"""
         # Create category
-        category_type = CategoryTypes(name="Test Category Type")
-        await save_object(db_session, category_type)
-
-        category = Categories(
-            name="Test Category Response",
-            category_type_id=category_type.id
-        )
-        await save_object(db_session, category)
+        category = await category_factory()
 
         # Create attributes
         attribute1 = Attributes(name="Weight", data_type="NUMBER", uom="kg")

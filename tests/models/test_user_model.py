@@ -4,7 +4,7 @@ from datetime import datetime
 import pytest
 
 from app.core.base import Base
-from app.models.user_model import Users, Role
+from app.models import Users, Role
 from app.core.listeners import _hash_new_password_listener
 from app.core.security import verify_password
 from tests.utils.model_test_utils import (

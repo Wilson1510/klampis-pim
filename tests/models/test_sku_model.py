@@ -5,10 +5,7 @@ import pytest
 import uuid
 
 from app.core.base import Base
-from app.models.product_model import Products
-from app.models.sku_model import Skus
-from app.models.sku_attribute_value_model import SkuAttributeValue
-from app.models.price_detail_model import PriceDetails
+from app.models import Products, Skus, SkuAttributeValue, PriceDetails
 from app.core.listeners import _set_slug
 from tests.utils.model_test_utils import (
     save_object,

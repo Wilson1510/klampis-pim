@@ -3,9 +3,9 @@ from sqlalchemy import String, event, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.base import Base
-from app.models.attribute_model import Attributes
-from app.models.category_model import Categories
-from app.models.attribute_set_model import AttributeSets
+from app.models import (
+    Attributes, AttributeSets, Categories
+)
 from app.core.listeners import _set_slug
 from tests.utils.model_test_utils import (
     save_object,

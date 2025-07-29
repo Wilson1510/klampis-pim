@@ -11,17 +11,12 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.category_type_model import CategoryTypes
-from app.models.category_model import Categories
-from app.models.supplier_model import Suppliers, CompanyType
-from app.models.product_model import Products
-from app.models.sku_model import Skus
-from app.models.attribute_model import Attributes
-from app.models.attribute_set_model import AttributeSets
-from app.models.sku_attribute_value_model import SkuAttributeValue
-from app.models.pricelist_model import Pricelists
-from app.models.price_detail_model import PriceDetails
-from app.models.image_model import Images
+from app.models import (
+    CategoryTypes, Categories, Suppliers, CompanyType, Products, Skus,
+    Attributes, AttributeSets, SkuAttributeValue, Pricelists, PriceDetails,
+    Images
+)
+
 from tests.utils.model_test_utils import save_object
 
 

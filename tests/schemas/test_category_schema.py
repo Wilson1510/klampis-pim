@@ -14,8 +14,7 @@ from app.schemas.category_schema import (
     CategoryUpdate, CategoryInDB,
     CategoryResponse, CategoryPathItem
 )
-from app.models.category_type_model import CategoryTypes
-from app.models.category_model import Categories
+from app.models import CategoryTypes, Categories
 from tests.utils.model_test_utils import save_object
 
 
@@ -288,9 +287,9 @@ class TestCategoryUpdate:
             "description": "Test Category Description",
             "category_type_id": 1,
             "parent_id": 1,
-            "images_to_create": [],
-            "images_to_update": [],
-            "images_to_delete": []
+            "images_to_create": None,
+            "images_to_update": None,
+            "images_to_delete": None
         }
 
     def test_category_update_schema_model_dump_json(self):
@@ -302,9 +301,9 @@ class TestCategoryUpdate:
             '"description":"Test Category Description",'\
             '"category_type_id":1,'\
             '"parent_id":1,'\
-            '"images_to_create":[],'\
-            '"images_to_update":[],'\
-            '"images_to_delete":[]'\
+            '"images_to_create":null,'\
+            '"images_to_update":null,'\
+            '"images_to_delete":null'\
             '}'
 
 
@@ -438,7 +437,7 @@ class TestCategoryInDB:
         assert parent_id.default is None
 
         children = fields['children']
-        assert children.is_required() is False
+        assert children.is_required() is True
         assert children.annotation == List[CategoryInDB]
         assert children.default is PydanticUndefined
 
@@ -658,7 +657,7 @@ class TestCategoryResponse:
         assert parent_id.default is None
 
         children = fields['children']
-        assert children.is_required() is False
+        assert children.is_required() is True
         assert children.annotation == List[CategoryResponse]
         assert children.default is PydanticUndefined
 

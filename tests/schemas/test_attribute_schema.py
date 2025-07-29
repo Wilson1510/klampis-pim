@@ -13,7 +13,7 @@ from app.schemas.attribute_schema import (
     AttributeUpdate, AttributeInDB,
     AttributeResponse
 )
-from app.models.attribute_model import Attributes
+from app.models import Attributes
 from tests.utils.model_test_utils import save_object
 
 

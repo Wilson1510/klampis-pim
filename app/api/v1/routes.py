@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.api.v1.endpoints import category_type_endpoint
+from app.api.v1.endpoints import category_type_endpoint, category_endpoint
 
 api_router = APIRouter()
 
@@ -9,6 +9,13 @@ api_router.include_router(
     category_type_endpoint.router,
     prefix="/category-types",
     tags=["category-types"]
+)
+
+# Include category endpoints
+api_router.include_router(
+    category_endpoint.router,
+    prefix="/categories",
+    tags=["categories"]
 )
 
 # Import and include other endpoint routers here

@@ -12,7 +12,7 @@ from app.schemas.category_type_schema import (
     CategoryTypeUpdate, CategoryTypeInDB,
     CategoryTypeResponse
 )
-from app.models.category_type_model import CategoryTypes
+from app.models import CategoryTypes
 from tests.utils.model_test_utils import save_object, get_object_by_id
 
 

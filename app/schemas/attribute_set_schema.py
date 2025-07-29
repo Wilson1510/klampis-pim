@@ -25,7 +25,7 @@ class AttributeSetCreate(AttributeSetBase, BaseCreateSchema):
 class AttributeSetUpdate(AttributeSetBase, BaseUpdateSchema):
     """Schema for updating an existing attribute set."""
     name: Optional[StrictStr] = Field(default=None, min_length=1, max_length=100)
-    attribute_ids: List[StrictPositiveInt] = Field(default_factory=list)
+    attribute_ids: Optional[List[StrictPositiveInt]] = None
 
 
 class AttributeSummary(BaseSchema):
