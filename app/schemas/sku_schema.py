@@ -8,6 +8,7 @@ from app.schemas.base import (
     BaseCreateSchema,
     BaseUpdateSchema,
     StrictPositiveInt,
+    PositiveDecimal,
 )
 from app.schemas.category_schema import CategoryPathItem
 from app.schemas.product_schema import ProductPathItem
@@ -21,6 +22,19 @@ class SkuBase(BaseSchema):
     product_id: StrictPositiveInt
 
 
+class PriceDetailCreate(BaseSchema):
+    """Schema for creating a price detail."""
+    pricelist_id: StrictPositiveInt
+    price: PositiveDecimal
+    minimum_quantity: StrictPositiveInt
+
+
+class AttributeValueInput(BaseSchema):
+    """Schema for providing an attribute and its value."""
+    attribute_id: StrictPositiveInt
+    value: str = Field(..., min_length=1, max_length=50)
+
+
 class SkuCreate(SkuBase, BaseCreateSchema):
     """Schema for creating a new SKU.
 
@@ -28,7 +42,15 @@ class SkuCreate(SkuBase, BaseCreateSchema):
     Contains: Only fields that client can/should provide
     Note: sku_number and slug are auto-generated, not provided by client
     """
-    pass
+    price_details: List[PriceDetailCreate]
+    attribute_values: List[AttributeValueInput]
+
+
+class PriceDetailUpdate(BaseSchema):
+    """Schema for updating a price detail."""
+    id: StrictPositiveInt
+    price: Optional[PositiveDecimal] = None
+    minimum_quantity: Optional[StrictPositiveInt] = None
 
 
 class SkuUpdate(SkuBase, BaseUpdateSchema):
@@ -40,6 +62,18 @@ class SkuUpdate(SkuBase, BaseUpdateSchema):
     """
     name: Optional[StrictStr] = Field(default=None, min_length=1, max_length=100)
     product_id: Optional[StrictPositiveInt] = None
+    price_details_to_create: Optional[List[PriceDetailCreate]] = Field(
+        default_factory=list
+    )
+    price_details_to_update: Optional[List[PriceDetailUpdate]] = Field(
+        default_factory=list
+    )
+    price_details_to_delete: Optional[List[StrictPositiveInt]] = Field(
+        default_factory=list
+    )
+    attribute_values: Optional[List[AttributeValueInput]] = Field(
+        default_factory=list
+    )
 
 
 class SkuInDB(SkuBase, BaseInDB):
@@ -61,6 +95,44 @@ class SkuPathItem(BaseSchema):
     type: Literal["SKU"] = "SKU"
 
 
+class PricelistSummary(BaseSchema):
+    """Schema for pricelist summary."""
+    id: int
+    name: str
+    code: str
+
+    model_config = {"from_attributes": True}
+
+
+class PriceDetailSummary(BaseSchema):
+    """Schema for price detail summary."""
+    id: int
+    price: PositiveDecimal
+    minimum_quantity: int
+    pricelist: PricelistSummary
+
+    model_config = {"from_attributes": True}
+
+
+class AttributeSummary(BaseSchema):
+    """Schema for attribute summary."""
+    id: int
+    name: str
+    code: str
+    data_type: str
+    uom: Optional[str] = None
+
+    model_config = {"from_attributes": True}
+
+
+class AttributeValueSummary(BaseSchema):
+    """Schema for attribute value summary."""
+    attribute: AttributeSummary
+    value: str
+
+    model_config = {"from_attributes": True}
+
+
 class SkuResponse(SkuInDB):
     """Schema for SKU API responses.
 
@@ -74,3 +146,5 @@ class SkuResponse(SkuInDB):
             Field(discriminator='type')
         ]
     ]
+    price_details: List[PriceDetailSummary]
+    attribute_values: List[AttributeValueSummary]

@@ -1,10 +1,18 @@
 from datetime import datetime
 from typing import Annotated, Optional, Generic, TypeVar, List, Dict, Any
 
-from pydantic import BaseModel, StrictBool, StrictInt, Field
+from pydantic import BaseModel, StrictBool, StrictInt, Field, AfterValidator
+from decimal import Decimal, ROUND_HALF_UP
 
 StrictNonNegativeInt = Annotated[StrictInt, Field(ge=0)]
 StrictPositiveInt = Annotated[StrictInt, Field(gt=0)]
+PositiveDecimal = Annotated[
+    Decimal,
+    AfterValidator(
+        lambda x: Decimal(str(x)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+    ),
+    Field(..., gt=0)
+]
 
 # Generic type for response data
 T = TypeVar('T')
