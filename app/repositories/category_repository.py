@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, func
 from sqlalchemy.orm import selectinload
 
-from app.models.category_model import Categories
+from app.models import Categories, Products
 from app.schemas.category_schema import CategoryCreate, CategoryUpdate
 from app.repositories.base import CRUDBase
 
@@ -106,6 +106,28 @@ class CategoryRepository(
 
         return categories
 
+    async def get_products_by_category(
+        self, db: AsyncSession, category_id: int, skip: int = 0, limit: int = 100
+    ) -> List[Products]:
+        """Get products by category."""
+        query = (
+            select(Products)
+            .options(
+                selectinload(Products.category),
+                selectinload(Products.images)
+            )
+            .where(
+                and_(
+                    Products.category_id == category_id,
+                    Products.is_active.is_(True)
+                )
+            )
+            .offset(skip)
+            .limit(limit)
+        )
+        result = await db.execute(query)
+        return result.scalars().all()
+
     async def count_children(
         self, db: AsyncSession, parent_id: int
     ) -> int:
@@ -114,6 +136,19 @@ class CategoryRepository(
             and_(
                 self.model.parent_id == parent_id,
                 self.model.is_active.is_(True)
+            )
+        )
+        result = await db.execute(query)
+        return result.scalar() or 0
+
+    async def count_products(
+        self, db: AsyncSession, category_id: int
+    ) -> int:
+        """Count products by category."""
+        query = select(func.count(Products.id)).where(
+            and_(
+                Products.category_id == category_id,
+                Products.is_active.is_(True)
             )
         )
         result = await db.execute(query)

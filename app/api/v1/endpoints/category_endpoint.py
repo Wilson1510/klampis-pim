@@ -9,6 +9,7 @@ from app.schemas.category_schema import (
     CategoryCreate,
     CategoryUpdate
 )
+from app.schemas.product_schema import ProductResponse
 from app.schemas.base import SingleItemResponse, MultipleItemsResponse
 from app.utils.response_helpers import (
     create_single_item_response,
@@ -216,6 +217,44 @@ async def get_category_children(
 
     return create_multiple_items_response(
         data=children,
+        page=page,
+        limit=limit,
+        total=total
+    )
+
+
+@router.get(
+    "/{category_id}/products/",
+    response_model=MultipleItemsResponse[ProductResponse],
+    status_code=status.HTTP_200_OK
+)
+async def get_category_products(
+    category_id: int,
+    skip: int = Query(0, ge=0, description="Number of records to skip"),
+    limit: int = Query(
+        100, ge=1, le=1000, description="Maximum number of records to return"
+    ),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Get all products of a specific category.
+
+    - **category_id**: The ID of the category
+    - **skip**: Number of records to skip (default: 0)
+    - **limit**: Maximum number of records to return (default: 100, max: 1000)
+    """
+    products, total = await category_service.get_products_by_category(
+        db=db,
+        category_id=category_id,
+        skip=skip,
+        limit=limit
+    )
+
+    # Calculate page number (1-based)
+    page = (skip // limit) + 1
+
+    return create_multiple_items_response(
+        data=products,
         page=page,
         limit=limit,
         total=total

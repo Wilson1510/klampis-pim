@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException
 
 from app.repositories.category_repository import category_repository
-from app.models.category_model import Categories
+from app.models import Categories, Products
 from app.schemas.category_schema import (
     CategoryCreate,
     CategoryUpdate
@@ -86,6 +86,24 @@ class CategoryService:
         total = len(data)
         return data, total
 
+    async def get_products_by_category(
+        self, db: AsyncSession, category_id: int, skip: int = 0, limit: int = 100
+    ) -> Tuple[List[Products], int]:
+        """Get products by category with total count."""
+        # Verify category exists
+        category = await self.repository.get(db, id=category_id)
+        if not category:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Category with id {category_id} not found"
+            )
+
+        data = await self.repository.get_products_by_category(
+            db, category_id=category_id, skip=skip, limit=limit
+        )
+        total = len(data)
+        return data, total
+
     async def create_category(
         self, db: AsyncSession, category_create: CategoryCreate
     ) -> Categories:
@@ -158,8 +176,16 @@ class CategoryService:
                 )
             )
 
-        # TODO: Check if category has associated products
-        # This would require a product repository method
+        # Check if category has products
+        products_count = await self.repository.count_products(db, category_id)
+        if products_count > 0:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    f"Cannot delete category. It has {products_count} "
+                    "products"
+                )
+            )
 
         return await self.repository.soft_delete(db, id=category_id)
 
