@@ -66,23 +66,6 @@ class CategoryRepository(
 
         return categories
 
-    async def get_by_slug(
-        self, db: AsyncSession, slug: str
-    ) -> Categories | None:
-        """Get category by slug."""
-        query = select(self.model).options(
-            selectinload(self.model.category_type),
-            selectinload(self.model.parent),
-            selectinload(self.model.images)
-        ).where(self.model.slug == slug)
-        result = await db.execute(query)
-        category = result.scalar_one_or_none()
-
-        if category:
-            await self.load_children_recursively(db, category)
-
-        return category
-
     async def get_by_name(
         self, db: AsyncSession, name: str
     ) -> Categories | None:
@@ -90,37 +73,6 @@ class CategoryRepository(
         query = select(self.model).where(self.model.name == name)
         result = await db.execute(query)
         return result.scalar_one_or_none()
-
-    async def get_top_level_categories(
-        self,
-        db: AsyncSession,
-        skip: int = 0,
-        limit: int = 100
-    ) -> List[Categories]:
-        """Get all top-level categories (parent_id is NULL)."""
-        query = (
-            select(self.model)
-            .options(
-                selectinload(self.model.category_type),
-                selectinload(self.model.images)
-            )
-            .where(
-                and_(
-                    self.model.parent_id.is_(None),
-                    self.model.is_active.is_(True)
-                )
-            )
-            .offset(skip)
-            .limit(limit)
-        )
-        result = await db.execute(query)
-        categories = result.scalars().all()
-
-        # Load children recursively for each category
-        for category in categories:
-            await self.load_children_recursively(db, category)
-
-        return categories
 
     async def get_children_by_parent(
         self,
@@ -212,38 +164,6 @@ class CategoryRepository(
             await self.load_children_recursively(db, category)
 
         return category
-
-    async def create_with_slug(
-        self, db: AsyncSession, *, obj_in: CategoryCreate, slug: str
-    ) -> Categories:
-        """Create a new category with generated slug."""
-        obj_data = obj_in.model_dump()
-        obj_data['slug'] = slug
-        db_obj = self.model(**obj_data)
-        db.add(db_obj)
-        await db.commit()
-        await db.refresh(db_obj)
-        return db_obj
-
-    async def update_with_slug(
-        self,
-        db: AsyncSession,
-        *,
-        db_obj: Categories,
-        obj_in: CategoryUpdate,
-        slug: str
-    ) -> Categories:
-        """Update a category with new slug."""
-        obj_data = obj_in.model_dump(exclude_unset=True)
-        obj_data['slug'] = slug
-
-        for field, value in obj_data.items():
-            setattr(db_obj, field, value)
-
-        db.add(db_obj)
-        await db.commit()
-        await db.refresh(db_obj)
-        return db_obj
 
     async def load_children_recursively(
         self, session: AsyncSession, category: Categories
