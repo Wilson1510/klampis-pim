@@ -29,6 +29,7 @@ async def get_category_types(
     limit: int = Query(
         100, ge=1, le=1000, description="Maximum number of records to return"
     ),
+    name: Optional[str] = Query(None, description="Filter by name (exact match)"),
     slug: Optional[str] = Query(None, description="Filter by slug (exact match)"),
     is_active: Optional[bool] = Query(None, description="Filter by active status"),
     db: AsyncSession = Depends(get_db)
@@ -42,7 +43,7 @@ async def get_category_types(
     - **is_active**: Filter by active status (true/false)
     """
     category_types, total = await category_type_service.get_category_types_with_filter(
-        db=db, skip=skip, limit=limit, slug=slug, is_active=is_active
+        db=db, skip=skip, limit=limit, name=name, slug=slug, is_active=is_active
     )
 
     # Calculate page number (1-based)

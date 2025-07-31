@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, func
 from sqlalchemy.orm import selectinload
 
-from app.models.category_model import Categories
+from app.models import Categories, Products
 from app.schemas.category_schema import CategoryCreate, CategoryUpdate
 from app.repositories.base import CRUDBase
 
@@ -63,25 +63,10 @@ class CategoryRepository(
         # Load children recursively for each category
         for category in categories:
             await self.load_children_recursively(db, category)
+            if category.parent is not None:
+                await self.load_parent_category_type_recursively(db, category.parent)
 
         return categories
-
-    async def get_by_slug(
-        self, db: AsyncSession, slug: str
-    ) -> Categories | None:
-        """Get category by slug."""
-        query = select(self.model).options(
-            selectinload(self.model.category_type),
-            selectinload(self.model.parent),
-            selectinload(self.model.images)
-        ).where(self.model.slug == slug)
-        result = await db.execute(query)
-        category = result.scalar_one_or_none()
-
-        if category:
-            await self.load_children_recursively(db, category)
-
-        return category
 
     async def get_by_name(
         self, db: AsyncSession, name: str
@@ -90,37 +75,6 @@ class CategoryRepository(
         query = select(self.model).where(self.model.name == name)
         result = await db.execute(query)
         return result.scalar_one_or_none()
-
-    async def get_top_level_categories(
-        self,
-        db: AsyncSession,
-        skip: int = 0,
-        limit: int = 100
-    ) -> List[Categories]:
-        """Get all top-level categories (parent_id is NULL)."""
-        query = (
-            select(self.model)
-            .options(
-                selectinload(self.model.category_type),
-                selectinload(self.model.images)
-            )
-            .where(
-                and_(
-                    self.model.parent_id.is_(None),
-                    self.model.is_active.is_(True)
-                )
-            )
-            .offset(skip)
-            .limit(limit)
-        )
-        result = await db.execute(query)
-        categories = result.scalars().all()
-
-        # Load children recursively for each category
-        for category in categories:
-            await self.load_children_recursively(db, category)
-
-        return categories
 
     async def get_children_by_parent(
         self,
@@ -154,6 +108,48 @@ class CategoryRepository(
 
         return categories
 
+    async def get_products_by_category(
+        self, db: AsyncSession, category_id: int, skip: int = 0, limit: int = 100
+    ) -> List[Products]:
+        """Get products by category."""
+        query = (
+            select(Products)
+            .options(
+                selectinload(Products.category),
+                selectinload(Products.images)
+            )
+            .where(
+                and_(
+                    Products.category_id == category_id,
+                    Products.is_active.is_(True)
+                )
+            )
+            .offset(skip)
+            .limit(limit)
+        )
+        result = await db.execute(query)
+        return result.scalars().all()
+
+    async def create_category(
+        self, db: AsyncSession, obj_in: CategoryCreate
+    ) -> Categories:
+        """Create a new category."""
+        data = await super().create(db, obj_in=obj_in)
+        await self.load_children_recursively(db, data)
+        await db.refresh(data, ['images'])
+        await self.load_parent_category_type_recursively(db, data)
+        return data
+
+    async def update_category(
+        self, db: AsyncSession, db_obj: Categories, obj_in: CategoryUpdate
+    ) -> Categories:
+        """Update an existing category."""
+        data = await super().update(db, db_obj=db_obj, obj_in=obj_in)
+        await self.load_children_recursively(db, data)
+        await db.refresh(data, ['images'])
+        await self.load_parent_category_type_recursively(db, data)
+        return data
+
     async def count_children(
         self, db: AsyncSession, parent_id: int
     ) -> int:
@@ -162,6 +158,19 @@ class CategoryRepository(
             and_(
                 self.model.parent_id == parent_id,
                 self.model.is_active.is_(True)
+            )
+        )
+        result = await db.execute(query)
+        return result.scalar() or 0
+
+    async def count_products(
+        self, db: AsyncSession, category_id: int
+    ) -> int:
+        """Count products by category."""
+        query = select(func.count(Products.id)).where(
+            and_(
+                Products.category_id == category_id,
+                Products.is_active.is_(True)
             )
         )
         result = await db.execute(query)
@@ -210,40 +219,24 @@ class CategoryRepository(
 
         if category:
             await self.load_children_recursively(db, category)
+            await self.load_parent_category_type_recursively(db, category)
 
         return category
 
-    async def create_with_slug(
-        self, db: AsyncSession, *, obj_in: CategoryCreate, slug: str
-    ) -> Categories:
-        """Create a new category with generated slug."""
-        obj_data = obj_in.model_dump()
-        obj_data['slug'] = slug
-        db_obj = self.model(**obj_data)
-        db.add(db_obj)
-        await db.commit()
-        await db.refresh(db_obj)
-        return db_obj
-
-    async def update_with_slug(
-        self,
-        db: AsyncSession,
-        *,
-        db_obj: Categories,
-        obj_in: CategoryUpdate,
-        slug: str
-    ) -> Categories:
-        """Update a category with new slug."""
-        obj_data = obj_in.model_dump(exclude_unset=True)
-        obj_data['slug'] = slug
-
-        for field, value in obj_data.items():
-            setattr(db_obj, field, value)
-
-        db.add(db_obj)
-        await db.commit()
-        await db.refresh(db_obj)
-        return db_obj
+    async def load_parent_category_type_recursively(
+        self, session: AsyncSession, category: Categories
+    ) -> None:
+        """
+        Load parent category type recursively.
+        """
+        stmt = select(Categories).where(Categories.id == category.id).options(
+            selectinload(Categories.category_type),
+            selectinload(Categories.parent)
+        )
+        result = await session.execute(stmt)
+        data = result.scalar_one_or_none()
+        if data.parent is not None:
+            await self.load_parent_category_type_recursively(session, data.parent)
 
     async def load_children_recursively(
         self, session: AsyncSession, category: Categories

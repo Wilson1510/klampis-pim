@@ -27,6 +27,20 @@ class TestGetCategoryTypes:
             assert "name" in item
             assert "slug" in item
 
+    async def test_get_category_types_filter_by_name(
+        self, async_client: AsyncClient, category_type_factory
+    ):
+        """Test filtering by name."""
+        await category_type_factory(name="Electronics and Appliances")
+        await category_type_factory(name="Food and Beverages")
+
+        response = await async_client.get("/api/v1/category-types/?name=Electronics")
+        assert response.status_code == 200
+        data = response.json()["data"]
+        print(data)
+        assert len(data) == 1
+        assert data[0]["name"] == "Electronics and Appliances"
+
     async def test_get_category_types_filter_by_slug(
         self, async_client: AsyncClient, category_type_factory
     ):

@@ -30,17 +30,19 @@ class CategoryTypeService:
         *,
         skip: int = 0,
         limit: int = 100,
+        name: Optional[str] = None,
         slug: Optional[str] = None,
         is_active: Optional[bool] = None
     ) -> Tuple[List[CategoryTypes], int]:
         """Get category types with filtering support and total count."""
-        if slug is None and is_active is None:
+        if name is None and slug is None and is_active is None:
             return await self.get_all_category_types(db, skip=skip, limit=limit)
 
         data = await self.repository.get_multi_with_filter(
             db,
             skip=skip,
             limit=limit,
+            name=name,
             slug=slug,
             is_active=is_active
         )
