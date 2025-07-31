@@ -49,14 +49,6 @@ class CategoryTypeRepository(
         result = await db.execute(query)
         return result.scalars().all()
 
-    async def get_by_name(
-        self, db: AsyncSession, name: str
-    ) -> CategoryTypes | None:
-        """Get category type by name."""
-        query = select(self.model).where(self.model.name == name)
-        result = await db.execute(query)
-        return result.scalar_one_or_none()
-
     async def count_categories(
         self, db: AsyncSession, category_type_id: int
     ) -> int:

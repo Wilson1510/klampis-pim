@@ -68,14 +68,6 @@ class CategoryRepository(
 
         return categories
 
-    async def get_by_name(
-        self, db: AsyncSession, name: str
-    ) -> Categories | None:
-        """Get category by name."""
-        query = select(self.model).where(self.model.name == name)
-        result = await db.execute(query)
-        return result.scalar_one_or_none()
-
     async def get_children_by_parent(
         self,
         db: AsyncSession,

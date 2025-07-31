@@ -116,3 +116,32 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
             db.delete(obj)
             await db.commit()
         return obj
+
+    async def get_by_field(
+        self, db: AsyncSession, field_name: str, field_value: Any
+    ) -> ModelType | None:
+        """
+        Generic method to get a single record by any field.
+
+        Args:
+            db: Database session
+            field_name: Name of the field to filter by (e.g., 'name', 'email', 'slug')
+            field_value: Value to match
+
+        Returns:
+            Model instance or None if not found
+
+        Example:
+            supplier = await repository.get_by_field(db, 'email', 'test@example.com')
+            category = await repository.get_by_field(db, 'name', 'Electronics')
+        """
+        # Validate that the field exists on the model
+        if not hasattr(self.model, field_name):
+            raise ValueError(
+                f"Field '{field_name}' does not exist on model {self.model.__name__}"
+            )
+
+        field_attr = getattr(self.model, field_name)
+        query = select(self.model).where(field_attr == field_value)
+        result = await db.execute(query)
+        return result.scalar_one_or_none()
