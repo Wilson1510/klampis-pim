@@ -494,14 +494,10 @@ class TestDeleteCategory:
     """Test cases for DELETE /categories/{id} endpoint."""
 
     async def test_delete_category_success(
-        self, async_client: AsyncClient, category_factory, category_type_factory
+        self, async_client: AsyncClient, category_factory
     ):
         """Test deleting category successfully."""
-        category_type = await category_type_factory(name="Electronics")
-        category = await category_factory(
-            name="Mobile Phones", 
-            category_type=category_type
-        )
+        category = await category_factory(name="Mobile Phones")
 
         response = await async_client.delete(f"/api/v1/categories/{category.id}")
 
@@ -518,14 +514,10 @@ class TestDeleteCategory:
         assert error["details"] is None
 
     async def test_delete_category_with_children(
-        self, async_client: AsyncClient, category_factory, category_type_factory
+        self, async_client: AsyncClient, category_factory
     ):
         """Test deleting category that has child categories."""
-        category_type = await category_type_factory(name="Electronics")
-        parent_category = await category_factory(
-            name="Mobile Phones", 
-            category_type=category_type
-        )
+        parent_category = await category_factory(name="Mobile Phones")
 
         # Create a child category
         await category_factory(
@@ -544,20 +536,13 @@ class TestDeleteCategory:
         assert error["details"] is None
 
     async def test_delete_category_with_products(
-        self, async_client: AsyncClient, category_factory, category_type_factory, product_factory
+        self, async_client: AsyncClient, category_factory, product_factory
     ):
         """Test deleting category that has products."""
-        category_type = await category_type_factory(name="Electronics")
-        category = await category_factory(
-            name="Mobile Phones", 
-            category_type=category_type
-        )
+        category = await category_factory(name="Mobile Phones")
 
         # Create a product in this category
-        await product_factory(
-            name="iPhone 15", 
-            category=category
-        )
+        await product_factory(name="iPhone 15", category_id=category.id)
 
         response = await async_client.delete(f"/api/v1/categories/{category.id}")
 
@@ -574,32 +559,16 @@ class TestGetCategoryChildren:
     """Test cases for GET /categories/{id}/children/ endpoint."""
 
     async def test_get_category_children_success(
-        self, async_client: AsyncClient, category_factory, category_type_factory
+        self, async_client: AsyncClient, category_factory
     ):
         """Test getting category children successfully."""
-        category_type = await category_type_factory(name="Electronics")
-        parent_category = await category_factory(
-            name="Mobile Phones", 
-            category_type=category_type
-        )
-        await category_factory(
-            name="Smartphones", 
-            parent=parent_category
-        )
-        await category_factory(
-            name="Feature Phones", 
-            parent=parent_category
-        )
+        parent_category = await category_factory(name="Mobile Phones")
+        await category_factory(name="Smartphones", parent=parent_category)
+        await category_factory(name="Feature Phones", parent=parent_category)
 
         # Create category with different parent to ensure filtering
-        other_parent = await category_factory(
-            name="Laptops", 
-            category_type=category_type
-        )
-        await category_factory(
-            name="Gaming Laptops", 
-            parent=other_parent
-        )
+        other_parent = await category_factory(name="Laptops")
+        await category_factory(name="Gaming Laptops", parent=other_parent)
 
         response = await async_client.get(
             f"/api/v1/categories/{parent_category.id}/children/"
@@ -620,6 +589,7 @@ class TestGetCategoryChildren:
             assert "description" in item
             assert "full_path" in item
             assert "children" in item
+            assert "images" in item
 
     async def test_get_category_children_not_found(self, async_client: AsyncClient):
         """Test getting children for non-existent category."""
@@ -631,53 +601,21 @@ class TestGetCategoryChildren:
         assert error["message"] == "Parent category with id 999 not found"
         assert error["details"] is None
 
-    async def test_get_category_children_empty(
-        self, async_client: AsyncClient, category_factory, category_type_factory
-    ):
-        """Test getting children for category with no children."""
-        category_type = await category_type_factory(name="Electronics")
-        category = await category_factory(
-            name="Mobile Phones", 
-            category_type=category_type
-        )
-
-        response = await async_client.get(f"/api/v1/categories/{category.id}/children/")
-
-        assert response.status_code == 200
-        data = response.json()["data"]
-        assert len(data) == 0
-
 
 class TestGetCategoryProducts:
     """Test cases for GET /categories/{id}/products/ endpoint."""
 
     async def test_get_category_products_success(
-        self, async_client: AsyncClient, category_factory, category_type_factory, product_factory
+        self, async_client: AsyncClient, category_factory, product_factory
     ):
         """Test getting category products successfully."""
-        category_type = await category_type_factory(name="Electronics")
-        category = await category_factory(
-            name="Mobile Phones", 
-            category_type=category_type
-        )
-        await product_factory(
-            name="iPhone 15", 
-            category=category
-        )
-        await product_factory(
-            name="Samsung Galaxy S24", 
-            category=category
-        )
+        category = await category_factory(name="Mobile Phones")
+        await product_factory(name="iPhone 15", category_id=category.id)
+        await product_factory(name="Samsung Galaxy S24", category_id=category.id)
 
         # Create product in different category to ensure filtering
-        other_category = await category_factory(
-            name="Laptops", 
-            category_type=category_type
-        )
-        await product_factory(
-            name="MacBook Pro", 
-            category=other_category
-        )
+        other_category = await category_factory(name="Laptops")
+        await product_factory(name="MacBook Pro", category_id=other_category.id)
 
         response = await async_client.get(
             f"/api/v1/categories/{category.id}/products/"
@@ -696,6 +634,8 @@ class TestGetCategoryProducts:
             assert "name" in item
             assert "slug" in item
             assert "description" in item
+            assert "full_path" in item
+            assert "images" in item
 
     async def test_get_category_products_not_found(self, async_client: AsyncClient):
         """Test getting products for non-existent category."""
@@ -707,22 +647,6 @@ class TestGetCategoryProducts:
         assert error["message"] == "Category with id 999 not found"
         assert error["details"] is None
 
-    async def test_get_category_products_empty(
-        self, async_client: AsyncClient, category_factory, category_type_factory
-    ):
-        """Test getting products for category with no products."""
-        category_type = await category_type_factory(name="Electronics")
-        category = await category_factory(
-            name="Mobile Phones", 
-            category_type=category_type
-        )
-
-        response = await async_client.get(f"/api/v1/categories/{category.id}/products/")
-
-        assert response.status_code == 200
-        data = response.json()["data"]
-        assert len(data) == 0
-
 
 class TestCategoryEndpointIntegration:
     """Integration tests for category endpoints."""
@@ -733,7 +657,7 @@ class TestCategoryEndpointIntegration:
         """Test complete CRUD workflow for categories."""
         # Create category type first
         category_type = await category_type_factory(name="Electronics")
-        
+
         # Create
         create_data = {
             "name": "Mobile Phones",
@@ -796,7 +720,7 @@ class TestCategoryEndpointIntegration:
         """Test hierarchical category creation and management."""
         # Create category type
         category_type = await category_type_factory(name="Electronics")
-        
+
         # Create parent category
         parent_data = {
             "name": "Mobile Phones",

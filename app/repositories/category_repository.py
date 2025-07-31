@@ -105,6 +105,7 @@ class CategoryRepository(
         # Load children recursively for each category
         for category in categories:
             await self.load_children_recursively(db, category)
+            await self.load_parent_category_type_recursively(db, category)
 
         return categories
 
@@ -128,7 +129,10 @@ class CategoryRepository(
             .limit(limit)
         )
         result = await db.execute(query)
-        return result.scalars().all()
+        products = result.scalars().all()
+        if len(products) > 0:
+            await self.load_parent_category_type_recursively(db, products[0].category)
+        return products
 
     async def create_category(
         self, db: AsyncSession, obj_in: CategoryCreate
@@ -227,7 +231,8 @@ class CategoryRepository(
         self, session: AsyncSession, category: Categories
     ) -> None:
         """
-        Load parent category type recursively.
+        Load parent category type recursively. This will be used mostly for
+        getting the category type of the parent category to be used for full path.
         """
         stmt = select(Categories).where(Categories.id == category.id).options(
             selectinload(Categories.category_type),
