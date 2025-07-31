@@ -63,6 +63,8 @@ class CategoryRepository(
         # Load children recursively for each category
         for category in categories:
             await self.load_children_recursively(db, category)
+            if category.parent is not None:
+                await self.load_parent_category_type_recursively(db, category.parent)
 
         return categories
 
@@ -127,6 +129,26 @@ class CategoryRepository(
         )
         result = await db.execute(query)
         return result.scalars().all()
+
+    async def create_category(
+        self, db: AsyncSession, obj_in: CategoryCreate
+    ) -> Categories:
+        """Create a new category."""
+        data = await super().create(db, obj_in=obj_in)
+        await self.load_children_recursively(db, data)
+        await db.refresh(data, ['images'])
+        await self.load_parent_category_type_recursively(db, data)
+        return data
+
+    async def update_category(
+        self, db: AsyncSession, db_obj: Categories, obj_in: CategoryUpdate
+    ) -> Categories:
+        """Update an existing category."""
+        data = await super().update(db, db_obj=db_obj, obj_in=obj_in)
+        await self.load_children_recursively(db, data)
+        await db.refresh(data, ['images'])
+        await self.load_parent_category_type_recursively(db, data)
+        return data
 
     async def count_children(
         self, db: AsyncSession, parent_id: int
@@ -197,8 +219,24 @@ class CategoryRepository(
 
         if category:
             await self.load_children_recursively(db, category)
+            await self.load_parent_category_type_recursively(db, category)
 
         return category
+
+    async def load_parent_category_type_recursively(
+        self, session: AsyncSession, category: Categories
+    ) -> None:
+        """
+        Load parent category type recursively.
+        """
+        stmt = select(Categories).where(Categories.id == category.id).options(
+            selectinload(Categories.category_type),
+            selectinload(Categories.parent)
+        )
+        result = await session.execute(stmt)
+        data = result.scalar_one_or_none()
+        if data.parent is not None:
+            await self.load_parent_category_type_recursively(session, data.parent)
 
     async def load_children_recursively(
         self, session: AsyncSession, category: Categories

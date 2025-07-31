@@ -21,6 +21,9 @@ class CategoryService:
     ) -> Tuple[List[Categories], int]:
         """Get all categories with pagination and total count."""
         data = await self.repository.get_multi(db, skip=skip, limit=limit)
+        for category in data:
+            await self.repository.load_children_recursively(db, category)
+            await db.refresh(category, ["images", "category_type"])
         total = len(data)
         return data, total
 
@@ -115,7 +118,8 @@ class CategoryService:
                 detail=f"Category with name '{category_create.name}' already exists"
             )
 
-        return await self.repository.create(db, obj_in=category_create)
+        data = await self.repository.create_category(db, obj_in=category_create)
+        return data
 
     async def update_category(
         self,
@@ -150,7 +154,7 @@ class CategoryService:
                 db, db_category, category_update
             )
 
-        return await self.repository.update(
+        return await self.repository.update_category(
             db, db_obj=db_category, obj_in=category_update
         )
 
@@ -207,13 +211,6 @@ class CategoryService:
             if category_update.category_type_id is not None
             else existing_category.category_type_id
         )
-
-        # Apply the same hierarchy rules as create
-        if parent_id is None and category_type_id is None:
-            raise HTTPException(
-                status_code=400,
-                detail="Top-level categories must have a category_type_id"
-            )
 
         if parent_id is not None and category_type_id is not None:
             raise HTTPException(
