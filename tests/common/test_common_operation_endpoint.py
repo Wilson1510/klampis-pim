@@ -603,6 +603,7 @@ class TestGetChildrenByModel:
                             "type": "Category"
                         }
                     ],
+                    "images": [],
                     "sequence": 0,
                     "created_at": data["data"][0]["created_at"],
                     "updated_at": data["data"][0]["updated_at"],
@@ -626,6 +627,7 @@ class TestGetChildrenByModel:
                             "type": "Category"
                         }
                     ],
+                    "images": [],
                     "sequence": 0,
                     "created_at": data["data"][1]["created_at"],
                     "updated_at": data["data"][1]["updated_at"],
@@ -667,6 +669,7 @@ class TestGetChildrenByModel:
                             "type": "Category"
                         }
                     ],
+                    "images": [],
                     "sequence": 0,
                     "created_at": data["data"][0]["created_at"],
                     "updated_at": data["data"][0]["updated_at"],
@@ -690,6 +693,7 @@ class TestGetChildrenByModel:
                             "type": "Category"
                         }
                     ],
+                    "images": [],
                     "sequence": 0,
                     "created_at": data["data"][1]["created_at"],
                     "updated_at": data["data"][1]["updated_at"],
@@ -763,6 +767,7 @@ class TestGetChildrenByModel:
                             "type": "Category"
                         }
                     ],
+                    "images": [],
                     "sequence": 0,
                     "created_at": data["data"][0]["created_at"],
                     "updated_at": data["data"][0]["updated_at"],
@@ -786,6 +791,7 @@ class TestGetChildrenByModel:
                             "type": "Category"
                         }
                     ],
+                    "images": [],
                     "sequence": 0,
                     "created_at": data["data"][1]["created_at"],
                     "updated_at": data["data"][1]["updated_at"],
@@ -809,6 +815,7 @@ class TestGetChildrenByModel:
                             "type": "Category"
                         }
                     ],
+                    "images": [],
                     "sequence": 0,
                     "created_at": data["data"][2]["created_at"],
                     "updated_at": data["data"][2]["updated_at"],
