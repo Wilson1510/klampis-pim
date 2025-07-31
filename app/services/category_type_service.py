@@ -60,7 +60,9 @@ class CategoryTypeService:
     ) -> CategoryTypes:
         """Create a new category type."""
         # Check if category type with same name already exists
-        existing = await self.repository.get_by_name(db, name=category_type_create.name)
+        existing = await self.repository.get_by_field(
+            db, 'name', category_type_create.name
+        )
         if existing:
             raise HTTPException(
                 status_code=400,
@@ -92,8 +94,8 @@ class CategoryTypeService:
             category_type_update.name
             and category_type_update.name != db_category_type.name
         ):
-            existing = await self.repository.get_by_name(
-                db, name=category_type_update.name
+            existing = await self.repository.get_by_field(
+                db, 'name', category_type_update.name
             )
             if existing and existing.id != category_type_id:
                 raise HTTPException(

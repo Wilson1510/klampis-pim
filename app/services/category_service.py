@@ -111,7 +111,7 @@ class CategoryService:
         self, db: AsyncSession, category_create: CategoryCreate
     ) -> Categories:
         """Create a new category with business validation."""
-        existing = await self.repository.get_by_name(db, name=category_create.name)
+        existing = await self.repository.get_by_field(db, 'name', category_create.name)
         if existing:
             raise HTTPException(
                 status_code=400,
@@ -138,7 +138,9 @@ class CategoryService:
 
         if category_update.name and category_update.name != db_category.name:
 
-            existing = await self.repository.get_by_name(db, name=category_update.name)
+            existing = await self.repository.get_by_field(
+                db, 'name', category_update.name
+            )
             if existing and existing.id != category_id:
                 raise HTTPException(
                     status_code=400,
