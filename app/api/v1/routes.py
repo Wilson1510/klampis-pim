@@ -1,6 +1,10 @@
 from fastapi import APIRouter
 
-from app.api.v1.endpoints import category_type_endpoint, category_endpoint
+from app.api.v1.endpoints import (
+    category_type_endpoint,
+    category_endpoint,
+    supplier_endpoint
+)
 
 api_router = APIRouter()
 
@@ -16,6 +20,13 @@ api_router.include_router(
     category_endpoint.router,
     prefix="/categories",
     tags=["categories"]
+)
+
+# Include supplier endpoints
+api_router.include_router(
+    supplier_endpoint.router,
+    prefix="/suppliers",
+    tags=["suppliers"]
 )
 
 # Import and include other endpoint routers here
