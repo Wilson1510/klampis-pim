@@ -48,11 +48,11 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail=str(e)
             )
-        except Exception:
+        except Exception as e:
             await db.rollback()
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Internal server error"
+                detail=f"Internal server error: {e}"
             )
 
     async def update(
@@ -87,11 +87,11 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail=str(e)
             )
-        except Exception:
+        except Exception as e:
             await db.rollback()
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Internal server error"
+                detail=f"Internal server error: {e}"
             )
 
     async def soft_delete(self, db: AsyncSession, id: int) -> ModelType | None:
