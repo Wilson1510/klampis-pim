@@ -13,14 +13,6 @@ class SkuService:
     def __init__(self):
         self.repository = sku_repository
 
-    async def get_all_skus(
-        self, db: AsyncSession, skip: int = 0, limit: int = 100
-    ) -> Tuple[List[Skus], int]:
-        """Get all SKUs with pagination and total count."""
-        data = await self.repository.get_multi(db, skip=skip, limit=limit)
-        total = len(data)
-        return data, total
-
     async def get_skus_with_filter(
         self,
         db: AsyncSession,
@@ -38,19 +30,23 @@ class SkuService:
             name is None and slug is None and sku_number is None
             and product_id is None and is_active is None
         ):
-            return await self.get_all_skus(db, skip=skip, limit=limit)
+            data = await self.repository.get_multi_with_relationships(
+                db, skip=skip, limit=limit
+            )
+            total = len(data)
 
-        data = await self.repository.get_multi_with_filter(
-            db,
-            skip=skip,
-            limit=limit,
-            name=name,
-            slug=slug,
-            sku_number=sku_number,
-            product_id=product_id,
-            is_active=is_active
-        )
-        total = len(data)
+        else:
+            data = await self.repository.get_multi_with_filter(
+                db,
+                skip=skip,
+                limit=limit,
+                name=name,
+                slug=slug,
+                sku_number=sku_number,
+                product_id=product_id,
+                is_active=is_active
+            )
+            total = len(data)
         return data, total
 
     async def get_sku_by_id(
@@ -148,18 +144,27 @@ class SkuService:
             attribute_ids = [
                 av.attribute_id for av in sku_update.attribute_values
             ]
+            existing_attribute_values = await self.repository.\
+                get_existing_attribute_values(
+                    db, sku_id=sku_id, attribute_ids=attribute_ids
+                )
+
+            # aiesav = atribute ids of existing sku attribute values
+            aiesav = {av.attribute_id for av in existing_attribute_values}
+            maiesav = set(attribute_ids) - aiesav
+            if maiesav:
+                raise HTTPException(
+                    status_code=404,
+                    detail=(
+                        f"Attribute values with sku id {sku_id} and attribute "
+                        f"ids {maiesav} not found"
+                    )
+                )
+
+            # Create attribute lookup for validation
             existing_attributes = await self.repository.get_existing_attributes(
                 db, attribute_ids
             )
-
-            existing_attribute_ids = {attr.id for attr in existing_attributes}
-            missing_attribute_ids = set(attribute_ids) - existing_attribute_ids
-            if missing_attribute_ids:
-                raise HTTPException(
-                    status_code=404,
-                    detail=f"Attributes with IDs {missing_attribute_ids} not found"
-                )
-            # Create attribute lookup for validation
             attr_lookup = {attr.id: attr for attr in existing_attributes}
 
             # Validate attribute values against their data types
