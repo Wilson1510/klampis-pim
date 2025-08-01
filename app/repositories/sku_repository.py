@@ -348,6 +348,9 @@ class SkuRepository(CRUDBase[Skus, SkuCreate, SkuUpdate]):
         result = await db.execute(query)
         current_price_details = result.scalars().all()
 
+        if not current_price_details:
+            return
+
         # Calculate remaining price details after deletion
         remaining_count = len([
             pd for pd in current_price_details

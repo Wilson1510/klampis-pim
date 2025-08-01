@@ -1,5 +1,4 @@
 from httpx import AsyncClient
-from app.models import PriceDetails, SkuAttributeValue
 
 
 class TestGetSkus:
@@ -269,35 +268,6 @@ class TestCreateSku:
         assert error["message"] == "SKU with name 'iPhone 15 Pro' already exists"
         assert error["details"] is None
 
-    # async def test_create_sku_nonexistent_product(
-    #     self, async_client: AsyncClient, pricelist_factory, attribute_factory
-    # ):
-    #     """Test creating SKU with non-existent product."""
-    #     pricelist = await pricelist_factory(name="Retail")
-    #     attribute = await attribute_factory(name="Color", data_type="TEXT")
-
-    #     sku_data = {
-    #         "name": "iPhone 15 Pro",
-    #         "product_id": 999,
-    #         "price_details": [
-    #             {
-    #                 "pricelist_id": pricelist.id,
-    #                 "price": 999.99,
-    #                 "minimum_quantity": 1
-    #             }
-    #         ],
-    #         "attribute_values": [
-    #             {
-    #                 "attribute_id": attribute.id,
-    #                 "value": "Blue"
-    #             }
-    #         ]
-    #     }
-
-    #     response = await async_client.post("/api/v1/skus/", json=sku_data)
-
-    #     assert response.status_code == 422
-
     async def test_create_sku_nonexistent_attribute(
         self, async_client: AsyncClient, product_factory, pricelist_factory
     ):
@@ -511,14 +481,28 @@ class TestUpdateSku:
         response = await async_client.put(
             f"/api/v1/skus/{sku.id}", json=update_data
         )
-        print(response.json()["data"])
 
-        # assert response.status_code == 200
-        # data = response.json()["data"]
-        # assert data["id"] == sku.id
-        # assert data["name"] == "iPhone 15 Pro Max"
-        # assert data["description"] == "Updated description"
-        # assert data["slug"] == "iphone-15-pro-max"
+        assert response.status_code == 200
+        data = response.json()["data"]
+        assert data["id"] == sku.id
+        assert data["name"] == "iPhone 15 Pro Max"
+        assert data["description"] == "Latest iPhone model"
+        assert data["slug"] == "iphone-15-pro-max"
+        assert data["sku_number"] == sku.sku_number
+        assert len(data["full_path"]) == 3
+        assert len(data["price_details"]) == 2
+        assert data["price_details"][0]["price"] == '2500.00'
+        assert data["price_details"][0]["minimum_quantity"] == 3
+        assert data["price_details"][0]["pricelist"]["name"] == "Retail"
+
+        assert data["price_details"][1]["price"] == '1600.00'
+        assert data["price_details"][1]["minimum_quantity"] == 2
+        assert data["price_details"][1]["pricelist"]["name"] == "Retail"
+
+        assert data["sku_attribute_values"][0]["value"] == "Black"
+        assert data["sku_attribute_values"][0]["attribute"]["name"] == "Color"
+        assert data["sku_attribute_values"][0]["attribute"]["data_type"] == "TEXT"
+        assert data["sku_attribute_values"][0]["attribute"]["uom"] is None
 
     async def test_update_sku_not_found(self, async_client: AsyncClient):
         """Test updating non-existent SKU."""
@@ -532,12 +516,11 @@ class TestUpdateSku:
         assert error["details"] is None
 
     async def test_update_sku_duplicate_name(
-        self, async_client: AsyncClient, sku_factory, product_factory
+        self, async_client: AsyncClient, sku_factory
     ):
         """Test updating SKU with duplicate name."""
-        product = await product_factory(name="iPhone 15")
-        await sku_factory(name="iPhone 15 Pro", product=product)
-        sku2 = await sku_factory(name="iPhone 15 Plus", product=product)
+        await sku_factory(name="iPhone 15 Pro")
+        sku2 = await sku_factory(name="iPhone 15 Plus")
 
         update_data = {"name": "iPhone 15 Pro"}
         response = await async_client.put(
@@ -550,111 +533,17 @@ class TestUpdateSku:
         assert error["message"] == "SKU with name 'iPhone 15 Pro' already exists"
         assert error["details"] is None
 
-    async def test_update_sku_create_price_details(
-        self, async_client: AsyncClient, sku_factory, pricelist_factory
-    ):
-        """Test updating SKU by creating new price details."""
-        sku = await sku_factory(name="iPhone 15 Pro")
-        pricelist = await pricelist_factory(name="Wholesale")
-
-        update_data = {
-            "price_details_to_create": [
-                {
-                    "pricelist_id": pricelist.id,
-                    "price": 899.99,
-                    "minimum_quantity": 10
-                }
-            ]
-        }
-        response = await async_client.put(
-            f"/api/v1/skus/{sku.id}", json=update_data
-        )
-
-        assert response.status_code == 200
-        data = response.json()["data"]
-        assert len(data["price_details"]) >= 1
-        # Check if new price detail was added
-        wholesale_prices = [
-            pd for pd in data["price_details"] 
-            if pd["pricelist"]["id"] == pricelist.id
-        ]
-        assert len(wholesale_prices) == 1
-        assert wholesale_prices[0]["price"] == 899.99
-
-    async def test_update_sku_update_price_details(
-        self, async_client: AsyncClient, sku_factory, db_session
-    ):
-        """Test updating existing price details."""
-        sku = await sku_factory(name="iPhone 15 Pro")
-        
-        # Get existing price detail
-        existing_price_detail = sku.price_details[0] if sku.price_details else None
-        assert existing_price_detail is not None
-
-        update_data = {
-            "price_details_to_update": [
-                {
-                    "id": existing_price_detail.id,
-                    "price": 1199.99,
-                    "minimum_quantity": 5
-                }
-            ]
-        }
-        response = await async_client.put(
-            f"/api/v1/skus/{sku.id}", json=update_data
-        )
-
-        assert response.status_code == 200
-        data = response.json()["data"]
-        updated_price = next(
-            pd for pd in data["price_details"] 
-            if pd["id"] == existing_price_detail.id
-        )
-        assert updated_price["price"] == 1199.99
-        assert updated_price["minimum_quantity"] == 5
-
-    async def test_update_sku_delete_price_details_success(
-        self, async_client: AsyncClient, sku_factory, pricelist_factory, db_session
-    ):
-        """Test deleting price details while keeping at least one."""
-        sku = await sku_factory(name="iPhone 15 Pro")
-        pricelist2 = await pricelist_factory(name="Wholesale")
-        
-        # Add another price detail so we can delete one
-        price_detail2 = PriceDetails(
-            sku_id=sku.id,
-            pricelist_id=pricelist2.id,
-            price=899.99,
-            minimum_quantity=10,
-            is_active=True
-        )
-        db_session.add(price_detail2)
-        await db_session.commit()
-        await db_session.refresh(price_detail2)
-
-        # Get the first price detail to delete
-        first_price_detail = sku.price_details[0]
-
-        update_data = {
-            "price_details_to_delete": [first_price_detail.id]
-        }
-        response = await async_client.put(
-            f"/api/v1/skus/{sku.id}", json=update_data
-        )
-
-        assert response.status_code == 200
-        data = response.json()["data"]
-        # Verify the price detail was soft deleted (not in active list)
-        active_price_ids = [pd["id"] for pd in data["price_details"]]
-        assert first_price_detail.id not in active_price_ids
-
     async def test_update_sku_delete_all_price_details_fails(
-        self, async_client: AsyncClient, sku_factory
+        self, async_client: AsyncClient, sku_factory, price_detail_factory, db_session
     ):
         """Test that deleting all price details fails."""
         sku = await sku_factory(name="iPhone 15 Pro")
-        
+        await price_detail_factory(sku=sku, price=100, minimum_quantity=1)
+        await price_detail_factory(sku=sku, price=200, minimum_quantity=2)
+        await price_detail_factory(sku=sku, price=300, minimum_quantity=3)
+
         # Get all price detail IDs
+        await db_session.refresh(sku, ['price_details'])
         price_detail_ids = [pd.id for pd in sku.price_details]
 
         update_data = {
@@ -668,6 +557,31 @@ class TestUpdateSku:
         error = response.json()["error"]
         assert error["code"] == "HTTP_ERROR_400"
         assert "must have at least one active price detail" in error["message"]
+        assert error["details"] is None
+
+    async def test_update_sku_delete_price_detail_not_its_own(
+        self, async_client: AsyncClient, sku_factory, price_detail_factory
+    ):
+        """Test deleting price detail that is not its own."""
+        sku = await sku_factory(name="iPhone 15 Pro")
+        price_detail = await price_detail_factory(
+            sku=sku,
+            price=100,
+            minimum_quantity=1
+        )
+        sku2 = await sku_factory(name="iPhone 15 Plus")
+        update_data = {
+            "price_details_to_delete": [price_detail.id]
+        }
+        response = await async_client.put(
+            f"/api/v1/skus/{sku2.id}", json=update_data
+        )
+        error = response.json()["error"]
+        assert response.status_code == 400
+        assert error["code"] == "HTTP_ERROR_400"
+        assert error["message"] == (
+            f"Price detail with ID {price_detail.id} does not belong to SKU {sku2.id}"
+        )
         assert error["details"] is None
 
     async def test_update_sku_delete_nonexistent_price_detail(
@@ -689,21 +603,43 @@ class TestUpdateSku:
         assert "Price detail with ID 999 not found" in error["message"]
         assert error["details"] is None
 
+    async def test_update_sku_create_price_detail_missing_pricelist(
+        self, async_client: AsyncClient, sku_factory
+    ):
+        """Test creating price detail with missing pricelist."""
+        sku = await sku_factory(name="iPhone 15 Pro")
+        update_data = {
+            "price_details_to_create": [
+                {
+                    "pricelist_id": 999,
+                    "price": 100,
+                    "minimum_quantity": 1
+                }
+            ]
+        }
+        response = await async_client.put(
+            f"/api/v1/skus/{sku.id}", json=update_data
+        )
+        error = response.json()["error"]
+        assert response.status_code == 404
+        assert error["code"] == "HTTP_ERROR_404"
+        assert error["message"] == (
+            "Pricelists with IDs {999} not found"
+        )
+        assert error["details"] is None
+
     async def test_update_sku_update_attribute_values(
-        self, async_client: AsyncClient, sku_factory, attribute_factory, db_session
+        self, async_client: AsyncClient, sku_factory, attribute_factory,
+        sku_attribute_value_factory
     ):
         """Test updating attribute values."""
         sku = await sku_factory(name="iPhone 15 Pro")
         attribute = await attribute_factory(name="Color", data_type="TEXT")
-        
+
         # Add an attribute value
-        attr_value = SkuAttributeValue(
-            sku_id=sku.id,
-            attribute_id=attribute.id,
-            value="Space Black"
+        await sku_attribute_value_factory(
+            sku=sku, attribute=attribute, value="Space Black"
         )
-        db_session.add(attr_value)
-        await db_session.commit()
 
         update_data = {
             "attribute_values": [
@@ -720,17 +656,19 @@ class TestUpdateSku:
         assert response.status_code == 200
         data = response.json()["data"]
         color_attr = next(
-            av for av in data["attribute_values"] 
+            av for av in data["sku_attribute_values"]
             if av["attribute"]["id"] == attribute.id
         )
         assert color_attr["value"] == "Deep Purple"
 
     async def test_update_sku_invalid_attribute_value(
-        self, async_client: AsyncClient, sku_factory, attribute_factory
+        self, async_client: AsyncClient, sku_factory, attribute_factory,
+        sku_attribute_value_factory
     ):
         """Test updating SKU with invalid attribute value."""
         sku = await sku_factory(name="iPhone 15 Pro")
         attribute = await attribute_factory(name="Weight", data_type="NUMBER")
+        await sku_attribute_value_factory(sku=sku, attribute=attribute, value="100")
 
         update_data = {
             "attribute_values": [
@@ -771,7 +709,63 @@ class TestUpdateSku:
         assert response.status_code == 404
         error = response.json()["error"]
         assert error["code"] == "HTTP_ERROR_404"
-        assert "Attributes with IDs {999} not found" in error["message"]
+        assert error["message"] == (
+            "Attribute values with sku id 1 and attribute ids {999} not found"
+        )
+        assert error["details"] is None
+
+    async def test_update_sku_update_price_detail_not_its_own(
+        self, async_client: AsyncClient, sku_factory, price_detail_factory
+    ):
+        """Test updating price detail that is not its own."""
+        sku = await sku_factory(name="iPhone 15 Pro")
+        price_detail = await price_detail_factory(
+            sku=sku, price=100, minimum_quantity=1
+        )
+        sku2 = await sku_factory(name="iPhone 15 Plus")
+        update_data = {
+            "price_details_to_update": [
+                {
+                    "id": price_detail.id,
+                    "price": 150,
+                    "minimum_quantity": 2
+                }
+            ]
+        }
+        response = await async_client.put(
+            f"/api/v1/skus/{sku2.id}", json=update_data
+        )
+        error = response.json()["error"]
+        assert response.status_code == 400
+        assert error["code"] == "HTTP_ERROR_400"
+        assert error["message"] == (
+            f"Price detail with ID {price_detail.id} does not belong to SKU {sku2.id}"
+        )
+        assert error["details"] is None
+
+    async def test_update_sku_update_price_detail_not_found(
+        self, async_client: AsyncClient, sku_factory
+    ):
+        """Test updating price detail that is not found."""
+        sku = await sku_factory(name="iPhone 15 Pro")
+        update_data = {
+            "price_details_to_update": [
+                {
+                    "id": 999,
+                    "price": 150,
+                    "minimum_quantity": 2
+                }
+            ]
+        }
+        response = await async_client.put(
+            f"/api/v1/skus/{sku.id}", json=update_data
+        )
+        error = response.json()["error"]
+        assert response.status_code == 404
+        assert error["code"] == "HTTP_ERROR_404"
+        assert error["message"] == (
+            "Price detail with ID 999 not found"
+        )
         assert error["details"] is None
 
 
@@ -803,7 +797,7 @@ class TestSkuEndpointIntegration:
     """Integration tests for SKU endpoints."""
 
     async def test_full_crud_workflow(
-        self, async_client: AsyncClient, product_factory, pricelist_factory, 
+        self, async_client: AsyncClient, product_factory, pricelist_factory,
         attribute_factory
     ):
         """Test complete CRUD workflow for SKUs."""
@@ -844,7 +838,7 @@ class TestSkuEndpointIntegration:
         assert data["slug"] == "iphone-15-pro"
         assert data["description"] == "Latest iPhone Pro model"
         assert len(data["price_details"]) == 1
-        assert len(data["attribute_values"]) == 1
+        assert len(data["sku_attribute_values"]) == 1
 
         # Read list
         response = await async_client.get("/api/v1/skus/")
@@ -878,35 +872,39 @@ class TestSkuEndpointIntegration:
         assert data["is_active"] is False
 
     async def test_complex_update_workflow(
-        self, async_client: AsyncClient, sku_factory, pricelist_factory, 
-        attribute_factory, db_session
+        self, async_client: AsyncClient, sku_factory, pricelist_factory,
+        attribute_factory, price_detail_factory, sku_attribute_value_factory
     ):
         """Test complex update operations with price details and attributes."""
         # Create SKU with initial data
         sku = await sku_factory(name="iPhone 15 Pro")
+        pricelist1 = await pricelist_factory(name="Retail")
+        price_detail1 = await price_detail_factory(
+            sku=sku,
+            price=100,
+            minimum_quantity=1,
+            is_active=True,
+            pricelist_id=pricelist1.id
+        )
         pricelist2 = await pricelist_factory(name="Wholesale")
         attribute = await attribute_factory(name="Storage", data_type="TEXT")
 
         # Add additional price detail and attribute
-        price_detail2 = PriceDetails(
-            sku_id=sku.id,
-            pricelist_id=pricelist2.id,
+        price_detail2 = await price_detail_factory(
+            sku=sku,
             price=899.99,
             minimum_quantity=10,
-            is_active=True
+            is_active=True,
+            pricelist_id=pricelist2.id
         )
-        attr_value = SkuAttributeValue(
-            sku_id=sku.id,
-            attribute_id=attribute.id,
+        await sku_attribute_value_factory(
+            sku=sku,
+            attribute=attribute,
             value="128GB"
         )
-        db_session.add_all([price_detail2, attr_value])
-        await db_session.commit()
-        await db_session.refresh(price_detail2)
 
         # Complex update: create, update, delete price details + update attributes
         pricelist3 = await pricelist_factory(name="VIP")
-        first_price_detail = sku.price_details[0]
 
         update_data = {
             "name": "iPhone 15 Pro Max",
@@ -924,7 +922,7 @@ class TestSkuEndpointIntegration:
                     "minimum_quantity": 5
                 }
             ],
-            "price_details_to_delete": [first_price_detail.id],
+            "price_details_to_delete": [price_detail1.id],
             "attribute_values": [
                 {
                     "attribute_id": attribute.id,
@@ -939,96 +937,31 @@ class TestSkuEndpointIntegration:
 
         # Verify updates
         assert data["name"] == "iPhone 15 Pro Max"
-        
+
         # Check price details
         active_price_ids = [pd["id"] for pd in data["price_details"]]
-        assert first_price_detail.id not in active_price_ids  # Deleted
+        assert price_detail1.id not in active_price_ids  # Deleted
         assert price_detail2.id in active_price_ids  # Updated
-        
+
         # Check updated price
         updated_price = next(
-            pd for pd in data["price_details"] 
+            pd for pd in data["price_details"]
             if pd["id"] == price_detail2.id
         )
-        assert updated_price["price"] == 849.99
+        assert updated_price["price"] == '849.99'
         assert updated_price["minimum_quantity"] == 5
 
         # Check new price detail was created
         vip_prices = [
-            pd for pd in data["price_details"] 
+            pd for pd in data["price_details"]
             if pd["pricelist"]["name"] == "VIP"
         ]
         assert len(vip_prices) == 1
-        assert vip_prices[0]["price"] == 1199.99
+        assert vip_prices[0]["price"] == '1199.99'
 
         # Check attribute value was updated
         storage_attr = next(
-            av for av in data["attribute_values"] 
+            av for av in data["sku_attribute_values"]
             if av["attribute"]["name"] == "Storage"
         )
         assert storage_attr["value"] == "256GB"
-
-    async def test_validation_edge_cases(
-        self, async_client: AsyncClient, product_factory, pricelist_factory, 
-        attribute_factory
-    ):
-        """Test various validation edge cases."""
-        product = await product_factory(name="iPhone 15")
-        pricelist = await pricelist_factory(name="Retail")
-        
-        # Test different attribute data types
-        text_attr = await attribute_factory(name="Color", data_type="TEXT")
-        number_attr = await attribute_factory(name="Weight", data_type="NUMBER")
-        boolean_attr = await attribute_factory(name="Waterproof", data_type="BOOLEAN")
-        date_attr = await attribute_factory(name="Release Date", data_type="DATE")
-
-        # Valid values for each data type
-        sku_data = {
-            "name": "iPhone 15 Pro",
-            "product_id": product.id,
-            "price_details": [
-                {
-                    "pricelist_id": pricelist.id,
-                    "price": 999.99,
-                    "minimum_quantity": 1
-                }
-            ],
-            "attribute_values": [
-                {"attribute_id": text_attr.id, "value": "Space Black"},
-                {"attribute_id": number_attr.id, "value": "221"},
-                {"attribute_id": boolean_attr.id, "value": "true"},
-                {"attribute_id": date_attr.id, "value": "2023-09-22"}
-            ]
-        }
-
-        response = await async_client.post("/api/v1/skus/", json=sku_data)
-        assert response.status_code == 201
-
-        # Test invalid values
-        invalid_cases = [
-            (number_attr.id, "not_a_number", "NUMBER"),
-            (boolean_attr.id, "maybe", "BOOLEAN"),
-            (date_attr.id, "not_a_date", "DATE")
-        ]
-
-        for attr_id, invalid_value, data_type in invalid_cases:
-            invalid_data = {
-                "name": f"Test SKU {attr_id}",
-                "product_id": product.id,
-                "price_details": [
-                    {
-                        "pricelist_id": pricelist.id,
-                        "price": 999.99,
-                        "minimum_quantity": 1
-                    }
-                ],
-                "attribute_values": [
-                    {"attribute_id": attr_id, "value": invalid_value}
-                ]
-            }
-
-            response = await async_client.post("/api/v1/skus/", json=invalid_data)
-            assert response.status_code == 400
-            error = response.json()["error"]
-            assert f"Invalid value '{invalid_value}'" in error["message"]
-            assert f"expected {data_type}" in error["message"] 
