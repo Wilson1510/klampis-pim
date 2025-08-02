@@ -156,6 +156,10 @@ class SkuRepository(CRUDBase[Skus, SkuCreate, SkuUpdate]):
             sku_data = obj_in.model_dump(
                 exclude={'price_details', 'attribute_values'}
             )
+            if sku_data['product_id']:
+                await self.validate_foreign_key(
+                    db, Products, sku_data['product_id']
+                )
             db_sku = Skus(**sku_data)
             db.add(db_sku)
             await db.commit()
@@ -215,6 +219,10 @@ class SkuRepository(CRUDBase[Skus, SkuCreate, SkuUpdate]):
         )
 
         try:
+            if update_data['product_id']:
+                await self.validate_foreign_key(
+                    db, Products, update_data['product_id']
+                )
             if update_data:
                 for field in obj_data:
                     if field in update_data:
