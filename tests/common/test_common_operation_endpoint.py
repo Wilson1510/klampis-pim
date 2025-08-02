@@ -439,14 +439,49 @@ class TestCreateModel:
         self, async_client: AsyncClient
     ):
         """Test creating model with missing required fields."""
-        # Missing name (required field)
         model_data = {
-            "is_active": True,
-            "sequence": 5
+            "company_type": "PT",
+            "name": "PT Maju Jaya"
         }
 
         response = await async_client.post(
-            "/api/v1/category-types/",
+            "/api/v1/suppliers/",
+            json=model_data
+        )
+        assert response.status_code == 422
+        assert response.json() == {
+            "success": False,
+            "data": None,
+            "error": {
+                "code": "VALIDATION_ERROR",
+                "message": "Validation error",
+                "details": [
+                    {
+                        "loc": ["body", "contact"],
+                        "msg": "Field required",
+                        "type": "missing"
+                    },
+                    {
+                        "loc": ["body", "email"],
+                        "msg": "Field required",
+                        "type": "missing"
+                    }
+                ]
+            }
+        }
+
+    async def test_create_simple_model_with_only_optional_fields(
+        self, async_client: AsyncClient
+    ):
+        """Test creating model with only optional fields (should fail)."""
+        model_data = {
+            "is_active": False,
+            "sequence": 10,
+            "address": "Jl. Sudirman No. 123",
+        }
+
+        response = await async_client.post(
+            "/api/v1/suppliers/",
             json=model_data
         )
         assert response.status_code == 422
@@ -461,34 +496,19 @@ class TestCreateModel:
                         "loc": ["body", "name"],
                         "msg": "Field required",
                         "type": "missing"
-                    }
-                ]
-            }
-        }
-
-    async def test_create_simple_model_with_only_optional_fields(
-        self, async_client: AsyncClient
-    ):
-        """Test creating model with only optional fields (should fail)."""
-        model_data = {
-            "is_active": False,
-            "sequence": 10
-        }
-
-        response = await async_client.post(
-            "/api/v1/category-types/",
-            json=model_data
-        )
-        assert response.status_code == 422
-        assert response.json() == {
-            "success": False,
-            "data": None,
-            "error": {
-                "code": "VALIDATION_ERROR",
-                "message": "Validation error",
-                "details": [
+                    },
                     {
-                        "loc": ["body", "name"],
+                        "loc": ["body", "company_type"],
+                        "msg": "Field required",
+                        "type": "missing"
+                    },
+                    {
+                        "loc": ["body", "contact"],
+                        "msg": "Field required",
+                        "type": "missing"
+                    },
+                    {
+                        "loc": ["body", "email"],
                         "msg": "Field required",
                         "type": "missing"
                     }
