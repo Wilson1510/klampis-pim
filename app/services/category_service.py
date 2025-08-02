@@ -1,6 +1,7 @@
 from typing import List, Optional, Tuple
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException
+from fastapi import status
 
 from app.repositories.category_repository import category_repository
 from app.models import Categories, Products
@@ -79,7 +80,7 @@ class CategoryService:
         parent = await self.repository.get(db, id=parent_id)
         if not parent:
             raise HTTPException(
-                status_code=404,
+                status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Parent category with id {parent_id} not found"
             )
 
@@ -97,7 +98,7 @@ class CategoryService:
         category = await self.repository.get(db, id=category_id)
         if not category:
             raise HTTPException(
-                status_code=404,
+                status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Category with id {category_id} not found"
             )
 
@@ -114,7 +115,7 @@ class CategoryService:
         existing = await self.repository.get_by_field(db, 'name', category_create.name)
         if existing:
             raise HTTPException(
-                status_code=400,
+                status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Category with name '{category_create.name}' already exists"
             )
 
@@ -132,7 +133,7 @@ class CategoryService:
         db_category = await self.repository.get(db, id=category_id)
         if not db_category:
             raise HTTPException(
-                status_code=404,
+                status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Category with id {category_id} not found"
             )
 
@@ -143,7 +144,7 @@ class CategoryService:
             )
             if existing and existing.id != category_id:
                 raise HTTPException(
-                    status_code=400,
+                    status_code=status.HTTP_400_BAD_REQUEST,
                     detail=f"Category with name '{category_update.name}' already exists"
                 )
 
@@ -167,7 +168,7 @@ class CategoryService:
         db_category = await self.repository.get(db, id=category_id)
         if not db_category:
             raise HTTPException(
-                status_code=404,
+                status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Category with id {category_id} not found"
             )
 
@@ -175,7 +176,7 @@ class CategoryService:
         children_count = await self.repository.count_children(db, category_id)
         if children_count > 0:
             raise HTTPException(
-                status_code=400,
+                status_code=status.HTTP_400_BAD_REQUEST,
                 detail=(
                     f"Cannot delete category. It has {children_count} "
                     "child categories"
@@ -186,7 +187,7 @@ class CategoryService:
         products_count = await self.repository.count_products(db, category_id)
         if products_count > 0:
             raise HTTPException(
-                status_code=400,
+                status_code=status.HTTP_400_BAD_REQUEST,
                 detail=(
                     f"Cannot delete category. It has {products_count} "
                     "products"
@@ -215,14 +216,14 @@ class CategoryService:
 
         if parent_id is not None and category_type_id is not None:
             raise HTTPException(
-                status_code=400,
+                status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Child categories must not have a category_type_id"
             )
 
         # Prevent self-parenting
         if category_update.parent_id == existing_category.id:
             raise HTTPException(
-                status_code=400,
+                status_code=status.HTTP_400_BAD_REQUEST,
                 detail="A category cannot be its own parent"
             )
 

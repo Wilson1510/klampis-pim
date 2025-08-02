@@ -139,7 +139,7 @@ async def get_sku(
     sku = await sku_service.get_sku_by_id(db=db, sku_id=sku_id)
     if not sku:
         raise HTTPException(
-            status_code=404,
+            status_code=status.HTTP_404_NOT_FOUND,
             detail=f"SKU with id {sku_id} not found"
         )
     return create_single_item_response(data=sku)

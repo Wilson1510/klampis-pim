@@ -1,6 +1,7 @@
 from typing import List, Optional, Tuple
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException
+from fastapi import status
 
 from app.repositories.category_type_repository import category_type_repository
 from app.models.category_type_model import CategoryTypes
@@ -65,7 +66,7 @@ class CategoryTypeService:
         )
         if existing:
             raise HTTPException(
-                status_code=400,
+                status_code=status.HTTP_400_BAD_REQUEST,
                 detail=(
                     f"Category type with name '{category_type_create.name}' "
                     "already exists"
@@ -85,7 +86,7 @@ class CategoryTypeService:
         db_category_type = await self.repository.get(db, id=category_type_id)
         if not db_category_type:
             raise HTTPException(
-                status_code=404,
+                status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Category type with id {category_type_id} not found"
             )
 
@@ -99,7 +100,7 @@ class CategoryTypeService:
             )
             if existing and existing.id != category_type_id:
                 raise HTTPException(
-                    status_code=400,
+                    status_code=status.HTTP_400_BAD_REQUEST,
                     detail=(
                         f"Category type with name '{category_type_update.name}' "
                         "already exists"
@@ -117,7 +118,7 @@ class CategoryTypeService:
         db_category_type = await self.repository.get(db, id=category_type_id)
         if not db_category_type:
             raise HTTPException(
-                status_code=404,
+                status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Category type with id {category_type_id} not found"
             )
 
@@ -125,7 +126,7 @@ class CategoryTypeService:
         categories_count = await self.repository.count_categories(db, category_type_id)
         if categories_count > 0:
             raise HTTPException(
-                status_code=400,
+                status_code=status.HTTP_400_BAD_REQUEST,
                 detail=(
                     f"Cannot delete category type. It has {categories_count} "
                     "associated categories"
@@ -146,7 +147,7 @@ class CategoryTypeService:
         category_type = await self.repository.get(db, id=category_type_id)
         if not category_type:
             raise HTTPException(
-                status_code=404,
+                status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Category type with id {category_type_id} not found"
             )
 

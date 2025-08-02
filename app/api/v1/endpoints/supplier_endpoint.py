@@ -133,7 +133,7 @@ async def get_supplier(
     )
     if not supplier:
         raise HTTPException(
-            status_code=404,
+            status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Supplier with id {supplier_id} not found"
         )
     return create_single_item_response(data=supplier)
