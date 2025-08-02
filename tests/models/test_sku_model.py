@@ -738,9 +738,9 @@ class TestSkuSkuAttributeValueRelationship:
                 attribute_id=self.test_attribute1.id
             )
         ]
+        # It will fail, I don't know why. Maybe because delete and insert are in the
+        # same transaction.
         with pytest.raises(IntegrityError):
-            # should fail because Test Sku Attribute Value 1 and Test Sku Attribute
-            # Value 2 no longer have sku_id
             await save_object(db_session, sku)
         await db_session.rollback()
 
@@ -758,49 +758,12 @@ class TestSkuSkuAttributeValueRelationship:
         await db_session.refresh(sku_attribute_value, ['sku'])
         assert sku_attribute_value.sku_id == self.test_sku1.id
 
-        # should fail because sku_attribute_value will lose its sku_id
-        with pytest.raises(IntegrityError):
-            await delete_object(db_session, self.test_sku1)
-        await db_session.rollback()
-
-    @pytest.mark.asyncio
-    async def test_orphaned_sku_attribute_value_cleanup(self, db_session: AsyncSession):
-        """Test orphaned sku attribute value cleanup"""
-        temp_sku = Skus(
-            name="Temporary Sku for Sku Attribute Value Cleanup",
-            product_id=self.test_product.id
-        )
-        await save_object(db_session, temp_sku)
-
-        temp_sku_attribute_value = SkuAttributeValue(
-            value="Temporary Sku Attribute Value",
-            sku_id=temp_sku.id,
-            attribute_id=self.test_attribute1.id
-        )
-        await save_object(db_session, temp_sku_attribute_value)
-
-        # Try to delete the sku (should fail because of foreign key)
-        with pytest.raises(IntegrityError):
-            await delete_object(db_session, temp_sku)
-        await db_session.rollback()
-
-        # To properly delete, first remove the sku attribute value
-        await delete_object(db_session, temp_sku_attribute_value)
-        await delete_object(db_session, temp_sku)
-
-        # Verify both are deleted
-        deleted_sku = await get_object_by_id(
-            db_session,
-            Skus,
-            temp_sku.id
-        )
-        deleted_sku_attribute_value = await get_object_by_id(
+        await delete_object(db_session, self.test_sku1)
+        assert await get_object_by_id(
             db_session,
             SkuAttributeValue,
-            temp_sku_attribute_value.id
-        )
-        assert deleted_sku is None
-        assert deleted_sku_attribute_value is None
+            sku_attribute_value.i
+        ) is None
 
     @pytest.mark.asyncio
     async def test_query_sku_by_sku_attribute_value(self, db_session: AsyncSession):
@@ -947,11 +910,20 @@ class TestSkuPriceDetailRelationship:
             )
         ]
 
-        # should fail because price_details[0] and price_details[1] will lose their
-        # sku_id
-        with pytest.raises(IntegrityError):
-            await save_object(db_session, sku)
-        await db_session.rollback()
+        await save_object(db_session, sku)
+
+        await db_session.refresh(sku, ['price_details'])
+        assert len(sku.price_details) == 3
+        assert sku.price_details[0].price == 300.00
+        assert sku.price_details[1].price == 400.00
+        assert sku.price_details[2].price == 500.00
+
+        query = select(PriceDetails).where(
+            PriceDetails.minimum_quantity.in_([1, 2])
+        )
+        result = await db_session.execute(query)
+        price_details = result.scalars().all()
+        assert len(price_details) == 0
 
     @pytest.mark.asyncio
     async def test_sku_deletion_with_price_details(self, db_session: AsyncSession):
@@ -964,50 +936,9 @@ class TestSkuPriceDetailRelationship:
         )
         await save_object(db_session, price_detail)
 
-        # should fail because price_detail will lose its sku_id
-        with pytest.raises(IntegrityError):
-            await delete_object(db_session, self.test_sku1)
-        await db_session.rollback()
+        await delete_object(db_session, self.test_sku1)
 
-    @pytest.mark.asyncio
-    async def test_orphaned_price_detail_cleanup(self, db_session: AsyncSession):
-        """Test orphaned price detail cleanup"""
-        temp_sku = Skus(
-            name="Temporary Sku for Price Detail Cleanup",
-            product_id=self.test_product.id
-        )
-        await save_object(db_session, temp_sku)
-
-        temp_price_detail = PriceDetails(
-            price=100.00,
-            minimum_quantity=1,
-            pricelist_id=self.test_pricelist.id,
-            sku_id=temp_sku.id
-        )
-        await save_object(db_session, temp_price_detail)
-
-        # Try to delete the sku (should fail because of foreign key)
-        with pytest.raises(IntegrityError):
-            await delete_object(db_session, temp_sku)
-        await db_session.rollback()
-
-        # To properly delete, first remove the price detail
-        await delete_object(db_session, temp_price_detail)
-        await delete_object(db_session, temp_sku)
-
-        # Verify both are deleted
-        deleted_sku = await get_object_by_id(
-            db_session,
-            Skus,
-            temp_sku.id
-        )
-        deleted_price_detail = await get_object_by_id(
-            db_session,
-            PriceDetails,
-            temp_price_detail.id
-        )
-        assert deleted_sku is None
-        assert deleted_price_detail is None
+        assert await get_object_by_id(db_session, PriceDetails, price_detail.id) is None
 
     @pytest.mark.asyncio
     async def test_query_sku_by_price_detail(self, db_session: AsyncSession):

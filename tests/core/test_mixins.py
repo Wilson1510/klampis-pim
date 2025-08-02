@@ -1,7 +1,7 @@
 import pytest
 from sqlalchemy import Column, String, select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.exc import IntegrityError, DBAPIError
+from sqlalchemy.exc import DBAPIError
 
 from app.core.base import Base
 from app.models import Images
@@ -139,9 +139,19 @@ class TestImageableMixin:
             Images(file="test image 5")
         ]
 
-        with pytest.raises(IntegrityError):
-            await save_object(db_session, model)
-        await db_session.rollback()
+        await save_object(db_session, model)
+        await db_session.refresh(model, ['images'])
+        assert len(model.images) == 3
+        assert model.images[0].file == "test image 3"
+        assert model.images[1].file == "test image 4"
+        assert model.images[2].file == "test image 5"
+
+        query = select(Images).where(
+            Images.file.in_(["test image 1", "test image 2"])
+        )
+        result = await db_session.execute(query)
+        images = result.scalars().all()
+        assert len(images) == 0
 
     @pytest.mark.asyncio
     async def test_model_deletion_with_images(self, db_session: AsyncSession):
@@ -154,49 +164,8 @@ class TestImageableMixin:
         )
         await save_object(db_session, image)
 
-        # Try to delete model that has associated images
-        with pytest.raises(IntegrityError):
-            await delete_object(db_session, self.simple_model1)
-        await db_session.rollback()
-
-    @pytest.mark.asyncio
-    async def test_orphaned_image_cleanup(self, db_session: AsyncSession):
-        """Test handling of images when their model is deleted"""
-        # Create temporary model
-        temp_model = SimpleModelWithImageable(
-            name="Temporary Model",
-        )
-        await save_object(db_session, temp_model)
-
-        # Create image associated with temp model
-        temp_image = Images(
-            file="Temporary Image",
-            object_id=temp_model.id,
-            content_type="simple_model_with_imageable"
-        )
-        await save_object(db_session, temp_image)
-
-        # Try to delete the model (should fail due to foreign key)
-        with pytest.raises(IntegrityError):
-            await delete_object(db_session, temp_model)
-        await db_session.rollback()
-
-        # To properly delete, first remove the image
-        await delete_object(db_session, temp_image)
-
-        # Now model can be deleted
-        await delete_object(db_session, temp_model)
-
-        # Verify both are deleted
-        deleted_image = await get_object_by_id(
-            db_session, Images, temp_image.id
-        )
-        deleted_model = await get_object_by_id(
-            db_session, SimpleModelWithImageable, temp_model.id
-        )
-
-        assert deleted_image is None
-        assert deleted_model is None
+        await delete_object(db_session, self.simple_model1)
+        assert await get_object_by_id(db_session, Images, image.id) is None
 
     @pytest.mark.asyncio
     async def test_query_model_by_images(self, db_session: AsyncSession):

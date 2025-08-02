@@ -47,9 +47,14 @@ class Skus(Base):
     product = relationship("Products", back_populates="skus")
     sku_attribute_values = relationship(
         "SkuAttributeValue",
-        back_populates="sku"
+        back_populates="sku",
+        cascade="all, delete-orphan"
     )
-    price_details = relationship("PriceDetails", back_populates="sku")
+    price_details = relationship(
+        "PriceDetails",
+        back_populates="sku",
+        cascade="all, delete-orphan"
+    )
 
     # Database constraints
     __table_args__ = (

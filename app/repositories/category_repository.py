@@ -188,17 +188,17 @@ class CategoryRepository(
                 exclude={'images_to_create', 'images_to_update', 'images_to_delete'}
             )
 
-            if update_data['parent_id']:
-                await self.validate_foreign_key(
-                    db, Categories, update_data['parent_id']
-                )
-
-            if update_data['category_type_id']:
-                await self.validate_foreign_key(
-                    db, CategoryTypes, update_data['category_type_id']
-                )
-
             if update_data:
+                if 'parent_id' in update_data:
+                    await self.validate_foreign_key(
+                        db, Categories, update_data['parent_id']
+                    )
+
+                if 'category_type_id' in update_data:
+                    await self.validate_foreign_key(
+                        db, CategoryTypes, update_data['category_type_id']
+                    )
+
                 for field in obj_data:
                     if field in update_data:
                         setattr(db_obj, field, update_data[field])
@@ -326,32 +326,6 @@ class CategoryRepository(
         )
         result = await db.execute(query)
         return result.scalar() or 0
-
-    async def validate_parent_exists(
-        self, db: AsyncSession, parent_id: int
-    ) -> bool:
-        """Check if parent category exists and is active."""
-        query = select(func.count(self.model.id)).where(
-            and_(
-                self.model.id == parent_id,
-                self.model.is_active.is_(True)
-            )
-        )
-        result = await db.execute(query)
-        return (result.scalar() or 0) > 0
-
-    async def validate_category_type_exists(
-        self, db: AsyncSession, category_type_id: int
-    ) -> bool:
-        """Check if category type exists and is active."""
-        query = select(func.count(CategoryTypes.id)).where(
-            and_(
-                CategoryTypes.id == category_type_id,
-                CategoryTypes.is_active.is_(True)
-            )
-        )
-        result = await db.execute(query)
-        return (result.scalar() or 0) > 0
 
     async def get_with_full_relations(
         self, db: AsyncSession, category_id: int

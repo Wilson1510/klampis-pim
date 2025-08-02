@@ -63,7 +63,7 @@ class SkuService:
         existing = await self.repository.get_by_field(db, 'name', sku_create.name)
         if existing:
             raise HTTPException(
-                status_code=400,
+                status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"SKU with name '{sku_create.name}' already exists"
             )
 
@@ -81,7 +81,7 @@ class SkuService:
             missing_attribute_ids = set(attribute_ids) - existing_attribute_ids
             if missing_attribute_ids:
                 raise HTTPException(
-                    status_code=404,
+                    status_code=status.HTTP_404_NOT_FOUND,
                     detail=f"Attributes with IDs {missing_attribute_ids} not found"
                 )
 
@@ -106,7 +106,7 @@ class SkuService:
             missing_pricelist_ids = set(pricelist_ids) - existing_pricelist_ids
             if missing_pricelist_ids:
                 raise HTTPException(
-                    status_code=404,
+                    status_code=status.HTTP_404_NOT_FOUND,
                     detail=f"Pricelists with IDs {missing_pricelist_ids} not found"
                 )
 
@@ -124,7 +124,7 @@ class SkuService:
         db_sku = await self.repository.get(db, id=sku_id)
         if not db_sku:
             raise HTTPException(
-                status_code=404,
+                status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"SKU with id {sku_id} not found"
             )
 
@@ -135,7 +135,7 @@ class SkuService:
             )
             if existing and existing.id != sku_id:
                 raise HTTPException(
-                    status_code=400,
+                    status_code=status.HTTP_400_BAD_REQUEST,
                     detail=f"SKU with name '{sku_update.name}' already exists"
                 )
 
@@ -154,7 +154,7 @@ class SkuService:
             maiesav = set(attribute_ids) - aiesav
             if maiesav:
                 raise HTTPException(
-                    status_code=404,
+                    status_code=status.HTTP_404_NOT_FOUND,
                     detail=(
                         f"Attribute values with sku id {sku_id} and attribute "
                         f"ids {maiesav} not found"
@@ -184,7 +184,7 @@ class SkuService:
             missing_pricelist_ids = set(pricelist_ids) - existing_pricelist_ids
             if missing_pricelist_ids:
                 raise HTTPException(
-                    status_code=404,
+                    status_code=status.HTTP_404_NOT_FOUND,
                     detail=f"Pricelists with IDs {missing_pricelist_ids} not found"
                 )
 
@@ -195,15 +195,15 @@ class SkuService:
     async def delete_sku(
         self, db: AsyncSession, sku_id: int
     ) -> Skus:
-        """Soft delete a SKU after validation."""
+        """Delete a SKU after validation."""
         db_sku = await self.repository.get(db, id=sku_id)
         if not db_sku:
             raise HTTPException(
-                status_code=404,
+                status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"SKU with id {sku_id} not found"
             )
 
-        return await self.repository.soft_delete(db, id=sku_id)
+        return await self.repository.delete(db, id=sku_id)
 
     async def _validate_attribute_values(
         self,

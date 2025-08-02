@@ -139,7 +139,7 @@ async def get_sku(
     sku = await sku_service.get_sku_by_id(db=db, sku_id=sku_id)
     if not sku:
         raise HTTPException(
-            status_code=404,
+            status_code=status.HTTP_404_NOT_FOUND,
             detail=f"SKU with id {sku_id} not found"
         )
     return create_single_item_response(data=sku)
@@ -193,15 +193,10 @@ async def delete_sku(
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Soft delete a SKU.
+    Delete a SKU.
 
-    This operation marks the SKU as inactive (is_active = False) rather than
-    physically removing it from the database. This preserves data integrity
-    and maintains historical records.
+    - **sku_id**: The ID of the SKU to delete
 
-    The soft-deleted SKU will:
-    - Not appear in normal queries (filtered by is_active = True by default)
-    - Maintain all relationships and historical data
-    - Can potentially be reactivated if needed
+    Note: SKU cannot be deleted if it has products.
     """
     await sku_service.delete_sku(db=db, sku_id=sku_id)

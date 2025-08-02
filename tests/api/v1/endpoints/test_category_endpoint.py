@@ -436,11 +436,11 @@ class TestUpdateCategory:
             f"/api/v1/categories/{category.id}", json=update_data
         )
 
-        assert response.status_code == 400
+        assert response.status_code == 404
         error = response.json()["error"]
-        assert error["code"] == "HTTP_ERROR_400"
+        assert error["code"] == "HTTP_ERROR_404"
         assert error["message"] == (
-            "Parent category with id 999 not found or inactive"
+            "Categories with id 999 not found"
         )
         assert error["details"] is None
 
@@ -481,11 +481,11 @@ class TestUpdateCategory:
             f"/api/v1/categories/{category.id}", json=update_data
         )
 
-        assert response.status_code == 400
+        assert response.status_code == 404
         error = response.json()["error"]
-        assert error["code"] == "HTTP_ERROR_400"
+        assert error["code"] == "HTTP_ERROR_404"
         assert error["message"] == (
-            "Category type with id 999 not found or inactive"
+            "CategoryTypes with id 999 not found"
         )
         assert error["details"] is None
 
@@ -708,11 +708,11 @@ class TestCategoryEndpointIntegration:
         response = await async_client.delete(f"/api/v1/categories/{category_id}")
         assert response.status_code == 204
 
-        # Verify soft delete
+        # Verify item is deleted
         response = await async_client.get(f"/api/v1/categories/{category_id}")
-        assert response.status_code == 200
-        data = response.json()["data"]
-        assert data["is_active"] is False
+        assert response.status_code == 404
+        error = response.json()["error"]
+        assert error["message"] == f"Category with id {category_id} not found"
 
     async def test_hierarchical_category_workflow(
         self, async_client: AsyncClient, category_type_factory

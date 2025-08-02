@@ -372,11 +372,11 @@ class TestCategoryTypeEndpointIntegration:
         )
         assert response.status_code == 204
 
-        # Verify soft delete
+        # Verify item is deleted
         response = await async_client.get(f"/api/v1/category-types/{category_type_id}")
-        assert response.status_code == 200
-        data = response.json()["data"]
-        assert data["is_active"] is False
+        assert response.status_code == 404
+        error = response.json()["error"]
+        assert error["message"] == f"Category type with id {category_type_id} not found"
 
     async def test_category_type_with_categories_workflow(
         self, async_client: AsyncClient, category_factory

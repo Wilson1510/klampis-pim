@@ -1,6 +1,7 @@
 from typing import List, Optional, Tuple
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException
+from fastapi import status
 
 from app.repositories.category_repository import category_repository
 from app.models import Categories, Products
@@ -79,7 +80,7 @@ class CategoryService:
         parent = await self.repository.get(db, id=parent_id)
         if not parent:
             raise HTTPException(
-                status_code=404,
+                status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Parent category with id {parent_id} not found"
             )
 
@@ -97,7 +98,7 @@ class CategoryService:
         category = await self.repository.get(db, id=category_id)
         if not category:
             raise HTTPException(
-                status_code=404,
+                status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Category with id {category_id} not found"
             )
 
@@ -114,7 +115,7 @@ class CategoryService:
         existing = await self.repository.get_by_field(db, 'name', category_create.name)
         if existing:
             raise HTTPException(
-                status_code=400,
+                status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Category with name '{category_create.name}' already exists"
             )
 
@@ -132,7 +133,7 @@ class CategoryService:
         db_category = await self.repository.get(db, id=category_id)
         if not db_category:
             raise HTTPException(
-                status_code=404,
+                status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Category with id {category_id} not found"
             )
 
@@ -143,7 +144,7 @@ class CategoryService:
             )
             if existing and existing.id != category_id:
                 raise HTTPException(
-                    status_code=400,
+                    status_code=status.HTTP_400_BAD_REQUEST,
                     detail=f"Category with name '{category_update.name}' already exists"
                 )
 
@@ -153,7 +154,7 @@ class CategoryService:
             category_update.category_type_id is not None
         ):
             await self._validate_category_hierarchy_for_update(
-                db, db_category, category_update
+                db_category, category_update
             )
 
         return await self.repository.update_category(
@@ -163,11 +164,11 @@ class CategoryService:
     async def delete_category(
         self, db: AsyncSession, category_id: int
     ) -> Categories:
-        """Soft delete a category after validation."""
+        """Delete a category after validation."""
         db_category = await self.repository.get(db, id=category_id)
         if not db_category:
             raise HTTPException(
-                status_code=404,
+                status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Category with id {category_id} not found"
             )
 
@@ -175,7 +176,7 @@ class CategoryService:
         children_count = await self.repository.count_children(db, category_id)
         if children_count > 0:
             raise HTTPException(
-                status_code=400,
+                status_code=status.HTTP_400_BAD_REQUEST,
                 detail=(
                     f"Cannot delete category. It has {children_count} "
                     "child categories"
@@ -186,18 +187,17 @@ class CategoryService:
         products_count = await self.repository.count_products(db, category_id)
         if products_count > 0:
             raise HTTPException(
-                status_code=400,
+                status_code=status.HTTP_400_BAD_REQUEST,
                 detail=(
                     f"Cannot delete category. It has {products_count} "
                     "products"
                 )
             )
 
-        return await self.repository.soft_delete(db, id=category_id)
+        return await self.repository.delete(db, id=category_id)
 
     async def _validate_category_hierarchy_for_update(
         self,
-        db: AsyncSession,
         existing_category: Categories,
         category_update: CategoryUpdate
     ) -> None:
@@ -216,53 +216,16 @@ class CategoryService:
 
         if parent_id is not None and category_type_id is not None:
             raise HTTPException(
-                status_code=400,
+                status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Child categories must not have a category_type_id"
             )
-
-        # Validate parent exists if being updated
-        if (
-            category_update.parent_id is not None and
-            category_update.parent_id != existing_category.parent_id
-        ):
-            parent_exists = await self.repository.validate_parent_exists(
-                db, category_update.parent_id
-            )
-            if not parent_exists:
-                raise HTTPException(
-                    status_code=400,
-                    detail=(
-                        f"Parent category with id {category_update.parent_id} "
-                        "not found or inactive"
-                    )
-                )
 
         # Prevent self-parenting
         if category_update.parent_id == existing_category.id:
             raise HTTPException(
-                status_code=400,
+                status_code=status.HTTP_400_BAD_REQUEST,
                 detail="A category cannot be its own parent"
             )
-
-        # Validate category type exists if being updated
-        if (
-            category_update.category_type_id is not None and
-            category_update.category_type_id != existing_category.category_type_id
-        ):
-            category_type_exists = (
-                await self.repository.validate_category_type_exists(
-                    db, category_update.category_type_id
-                )
-            )
-            if not category_type_exists:
-                raise HTTPException(
-                    status_code=400,
-                    detail=(
-                        f"Category type with id "
-                        f"{category_update.category_type_id} "
-                        "not found or inactive"
-                    )
-                )
 
 
 # Create instance to be used as dependency

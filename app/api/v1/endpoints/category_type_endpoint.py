@@ -96,7 +96,7 @@ async def get_category_type(
     )
     if not category_type:
         raise HTTPException(
-            status_code=404,
+            status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Category type with id {category_type_id} not found"
         )
     return create_single_item_response(data=category_type)
@@ -135,7 +135,7 @@ async def delete_category_type(
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Soft delete a category type.
+    Delete a category type.
 
     - **category_type_id**: The ID of the category type to delete
 

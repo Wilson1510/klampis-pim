@@ -1,6 +1,7 @@
 from typing import List, Optional, Tuple
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException
+from fastapi import status
 
 from app.repositories.supplier_repository import supplier_repository
 from app.models import Suppliers, Products
@@ -72,7 +73,7 @@ class SupplierService:
         supplier = await self.repository.get(db, id=supplier_id)
         if not supplier:
             raise HTTPException(
-                status_code=404,
+                status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Supplier with id {supplier_id} not found"
             )
 
@@ -92,7 +93,7 @@ class SupplierService:
         )
         if existing_name:
             raise HTTPException(
-                status_code=400,
+                status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Supplier with name '{supplier_create.name}' already exists"
             )
 
@@ -102,7 +103,7 @@ class SupplierService:
         )
         if existing_email:
             raise HTTPException(
-                status_code=400,
+                status_code=status.HTTP_400_BAD_REQUEST,
                 detail=(
                     f"Supplier with email '{supplier_create.email}' already exists"
                 )
@@ -114,7 +115,7 @@ class SupplierService:
         )
         if existing_contact:
             raise HTTPException(
-                status_code=400,
+                status_code=status.HTTP_400_BAD_REQUEST,
                 detail=(
                     f"Supplier with contact '{supplier_create.contact}' "
                     "already exists"
@@ -134,7 +135,7 @@ class SupplierService:
         db_supplier = await self.repository.get(db, id=supplier_id)
         if not db_supplier:
             raise HTTPException(
-                status_code=404,
+                status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Supplier with id {supplier_id} not found"
             )
 
@@ -145,7 +146,7 @@ class SupplierService:
             )
             if existing_name and existing_name.id != supplier_id:
                 raise HTTPException(
-                    status_code=400,
+                    status_code=status.HTTP_400_BAD_REQUEST,
                     detail=(
                         f"Supplier with name '{supplier_update.name}' "
                         "already exists"
@@ -159,7 +160,7 @@ class SupplierService:
             )
             if existing_email and existing_email.id != supplier_id:
                 raise HTTPException(
-                    status_code=400,
+                    status_code=status.HTTP_400_BAD_REQUEST,
                     detail=(
                         f"Supplier with email '{supplier_update.email}' "
                         "already exists"
@@ -176,7 +177,7 @@ class SupplierService:
             )
             if existing_contact and existing_contact.id != supplier_id:
                 raise HTTPException(
-                    status_code=400,
+                    status_code=status.HTTP_400_BAD_REQUEST,
                     detail=(
                         f"Supplier with contact '{supplier_update.contact}' "
                         "already exists"
@@ -190,11 +191,11 @@ class SupplierService:
     async def delete_supplier(
         self, db: AsyncSession, supplier_id: int
     ) -> Suppliers:
-        """Soft delete a supplier after validation."""
+        """Delete a supplier after validation."""
         db_supplier = await self.repository.get(db, id=supplier_id)
         if not db_supplier:
             raise HTTPException(
-                status_code=404,
+                status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Supplier with id {supplier_id} not found"
             )
 
@@ -202,14 +203,14 @@ class SupplierService:
         products_count = await self.repository.count_products(db, supplier_id)
         if products_count > 0:
             raise HTTPException(
-                status_code=400,
+                status_code=status.HTTP_400_BAD_REQUEST,
                 detail=(
                     f"Cannot delete supplier. It has {products_count} "
                     "products"
                 )
             )
 
-        return await self.repository.soft_delete(db, id=supplier_id)
+        return await self.repository.delete(db, id=supplier_id)
 
 
 # Create instance to be used as dependency
