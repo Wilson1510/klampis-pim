@@ -20,7 +20,8 @@ class Imageable:
                 cls.id == foreign(Images.object_id),
                 Images.content_type == cls.__tablename__
             ),
-            overlaps="images"
+            overlaps="images",
+            cascade="all, delete-orphan"
         )
 
     @validates('images')
