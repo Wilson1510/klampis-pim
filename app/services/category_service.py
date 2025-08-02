@@ -153,7 +153,7 @@ class CategoryService:
             category_update.category_type_id is not None
         ):
             await self._validate_category_hierarchy_for_update(
-                db, db_category, category_update
+                db_category, category_update
             )
 
         return await self.repository.update_category(
@@ -197,7 +197,6 @@ class CategoryService:
 
     async def _validate_category_hierarchy_for_update(
         self,
-        db: AsyncSession,
         existing_category: Categories,
         category_update: CategoryUpdate
     ) -> None:
@@ -220,49 +219,12 @@ class CategoryService:
                 detail="Child categories must not have a category_type_id"
             )
 
-        # Validate parent exists if being updated
-        if (
-            category_update.parent_id is not None and
-            category_update.parent_id != existing_category.parent_id
-        ):
-            parent_exists = await self.repository.validate_parent_exists(
-                db, category_update.parent_id
-            )
-            if not parent_exists:
-                raise HTTPException(
-                    status_code=400,
-                    detail=(
-                        f"Parent category with id {category_update.parent_id} "
-                        "not found or inactive"
-                    )
-                )
-
         # Prevent self-parenting
         if category_update.parent_id == existing_category.id:
             raise HTTPException(
                 status_code=400,
                 detail="A category cannot be its own parent"
             )
-
-        # Validate category type exists if being updated
-        if (
-            category_update.category_type_id is not None and
-            category_update.category_type_id != existing_category.category_type_id
-        ):
-            category_type_exists = (
-                await self.repository.validate_category_type_exists(
-                    db, category_update.category_type_id
-                )
-            )
-            if not category_type_exists:
-                raise HTTPException(
-                    status_code=400,
-                    detail=(
-                        f"Category type with id "
-                        f"{category_update.category_type_id} "
-                        "not found or inactive"
-                    )
-                )
 
 
 # Create instance to be used as dependency

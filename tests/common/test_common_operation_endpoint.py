@@ -518,7 +518,7 @@ class TestCreateModel:
             }
         }
 
-    async def test_create_simple_model_with_invalid_parent_id(
+    async def test_create_simple_model_invalid_parent_id(
         self, async_client: AsyncClient
     ):
         """Test creating model with invalid parent id."""
@@ -527,17 +527,16 @@ class TestCreateModel:
             "category_type_id": 999
         }
         response = await async_client.post("/api/v1/categories/", json=category_data)
-        print(response.json()['error'])
-        # assert response.status_code == 404
-        # assert response.json() == {
-        #     "success": False,
-        #     "data": None,
-        #     "error": {
-        #         "code": "HTTP_ERROR_404",
-        #         "message": "Category with id 999 not found",
-        #         "details": None
-        #     }
-        # }
+        assert response.status_code == 404
+        assert response.json() == {
+            "success": False,
+            "data": None,
+            "error": {
+                "code": "HTTP_ERROR_404",
+                "message": "CategoryTypes with id 999 not found",
+                "details": None
+            }
+        }
 
     async def test_create_simple_model_with_images(
         self, async_client: AsyncClient, category_type_factory
@@ -781,6 +780,29 @@ class TestUpdateModel:
                 "updated_by": 1
             },
             "error": None
+        }
+
+    async def test_update_simple_model_invalid_parent_id(
+        self, async_client: AsyncClient, category_factory
+    ):
+        """Test updating model with invalid parent id."""
+        category = await category_factory(name="Electronics")
+        update_data = {
+            "category_type_id": 999
+        }
+        response = await async_client.put(
+            f"/api/v1/categories/{category.id}",
+            json=update_data
+        )
+        assert response.status_code == 404
+        assert response.json() == {
+            "success": False,
+            "data": None,
+            "error": {
+                "code": "HTTP_ERROR_404",
+                "message": "CategoryTypes with id 999 not found",
+                "details": None
+            }
         }
 
     async def test_update_simple_model_with_all_images_fields_provided(

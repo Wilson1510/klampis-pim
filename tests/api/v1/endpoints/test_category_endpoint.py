@@ -436,11 +436,11 @@ class TestUpdateCategory:
             f"/api/v1/categories/{category.id}", json=update_data
         )
 
-        assert response.status_code == 400
+        assert response.status_code == 404
         error = response.json()["error"]
-        assert error["code"] == "HTTP_ERROR_400"
+        assert error["code"] == "HTTP_ERROR_404"
         assert error["message"] == (
-            "Parent category with id 999 not found or inactive"
+            "Categories with id 999 not found"
         )
         assert error["details"] is None
 
@@ -481,11 +481,11 @@ class TestUpdateCategory:
             f"/api/v1/categories/{category.id}", json=update_data
         )
 
-        assert response.status_code == 400
+        assert response.status_code == 404
         error = response.json()["error"]
-        assert error["code"] == "HTTP_ERROR_400"
+        assert error["code"] == "HTTP_ERROR_404"
         assert error["message"] == (
-            "Category type with id 999 not found or inactive"
+            "CategoryTypes with id 999 not found"
         )
         assert error["details"] is None
 
