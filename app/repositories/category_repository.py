@@ -2,8 +2,9 @@ from typing import List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, func
 from sqlalchemy.orm import selectinload
+from fastapi import HTTPException, status
 
-from app.models import Categories, Products
+from app.models import Categories, Images, Products, CategoryTypes
 from app.schemas.category_schema import CategoryCreate, CategoryUpdate
 from app.repositories.base import CRUDBase
 
@@ -130,21 +131,175 @@ class CategoryRepository(
         self, db: AsyncSession, obj_in: CategoryCreate
     ) -> Categories:
         """Create a new category."""
-        data = await super().create(db, obj_in=obj_in)
-        await self.load_children_recursively(db, data)
-        await db.refresh(data, ['images'])
-        await self.load_parent_category_type_recursively(db, data)
-        return data
+        try:
+            category_data = obj_in.model_dump(
+                exclude={'images'}
+            )
+            if category_data['parent_id']:
+                await self.validate_foreign_key(
+                    db, Categories, category_data['parent_id']
+                )
+            if category_data['category_type_id']:
+                await self.validate_foreign_key(
+                    db, CategoryTypes, category_data['category_type_id']
+                )
+            db_category = Categories(**category_data)
+            db.add(db_category)
+            await db.commit()
+            await db.refresh(db_category)
+
+            for image_data in obj_in.images:
+                image = Images(
+                    object_id=db_category.id,
+                    content_type="categories",
+                    **image_data.model_dump()
+                )
+                db.add(image)
+
+            await db.commit()
+            await self.load_children_recursively(db, db_category)
+            await db.refresh(db_category, ['images'])
+            await self.load_parent_category_type_recursively(db, db_category)
+            return db_category
+        except HTTPException:
+            await db.rollback()
+            raise
+        except (ValueError, TypeError) as e:
+            await db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=str(e)
+            )
+        except Exception as e:
+            await db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to create category: {str(e)}"
+            )
 
     async def update_category(
         self, db: AsyncSession, db_obj: Categories, obj_in: CategoryUpdate
     ) -> Categories:
         """Update an existing category."""
-        data = await super().update(db, db_obj=db_obj, obj_in=obj_in)
-        await self.load_children_recursively(db, data)
-        await db.refresh(data, ['images'])
-        await self.load_parent_category_type_recursively(db, data)
-        return data
+        obj_data = db_obj.__dict__
+        try:
+            update_data = obj_in.model_dump(
+                exclude_unset=True,
+                exclude={'images_to_create', 'images_to_update', 'images_to_delete'}
+            )
+
+            if update_data['parent_id']:
+                await self.validate_foreign_key(
+                    db, Categories, update_data['parent_id']
+                )
+
+            if update_data['category_type_id']:
+                await self.validate_foreign_key(
+                    db, CategoryTypes, update_data['category_type_id']
+                )
+
+            if update_data:
+                for field in obj_data:
+                    if field in update_data:
+                        setattr(db_obj, field, update_data[field])
+                db.add(db_obj)
+                await db.commit()
+                await db.refresh(db_obj)
+
+            if obj_in.images_to_create:
+                for image_data in obj_in.images_to_create:
+                    image = Images(
+                        object_id=db_obj.id,
+                        content_type="categories",
+                        **image_data.model_dump()
+                    )
+                    db.add(image)
+
+            if obj_in.images_to_update:
+                for image_data in obj_in.images_to_update:
+                    image = await db.get(Images, image_data.id)
+                    if (
+                        image and
+                        image.object_id == db_obj.id and
+                        image.content_type == "categories"
+                    ):
+                        update_data = image_data.model_dump(
+                            exclude_unset=True, exclude={'id'}
+                        )
+                        for field, value in update_data.items():
+                            setattr(image, field, value)
+                        db.add(image)
+                    elif not image:
+                        raise HTTPException(
+                            status_code=status.HTTP_404_NOT_FOUND,
+                            detail=f"Image with ID {image_data.id} not found"
+                        )
+                    elif image.object_id != db_obj.id:
+                        raise HTTPException(
+                            status_code=status.HTTP_400_BAD_REQUEST,
+                            detail=(
+                                f"Image with ID {image_data.id} does not belong to "
+                                f"category with ID {db_obj.id}"
+                            )
+                        )
+                    elif image.content_type != "categories":
+                        raise HTTPException(
+                            status_code=status.HTTP_400_BAD_REQUEST,
+                            detail=(
+                                f"Image with ID {image_data.id} is not a category image"
+                            )
+                        )
+
+            if obj_in.images_to_delete:
+                for image_id in obj_in.images_to_delete:
+                    image = await db.get(Images, image_id)
+                    if (
+                        image and
+                        image.object_id == db_obj.id and
+                        image.content_type == "categories"
+                    ):
+                        await db.delete(image)
+                    elif not image:
+                        raise HTTPException(
+                            status_code=status.HTTP_404_NOT_FOUND,
+                            detail=f"Image with ID {image_id} not found"
+                        )
+                    elif image.object_id != db_obj.id:
+                        raise HTTPException(
+                            status_code=status.HTTP_400_BAD_REQUEST,
+                            detail=(
+                                f"Image with ID {image_id} does not belong to "
+                                f"category with ID {db_obj.id}"
+                            )
+                        )
+                    elif image.content_type != "categories":
+                        raise HTTPException(
+                            status_code=status.HTTP_400_BAD_REQUEST,
+                            detail=(
+                                f"Image with ID {image_id} is not a category image"
+                            )
+                        )
+
+            await db.commit()
+            await self.load_children_recursively(db, db_obj)
+            await db.refresh(db_obj, ['images'])
+            await self.load_parent_category_type_recursively(db, db_obj)
+            return db_obj
+        except HTTPException:
+            await db.rollback()
+            raise
+        except (ValueError, TypeError) as e:
+            await db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=str(e)
+            )
+        except Exception as e:
+            await db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to update category: {str(e)}"
+            )
 
     async def count_children(
         self, db: AsyncSession, parent_id: int
@@ -189,8 +344,6 @@ class CategoryRepository(
         self, db: AsyncSession, category_type_id: int
     ) -> bool:
         """Check if category type exists and is active."""
-        from app.models.category_type_model import CategoryTypes
-
         query = select(func.count(CategoryTypes.id)).where(
             and_(
                 CategoryTypes.id == category_type_id,
