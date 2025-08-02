@@ -1,7 +1,7 @@
 from typing import Any, Dict, Generic, List, Type, TypeVar, Union
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update
+from sqlalchemy import select, update, and_
 from app.core.base import Base
 from fastapi import HTTPException, status
 
@@ -145,3 +145,25 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         query = select(self.model).where(field_attr == field_value)
         result = await db.execute(query)
         return result.scalar_one_or_none()
+
+    async def validate_foreign_key(
+        self,
+        db: AsyncSession,
+        foreign_model: ModelType,
+        foreign_key_value: int
+    ):
+        # Use generic field lookup
+        query = select(foreign_model).where(and_(
+                foreign_model.id == foreign_key_value,
+                foreign_model.is_active.is_(True)
+            ))
+        result = await db.execute(query)
+        foreign_obj = result.scalar_one_or_none()
+
+        if not foreign_obj:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=(
+                    f"{foreign_model.__name__} with id {foreign_key_value} not found"
+                )
+            )

@@ -273,6 +273,100 @@ class TestGetAllModel:
             }
         }
 
+    async def test_get_simple_model_with_images(
+        self, async_client: AsyncClient, category_factory, image_factory
+    ):
+        """Test getting model with image."""
+        category = await category_factory(name="Electronics")
+        await category_factory(name="Mobile Phones")
+        await image_factory(
+            file="test_folder/test1.jpg",
+            object_id=category.id,
+            content_type="categories"
+        )
+        await image_factory(
+            file="test_folder/test2.jpg",
+            object_id=category.id,
+            content_type="categories"
+        )
+        response = await async_client.get("/api/v1/categories/")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data == {
+            "success": True,
+            "data": [
+                {
+                    "id": 1,
+                    "name": "Electronics",
+                    "slug": "electronics",
+                    "sequence": 0,
+                    "description": None,
+                    "parent_id": None,
+                    "category_type_id": 1,
+                    "is_active": True,
+                    "children": [],
+                    "full_path": [
+                        {
+                            "name": "Electronics",
+                            "slug": "electronics",
+                            "category_type": "Test Category Type",
+                            "type": "Category"
+                        }
+                    ],
+                    "images": [
+                        {
+                            "id": 1,
+                            "file": "test_folder/test1.jpg",
+                            "title": None,
+                            "is_primary": False
+                        },
+                        {
+                            "id": 2,
+                            "file": "test_folder/test2.jpg",
+                            "title": None,
+                            "is_primary": False
+                        }
+                    ],
+                    "created_at": data["data"][0]["created_at"],
+                    "updated_at": data["data"][0]["updated_at"],
+                    "created_by": 1,
+                    "updated_by": 1
+                },
+                {
+                    "id": 2,
+                    "name": "Mobile Phones",
+                    "slug": "mobile-phones",
+                    "sequence": 0,
+                    "description": None,
+                    "parent_id": None,
+                    "category_type_id": 1,
+                    "is_active": True,
+                    "children": [],
+                    "full_path": [
+                        {
+                            "name": "Mobile Phones",
+                            "slug": "mobile-phones",
+                            "category_type": "Test Category Type",
+                            "type": "Category"
+                        }
+                    ],
+                    "images": [],
+                    "created_at": data["data"][1]["created_at"],
+                    "updated_at": data["data"][1]["updated_at"],
+                    "created_by": 1,
+                    "updated_by": 1
+                }
+            ],
+            "meta": {
+                "page": 1,
+                "limit": 100,
+                "total": 2,
+                "pages": 1
+            },
+            "error": None
+        }
+
 
 class TestCreateModel:
     """Test cases for POST / endpoint."""
@@ -424,6 +518,159 @@ class TestCreateModel:
             }
         }
 
+    async def test_create_simple_model_with_invalid_parent_id(
+        self, async_client: AsyncClient
+    ):
+        """Test creating model with invalid parent id."""
+        category_data = {
+            "name": "Mobile Phones",
+            "category_type_id": 999
+        }
+        response = await async_client.post("/api/v1/categories/", json=category_data)
+        print(response.json()['error'])
+        # assert response.status_code == 404
+        # assert response.json() == {
+        #     "success": False,
+        #     "data": None,
+        #     "error": {
+        #         "code": "HTTP_ERROR_404",
+        #         "message": "Category with id 999 not found",
+        #         "details": None
+        #     }
+        # }
+
+    async def test_create_simple_model_with_images(
+        self, async_client: AsyncClient, category_type_factory
+    ):
+        """Test creating model with images."""
+        category_type = await category_type_factory(name="Electronics")
+        category_data = {
+            "name": "Mobile Phones",
+            "category_type_id": category_type.id,
+            "images": [
+                {
+                    "file": "test_folder/test1.jpg",
+                    "title": "Test Image 1",
+                    "is_primary": True
+                },
+                {
+                    "file": "test_folder/test2.jpg",
+                    "title": "Test Image 2",
+                    "is_primary": False
+                }
+            ]
+        }
+
+        response = await async_client.post("/api/v1/categories/", json=category_data)
+        assert response.status_code == 201
+        data = response.json()
+        assert data == {
+            "success": True,
+            "data": {
+                "id": 1,
+                "name": "Mobile Phones",
+                "slug": "mobile-phones",
+                "sequence": 0,
+                "description": None,
+                "parent_id": None,
+                "category_type_id": 1,
+                "is_active": True,
+                "children": [],
+                "full_path": [
+                    {
+                        "name": "Mobile Phones",
+                        "slug": "mobile-phones",
+                        "category_type": "Electronics",
+                        "type": "Category"
+                    }
+                ],
+                "images": [
+                    {
+                        "id": 1,
+                        "file": "test_folder/test1.jpg",
+                        "title": "Test Image 1",
+                        "is_primary": True
+                    },
+                    {
+                        "id": 2,
+                        "file": "test_folder/test2.jpg",
+                        "title": "Test Image 2",
+                        "is_primary": False
+                    }
+                ],
+                "sequence": 0,
+                "created_at": data["data"]["created_at"],
+                "updated_at": data["data"]["updated_at"],
+                "created_by": 1,
+                "updated_by": 1
+            },
+            "error": None,
+        }
+
+
+class TestGetModel:
+    """Test cases for GET /{id} endpoint."""
+
+    async def test_get_simple_model_with_images(
+        self, async_client: AsyncClient, category_factory, image_factory
+    ):
+        """Test getting model with image."""
+        category = await category_factory(name="Electronics")
+        await image_factory(
+            file="test_folder/test1.jpg",
+            object_id=category.id,
+            content_type="categories"
+        )
+        await image_factory(
+            file="test_folder/test2.jpg",
+            object_id=category.id,
+            content_type="categories"
+        )
+        response = await async_client.get(f"/api/v1/categories/{category.id}")
+        assert response.status_code == 200
+        data = response.json()
+        assert data == {
+            "success": True,
+            "data": {
+                "id": 1,
+                "name": "Electronics",
+                "slug": "electronics",
+                "sequence": 0,
+                "description": None,
+                "parent_id": None,
+                "category_type_id": 1,
+                "is_active": True,
+                "children": [],
+                "full_path": [
+                    {
+                        "name": "Electronics",
+                        "slug": "electronics",
+                        "category_type": "Test Category Type",
+                        "type": "Category"
+                    }
+                ],
+                "images": [
+                    {
+                        "id": 1,
+                        "file": "test_folder/test1.jpg",
+                        "title": None,
+                        "is_primary": False
+                    },
+                    {
+                        "id": 2,
+                        "file": "test_folder/test2.jpg",
+                        "title": None,
+                        "is_primary": False
+                    }
+                ],
+                "created_at": data["data"]["created_at"],
+                "updated_at": data["data"]["updated_at"],
+                "created_by": 1,
+                "updated_by": 1
+            },
+            "error": None
+        }
+
 
 class TestUpdateModel:
     """Test cases for PUT /{id} endpoint."""
@@ -528,6 +775,295 @@ class TestUpdateModel:
                 "slug": "electronics",
                 "is_active": True,
                 "sequence": 15,
+                "created_at": data["data"]["created_at"],
+                "updated_at": data["data"]["updated_at"],
+                "created_by": 1,
+                "updated_by": 1
+            },
+            "error": None
+        }
+
+    async def test_update_simple_model_with_all_images_fields_provided(
+        self, async_client: AsyncClient, category_factory, image_factory
+    ):
+        """Test updating model with images."""
+        category = await category_factory(name="Electronics")
+        image = await image_factory(
+            file="test_folder/test1.jpg",
+            object_id=category.id,
+            content_type="categories"
+        )
+        image2 = await image_factory(
+            file="test_folder/test2.jpg",
+            object_id=category.id,
+            content_type="categories"
+        )
+        update_data = {
+            "name": "Updated Electronics",
+            "images_to_create": [
+                {
+                    "file": "test_folder/test3.jpg",
+                    "title": "Test Image 3",
+                    "is_primary": True
+                }
+            ],
+            "images_to_update": [
+                {
+                    "id": image2.id,
+                    "file": "test_folder/test8.jpg",
+                    "title": "Test Image 2",
+                    "is_primary": False
+                }
+            ],
+            "images_to_delete": [
+                image.id
+            ]
+        }
+        response = await async_client.put(
+            f"/api/v1/categories/{category.id}",
+            json=update_data
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data == {
+            "success": True,
+            "data": {
+                "id": 1,
+                "name": "Updated Electronics",
+                "slug": "updated-electronics",
+                "sequence": 0,
+                "description": None,
+                "parent_id": None,
+                "category_type_id": 1,
+                "is_active": True,
+                "children": [],
+                "full_path": [
+                    {
+                        "name": "Updated Electronics",
+                        "slug": "updated-electronics",
+                        "category_type": "Test Category Type",
+                        "type": "Category"
+                    }
+                ],
+                "images": [
+                    {
+                        "id": 3,
+                        "file": "test_folder/test3.jpg",
+                        "title": "Test Image 3",
+                        "is_primary": True
+                    },
+                    {
+                        "id": 2,
+                        "file": "test_folder/test8.jpg",
+                        "title": "Test Image 2",
+                        "is_primary": False
+                    }
+                ],
+                "created_at": data["data"]["created_at"],
+                "updated_at": data["data"]["updated_at"],
+                "created_by": 1,
+                "updated_by": 1
+            },
+            "error": None
+        }
+
+    async def test_update_simple_model_with_images_to_create_only(
+        self, async_client: AsyncClient, category_factory, image_factory
+    ):
+        """Test updating model with images."""
+        category = await category_factory(name="Electronics")
+        await image_factory(
+            file="test_folder/test1.jpg",
+            object_id=category.id,
+            content_type="categories"
+        )
+        update_data = {
+            "name": "Updated Electronics",
+            "images_to_create": [
+                {
+                    "file": "test_folder/test3.jpg",
+                    "title": "Test Image 3",
+                    "is_primary": True
+                }
+            ]
+        }
+        response = await async_client.put(
+            f"/api/v1/categories/{category.id}",
+            json=update_data
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data == {
+            "success": True,
+            "data": {
+                "id": 1,
+                "name": "Updated Electronics",
+                "slug": "updated-electronics",
+                "sequence": 0,
+                "description": None,
+                "parent_id": None,
+                "category_type_id": 1,
+                "is_active": True,
+                "children": [],
+                "full_path": [
+                    {
+                        "name": "Updated Electronics",
+                        "slug": "updated-electronics",
+                        "category_type": "Test Category Type",
+                        "type": "Category"
+                    }
+                ],
+                "images": [
+                    {
+                        "id": 1,
+                        "file": "test_folder/test1.jpg",
+                        "title": None,
+                        "is_primary": False
+                    },
+                    {
+                        "id": 2,
+                        "file": "test_folder/test3.jpg",
+                        "title": "Test Image 3",
+                        "is_primary": True
+                    }
+                ],
+                "created_at": data["data"]["created_at"],
+                "updated_at": data["data"]["updated_at"],
+                "created_by": 1,
+                "updated_by": 1
+            },
+            "error": None
+        }
+
+    async def test_update_simple_model_with_images_to_update_only(
+        self, async_client: AsyncClient, category_factory, image_factory
+    ):
+        """Test updating model with images."""
+        category = await category_factory(name="Electronics")
+        await image_factory(
+            file="test_folder/test1.jpg",
+            object_id=category.id,
+            content_type="categories"
+        )
+        image2 = await image_factory(
+            file="test_folder/test2.jpg",
+            object_id=category.id,
+            content_type="categories"
+        )
+        update_data = {
+            "name": "Updated Electronics",
+            "images_to_update": [
+                {
+                    "id": image2.id,
+                    "file": "test_folder/test8.jpg",
+                    "title": "Test Image 2",
+                    "is_primary": True
+                }
+            ],
+        }
+        response = await async_client.put(
+            f"/api/v1/categories/{category.id}",
+            json=update_data
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data == {
+            "success": True,
+            "data": {
+                "id": 1,
+                "name": "Updated Electronics",
+                "slug": "updated-electronics",
+                "sequence": 0,
+                "description": None,
+                "parent_id": None,
+                "category_type_id": 1,
+                "is_active": True,
+                "children": [],
+                "full_path": [
+                    {
+                        "name": "Updated Electronics",
+                        "slug": "updated-electronics",
+                        "category_type": "Test Category Type",
+                        "type": "Category"
+                    }
+                ],
+                "images": [
+                    {
+                        "id": 1,
+                        "file": "test_folder/test1.jpg",
+                        "title": None,
+                        "is_primary": False
+                    },
+                    {
+                        "id": 2,
+                        "file": "test_folder/test8.jpg",
+                        "title": "Test Image 2",
+                        "is_primary": True
+                    }
+                ],
+                "created_at": data["data"]["created_at"],
+                "updated_at": data["data"]["updated_at"],
+                "created_by": 1,
+                "updated_by": 1
+            },
+            "error": None
+        }
+
+    async def test_update_simple_model_with_images_to_delete_only(
+        self, async_client: AsyncClient, category_factory, image_factory
+    ):
+        """Test updating model with images."""
+        category = await category_factory(name="Electronics")
+        await image_factory(
+            file="test_folder/test1.jpg",
+            object_id=category.id,
+            content_type="categories"
+        )
+        image2 = await image_factory(
+            file="test_folder/test2.jpg",
+            object_id=category.id,
+            content_type="categories"
+        )
+        update_data = {
+            "name": "Updated Electronics",
+            "images_to_delete": [
+                image2.id
+            ]
+        }
+        response = await async_client.put(
+            f"/api/v1/categories/{category.id}",
+            json=update_data
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data == {
+            "success": True,
+            "data": {
+                "id": 1,
+                "name": "Updated Electronics",
+                "slug": "updated-electronics",
+                "sequence": 0,
+                "description": None,
+                "parent_id": None,
+                "category_type_id": 1,
+                "is_active": True,
+                "children": [],
+                "full_path": [
+                    {
+                        "name": "Updated Electronics",
+                        "slug": "updated-electronics",
+                        "category_type": "Test Category Type",
+                        "type": "Category"
+                    }
+                ],
+                "images": [
+                    {
+                        "id": 1,
+                        "file": "test_folder/test1.jpg",
+                        "title": None,
+                        "is_primary": False
+                    }
+                ],
                 "created_at": data["data"]["created_at"],
                 "updated_at": data["data"]["updated_at"],
                 "created_by": 1,

@@ -13,14 +13,6 @@ class SkuService:
     def __init__(self):
         self.repository = sku_repository
 
-    async def get_all_skus(
-        self, db: AsyncSession, skip: int = 0, limit: int = 100
-    ) -> Tuple[List[Skus], int]:
-        """Get all SKUs with pagination and total count."""
-        data = await self.repository.get_multi(db, skip=skip, limit=limit)
-        total = len(data)
-        return data, total
-
     async def get_skus_with_filter(
         self,
         db: AsyncSession,
@@ -38,19 +30,23 @@ class SkuService:
             name is None and slug is None and sku_number is None
             and product_id is None and is_active is None
         ):
-            return await self.get_all_skus(db, skip=skip, limit=limit)
+            data = await self.repository.get_multi_with_relationships(
+                db, skip=skip, limit=limit
+            )
+            total = len(data)
 
-        data = await self.repository.get_multi_with_filter(
-            db,
-            skip=skip,
-            limit=limit,
-            name=name,
-            slug=slug,
-            sku_number=sku_number,
-            product_id=product_id,
-            is_active=is_active
-        )
-        total = len(data)
+        else:
+            data = await self.repository.get_multi_with_filter(
+                db,
+                skip=skip,
+                limit=limit,
+                name=name,
+                slug=slug,
+                sku_number=sku_number,
+                product_id=product_id,
+                is_active=is_active
+            )
+            total = len(data)
         return data, total
 
     async def get_sku_by_id(
@@ -76,19 +72,45 @@ class SkuService:
             attribute_ids = [
                 av.attribute_id for av in sku_create.attribute_values
             ]
-            attributes = await self.repository.validate_attributes_exist(
+            existing_attributes = await self.repository.get_existing_attributes(
                 db, attribute_ids
             )
 
+            existing_attribute_ids = {attr.id for attr in existing_attributes}
+
+            missing_attribute_ids = set(attribute_ids) - existing_attribute_ids
+            if missing_attribute_ids:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Attributes with IDs {missing_attribute_ids} not found"
+                )
+
             # Create attribute lookup for validation
-            attr_lookup = {attr.id: attr for attr in attributes}
+            attr_lookup = {attr.id: attr for attr in existing_attributes}
 
             # Validate attribute values against their data types
             await self._validate_attribute_values(
                 sku_create.attribute_values, attr_lookup
             )
 
-        return await self.repository.create_sku_with_relationships(db, sku_create)
+        # Validate pricelists exist
+        if sku_create.price_details:
+            pricelist_ids = [
+                pd.pricelist_id for pd in sku_create.price_details
+            ]
+            existing_pricelists = await self.repository.get_existing_pricelists(
+                db, pricelist_ids
+            )
+
+            existing_pricelist_ids = {pl.id for pl in existing_pricelists}
+            missing_pricelist_ids = set(pricelist_ids) - existing_pricelist_ids
+            if missing_pricelist_ids:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Pricelists with IDs {missing_pricelist_ids} not found"
+                )
+
+        return await self.repository.create_sku(db, obj_in=sku_create)
 
     async def update_sku(
         self,
@@ -118,24 +140,55 @@ class SkuService:
                 )
 
         # Validate attributes if being updated
-        if sku_update.attribute_values is not None:
-            if sku_update.attribute_values:  # Not empty list
-                attribute_ids = [
-                    av.attribute_id for av in sku_update.attribute_values
-                ]
-                attributes = await self.repository.validate_attributes_exist(
-                    db, attribute_ids
+        if sku_update.attribute_values:
+            attribute_ids = [
+                av.attribute_id for av in sku_update.attribute_values
+            ]
+            existing_attribute_values = await self.repository.\
+                get_existing_attribute_values(
+                    db, sku_id=sku_id, attribute_ids=attribute_ids
                 )
 
-                # Create attribute lookup for validation
-                attr_lookup = {attr.id: attr for attr in attributes}
-
-                # Validate attribute values against their data types
-                await self._validate_attribute_values(
-                    sku_update.attribute_values, attr_lookup
+            # aiesav = atribute ids of existing sku attribute values
+            aiesav = {av.attribute_id for av in existing_attribute_values}
+            maiesav = set(attribute_ids) - aiesav
+            if maiesav:
+                raise HTTPException(
+                    status_code=404,
+                    detail=(
+                        f"Attribute values with sku id {sku_id} and attribute "
+                        f"ids {maiesav} not found"
+                    )
                 )
 
-        return await self.repository.update_sku_with_relationships(
+            # Create attribute lookup for validation
+            existing_attributes = await self.repository.get_existing_attributes(
+                db, attribute_ids
+            )
+            attr_lookup = {attr.id: attr for attr in existing_attributes}
+
+            # Validate attribute values against their data types
+            await self._validate_attribute_values(
+                sku_update.attribute_values, attr_lookup
+            )
+
+        if sku_update.price_details_to_create:
+            pricelist_ids = [
+                pd.pricelist_id for pd in sku_update.price_details_to_create
+            ]
+            existing_pricelists = await self.repository.get_existing_pricelists(
+                db, pricelist_ids
+            )
+
+            existing_pricelist_ids = {pl.id for pl in existing_pricelists}
+            missing_pricelist_ids = set(pricelist_ids) - existing_pricelist_ids
+            if missing_pricelist_ids:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Pricelists with IDs {missing_pricelist_ids} not found"
+                )
+
+        return await self.repository.update_sku(
             db, db_sku, sku_update
         )
 
@@ -160,8 +213,6 @@ class SkuService:
         """Validate attribute values against their data types (simple validation)."""
         for attr_value in attribute_values:
             attribute = attr_lookup.get(attr_value.attribute_id)
-            if not attribute:
-                continue  # Already validated in validate_attributes_exist
 
             # Simple data type validation
             is_valid = Attributes.validate_value_for_data_type(

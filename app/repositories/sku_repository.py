@@ -4,9 +4,12 @@ from sqlalchemy import select, and_
 from sqlalchemy.orm import selectinload
 from fastapi import HTTPException, status
 
-from app.models import Skus, Products, Attributes, PriceDetails, SkuAttributeValue
+from app.models import (
+    Skus, Products, Attributes, PriceDetails, SkuAttributeValue, Pricelists
+)
 from app.schemas.sku_schema import SkuCreate, SkuUpdate
 from app.repositories.base import CRUDBase
+from app.repositories.category_repository import category_repository
 
 
 class SkuRepository(CRUDBase[Skus, SkuCreate, SkuUpdate]):
@@ -58,7 +61,33 @@ class SkuRepository(CRUDBase[Skus, SkuCreate, SkuUpdate]):
 
         query = query.offset(skip).limit(limit)
         result = await db.execute(query)
-        return result.scalars().all()
+        data = result.scalars().all()
+        for sku in data:
+            await category_repository.load_parent_category_type_recursively(
+                db, sku.product.category
+            )
+        return data
+
+    async def get_multi_with_relationships(
+        self, db: AsyncSession, skip: int = 0, limit: int = 100
+    ) -> List[Skus]:
+        """Get all SKUs with relationships loaded."""
+        query = select(self.model).options(
+            selectinload(self.model.product).selectinload(Products.category),
+            selectinload(self.model.price_details).selectinload(
+                PriceDetails.pricelist
+            ),
+            selectinload(self.model.sku_attribute_values).selectinload(
+                SkuAttributeValue.attribute
+            )
+        ).offset(skip).limit(limit)
+        result = await db.execute(query)
+        data = result.scalars().all()
+        for sku in data:
+            await category_repository.load_parent_category_type_recursively(
+                db, sku.product.category
+            )
+        return data
 
     async def get_with_relationships(
         self, db: AsyncSession, sku_id: int
@@ -74,50 +103,70 @@ class SkuRepository(CRUDBase[Skus, SkuCreate, SkuUpdate]):
             )
         ).where(self.model.id == sku_id)
         result = await db.execute(query)
-        return result.scalar_one_or_none()
+        sku = result.scalar_one_or_none()
 
-    async def validate_attributes_exist(
+        if sku:
+            await category_repository.load_parent_category_type_recursively(
+                db, sku.product.category
+            )
+        return sku
+
+    async def get_existing_attributes(
         self, db: AsyncSession, attribute_ids: List[int]
     ) -> List[Attributes]:
         """Validate that all attributes exist and return them."""
-        result = await db.execute(
-            select(Attributes)
-            .where(and_(
-                Attributes.id.in_(attribute_ids),
-                Attributes.is_active is True
-            ))
-        )
+        query = select(Attributes).where(and_(
+            Attributes.id.in_(attribute_ids),
+            Attributes.is_active.is_(True)
+        ))
+        result = await db.execute(query)
         attributes = result.scalars().all()
-
-        found_ids = {attr.id for attr in attributes}
-        missing_ids = set(attribute_ids) - found_ids
-
-        if missing_ids:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=(
-                    f"Attributes with IDs {list(missing_ids)} "
-                    "not found or inactive"
-                )
-            )
-
         return attributes
 
-    async def create_sku_with_relationships(
-        self, db: AsyncSession, sku_create: SkuCreate
+    async def get_existing_attribute_values(
+        self, db: AsyncSession, sku_id: int, attribute_ids: List[int]
+    ) -> List[SkuAttributeValue]:
+        """Validate that all attribute values exist and return them."""
+        query = select(SkuAttributeValue).where(and_(
+            SkuAttributeValue.sku_id == sku_id,
+            SkuAttributeValue.attribute_id.in_(attribute_ids),
+        ))
+        result = await db.execute(query)
+        attribute_values = result.scalars().all()
+        return attribute_values
+
+    async def get_existing_pricelists(
+        self, db: AsyncSession, pricelist_ids: List[int]
+    ) -> List[Pricelists]:
+        """Validate that all pricelists exist and return them."""
+        query = select(Pricelists).where(and_(
+            Pricelists.id.in_(pricelist_ids),
+            Pricelists.is_active.is_(True)
+        ))
+        result = await db.execute(query)
+        pricelists = result.scalars().all()
+        return pricelists
+
+    async def create_sku(
+        self, db: AsyncSession, obj_in: SkuCreate
     ) -> Skus:
         """Create SKU with price details and attribute values."""
         try:
             # Create the main SKU object
-            sku_data = sku_create.model_dump(
+            sku_data = obj_in.model_dump(
                 exclude={'price_details', 'attribute_values'}
             )
-            db_sku = self.model(**sku_data)
+            if sku_data['product_id']:
+                await self.validate_foreign_key(
+                    db, Products, sku_data['product_id']
+                )
+            db_sku = Skus(**sku_data)
             db.add(db_sku)
-            await db.flush()  # Get the ID without committing
+            await db.commit()
+            await db.refresh(db_sku)
 
             # Create price details
-            for price_detail_data in sku_create.price_details:
+            for price_detail_data in obj_in.price_details:
                 price_detail = PriceDetails(
                     sku_id=db_sku.id,
                     **price_detail_data.model_dump()
@@ -125,7 +174,7 @@ class SkuRepository(CRUDBase[Skus, SkuCreate, SkuUpdate]):
                 db.add(price_detail)
 
             # Create attribute values
-            for attr_value_data in sku_create.attribute_values:
+            for attr_value_data in obj_in.attribute_values:
                 attr_value = SkuAttributeValue(
                     sku_id=db_sku.id,
                     **attr_value_data.model_dump()
@@ -133,102 +182,196 @@ class SkuRepository(CRUDBase[Skus, SkuCreate, SkuUpdate]):
                 db.add(attr_value)
 
             await db.commit()
-            await db.refresh(db_sku)
             return await self.get_with_relationships(db, db_sku.id)
 
-        except Exception as e:
+        except HTTPException:
+            # Re-raise HTTPException as-is (business logic errors)
+            await db.rollback()
+            raise
+        except (ValueError, TypeError) as e:
             await db.rollback()
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail=f"Failed to create SKU: {str(e)}"
+                detail=str(e)
+            )
+        except Exception as e:
+            # Handle unexpected database/system errors
+            await db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to create price details or attribute values: {str(e)}"
             )
 
-    async def update_sku_with_relationships(
-        self, db: AsyncSession, db_sku: Skus, sku_update: SkuUpdate
+    async def update_sku(
+        self, db: AsyncSession, db_obj: Skus, obj_in: SkuUpdate
     ) -> Skus:
         """Update SKU with price details and attribute values."""
+        obj_data = db_obj.__dict__
+        # Update basic SKU fields
+        update_data = obj_in.model_dump(
+            exclude_unset=True,
+            exclude={
+                'price_details_to_create',
+                'price_details_to_update',
+                'price_details_to_delete',
+                'attribute_values'
+            }
+        )
+
         try:
-            # Update basic SKU fields
-            update_data = sku_update.model_dump(
-                exclude_unset=True,
-                exclude={
-                    'price_details_to_create',
-                    'price_details_to_update',
-                    'price_details_to_delete',
-                    'attribute_values'
-                }
-            )
-
-            for field, value in update_data.items():
-                setattr(db_sku, field, value)
-
-            # Handle price details updates
-            if sku_update.price_details_to_delete:
-                await db.execute(
-                    select(PriceDetails).where(
-                        and_(
-                            PriceDetails.id.in_(
-                                sku_update.price_details_to_delete
-                            ),
-                            PriceDetails.sku_id == db_sku.id
-                        )
-                    )
+            if update_data['product_id']:
+                await self.validate_foreign_key(
+                    db, Products, update_data['product_id']
                 )
-                # Delete price details
-                for price_detail_id in sku_update.price_details_to_delete:
-                    price_detail = await db.get(PriceDetails, price_detail_id)
-                    if price_detail and price_detail.sku_id == db_sku.id:
-                        await db.delete(price_detail)
+            if update_data:
+                for field in obj_data:
+                    if field in update_data:
+                        setattr(db_obj, field, update_data[field])
+                db.add(db_obj)
+                await db.commit()
+                await db.refresh(db_obj)
+            # Handle price details updates
+            if obj_in.price_details_to_delete:
+                # Validate that SKU will still have active price details after deletion
+                await self._validate_price_details_deletion(
+                    db, db_obj.id, obj_in.price_details_to_delete
+                )
 
-            if sku_update.price_details_to_create:
-                for price_detail_data in sku_update.price_details_to_create:
-                    price_detail = PriceDetails(
-                        sku_id=db_sku.id,
+                # Delete price details
+                for price_detail_id in obj_in.price_details_to_delete:
+                    price_detail = await db.get(PriceDetails, price_detail_id)
+                    if price_detail and price_detail.sku_id == db_obj.id:
+                        # price_detail.is_active = False
+                        # db.add(price_detail)
+                        await db.delete(price_detail)
+                    elif not price_detail:
+                        raise HTTPException(
+                            status_code=status.HTTP_404_NOT_FOUND,
+                            detail=(
+                                f"Price detail with ID {price_detail_id} not found"
+                            )
+                        )
+                    elif price_detail.sku_id != db_obj.id:
+                        raise HTTPException(
+                            status_code=status.HTTP_400_BAD_REQUEST,
+                            detail=(
+                                f"Price detail with ID {price_detail_id} does not "
+                                f"belong to SKU {db_obj.id}"
+                            )
+                        )
+
+            if obj_in.price_details_to_create:
+                for price_detail_data in obj_in.price_details_to_create:
+                    price_detail_to_create = PriceDetails(
+                        sku_id=db_obj.id,
                         **price_detail_data.model_dump()
                     )
-                    db.add(price_detail)
+                    db.add(price_detail_to_create)
 
-            if sku_update.price_details_to_update:
-                for price_detail_update in sku_update.price_details_to_update:
+            if obj_in.price_details_to_update:
+                for price_detail_update in obj_in.price_details_to_update:
                     price_detail = await db.get(
                         PriceDetails, price_detail_update.id
                     )
-                    if price_detail and price_detail.sku_id == db_sku.id:
+                    if price_detail and price_detail.sku_id == db_obj.id:
                         update_price_data = price_detail_update.model_dump(
                             exclude_unset=True, exclude={'id'}
                         )
                         for field, value in update_price_data.items():
                             setattr(price_detail, field, value)
-
+                        db.add(price_detail)
+                    elif not price_detail:
+                        raise HTTPException(
+                            status_code=status.HTTP_404_NOT_FOUND,
+                            detail=(
+                                f"Price detail with ID {price_detail_update.id} "
+                                "not found"
+                            )
+                        )
+                    elif price_detail.sku_id != db_obj.id:
+                        raise HTTPException(
+                            status_code=status.HTTP_400_BAD_REQUEST,
+                            detail=(
+                                f"Price detail with ID {price_detail_update.id} "
+                                f"does not belong to SKU {db_obj.id}"
+                            )
+                        )
             # Handle attribute values updates
-            if sku_update.attribute_values is not None:
-                # Delete existing attribute values
-                result = await db.execute(
-                    select(SkuAttributeValue).where(
-                        SkuAttributeValue.sku_id == db_sku.id
+            if obj_in.attribute_values:
+                for attr_value_data in obj_in.attribute_values:
+                    query = (
+                        select(SkuAttributeValue)
+                        .where(
+                            and_(
+                                SkuAttributeValue.sku_id == db_obj.id,
+                                SkuAttributeValue.attribute_id == (
+                                    attr_value_data.attribute_id
+                                )
+                            )
+                        )
                     )
-                )
-                existing_attr_values = result.scalars().all()
-                for attr_value in existing_attr_values:
-                    await db.delete(attr_value)
-
-                # Create new attribute values
-                for attr_value_data in sku_update.attribute_values:
-                    attr_value = SkuAttributeValue(
-                        sku_id=db_sku.id,
-                        **attr_value_data.model_dump()
-                    )
-                    db.add(attr_value)
-
+                    result = await db.execute(query)
+                    existing_attr_value = result.scalar_one()
+                    existing_attr_value.value = attr_value_data.value
+                    db.add(existing_attr_value)
             await db.commit()
-            await db.refresh(db_sku)
-            return await self.get_with_relationships(db, db_sku.id)
+            return await self.get_with_relationships(db, db_obj.id)
 
+        except HTTPException:
+            # Re-raise HTTPException as-is (business logic errors)
+            await db.rollback()
+            raise
         except Exception as e:
+            # Handle unexpected database/system errors
             await db.rollback()
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Failed to update SKU: {str(e)}"
+            )
+
+    async def _validate_price_details_deletion(
+        self,
+        db: AsyncSession,
+        sku_id: int,
+        price_details_to_delete: List[int]
+    ) -> None:
+        """
+        Validate that SKU will still have active price details after deletion.
+
+        Args:
+            db: Database session
+            sku_id: SKU ID
+            price_details_to_delete: List of price detail IDs to be deleted
+
+        Raises:
+            HTTPException: If deletion would leave SKU without price details
+        """
+        # Get all active price details for this SKU
+        query = select(PriceDetails).where(
+            and_(
+                PriceDetails.sku_id == sku_id,
+                PriceDetails.is_active.is_(True)
+            )
+        )
+        result = await db.execute(query)
+        current_price_details = result.scalars().all()
+
+        if not current_price_details:
+            return
+
+        # Calculate remaining price details after deletion
+        remaining_count = len([
+            pd for pd in current_price_details
+            if pd.id not in price_details_to_delete
+        ])
+
+        if remaining_count == 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=(
+                    f"Cannot delete price details. SKU {sku_id} must have "
+                    "at least one active price detail"
+                )
             )
 
 
