@@ -195,7 +195,7 @@ class SkuService:
     async def delete_sku(
         self, db: AsyncSession, sku_id: int
     ) -> Skus:
-        """Soft delete a SKU after validation."""
+        """Delete a SKU after validation."""
         db_sku = await self.repository.get(db, id=sku_id)
         if not db_sku:
             raise HTTPException(
@@ -203,7 +203,7 @@ class SkuService:
                 detail=f"SKU with id {sku_id} not found"
             )
 
-        return await self.repository.soft_delete(db, id=sku_id)
+        return await self.repository.delete(db, id=sku_id)
 
     async def _validate_attribute_values(
         self,

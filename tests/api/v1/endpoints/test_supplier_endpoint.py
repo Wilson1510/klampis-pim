@@ -658,11 +658,11 @@ class TestSupplierEndpointIntegration:
         )
         assert response.status_code == 204
 
-        # Verify soft delete
+        # Verify item is deleted
         response = await async_client.get(f"/api/v1/suppliers/{supplier_id}")
-        assert response.status_code == 200
-        data = response.json()["data"]
-        assert data["is_active"] is False
+        assert response.status_code == 404
+        error = response.json()["error"]
+        assert error["message"] == f"Supplier with id {supplier_id} not found"
 
     async def test_supplier_with_products_workflow(
         self, async_client: AsyncClient, product_factory

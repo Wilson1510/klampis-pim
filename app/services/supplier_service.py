@@ -191,7 +191,7 @@ class SupplierService:
     async def delete_supplier(
         self, db: AsyncSession, supplier_id: int
     ) -> Suppliers:
-        """Soft delete a supplier after validation."""
+        """Delete a supplier after validation."""
         db_supplier = await self.repository.get(db, id=supplier_id)
         if not db_supplier:
             raise HTTPException(
@@ -210,7 +210,7 @@ class SupplierService:
                 )
             )
 
-        return await self.repository.soft_delete(db, id=supplier_id)
+        return await self.repository.delete(db, id=supplier_id)
 
 
 # Create instance to be used as dependency

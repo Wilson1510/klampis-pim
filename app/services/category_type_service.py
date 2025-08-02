@@ -114,7 +114,7 @@ class CategoryTypeService:
     async def delete_category_type(
         self, db: AsyncSession, category_type_id: int
     ) -> CategoryTypes:
-        """Soft delete a category type."""
+        """Delete a category type."""
         db_category_type = await self.repository.get(db, id=category_type_id)
         if not db_category_type:
             raise HTTPException(
@@ -133,7 +133,7 @@ class CategoryTypeService:
                 )
             )
 
-        return await self.repository.soft_delete(db, id=category_type_id)
+        return await self.repository.delete(db, id=category_type_id)
 
     async def get_categories_by_type(
         self,

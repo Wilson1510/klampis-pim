@@ -164,7 +164,7 @@ class CategoryService:
     async def delete_category(
         self, db: AsyncSession, category_id: int
     ) -> Categories:
-        """Soft delete a category after validation."""
+        """Delete a category after validation."""
         db_category = await self.repository.get(db, id=category_id)
         if not db_category:
             raise HTTPException(
@@ -194,7 +194,7 @@ class CategoryService:
                 )
             )
 
-        return await self.repository.soft_delete(db, id=category_id)
+        return await self.repository.delete(db, id=category_id)
 
     async def _validate_category_hierarchy_for_update(
         self,

@@ -135,7 +135,7 @@ async def delete_category_type(
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Soft delete a category type.
+    Delete a category type.
 
     - **category_type_id**: The ID of the category type to delete
 

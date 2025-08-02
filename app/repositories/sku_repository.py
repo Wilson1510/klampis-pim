@@ -240,8 +240,6 @@ class SkuRepository(CRUDBase[Skus, SkuCreate, SkuUpdate]):
                 for price_detail_id in obj_in.price_details_to_delete:
                     price_detail = await db.get(PriceDetails, price_detail_id)
                     if price_detail and price_detail.sku_id == db_obj.id:
-                        # price_detail.is_active = False
-                        # db.add(price_detail)
                         await db.delete(price_detail)
                     elif not price_detail:
                         raise HTTPException(

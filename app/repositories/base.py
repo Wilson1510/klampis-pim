@@ -94,8 +94,8 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
                 detail=f"Internal server error: {e}"
             )
 
-    async def soft_delete(self, db: AsyncSession, id: int) -> ModelType | None:
-        """Soft delete an object by setting is_active to False."""
+    async def archive(self, db: AsyncSession, id: int) -> ModelType | None:
+        """Archive an object by setting is_active to False."""
         obj = await self.get(db, id=id)
         if obj:
             query = (
@@ -109,11 +109,11 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
             return obj
         return None
 
-    async def hard_delete(self, db: AsyncSession, *, id: int) -> ModelType | None:
-        """Hard delete an object by deleting it from the database."""
+    async def delete(self, db: AsyncSession, *, id: int) -> ModelType | None:
+        """Delete an object by deleting it from the database."""
         obj = await db.get(self.model, id)
         if obj:
-            db.delete(obj)
+            await db.delete(obj)
             await db.commit()
         return obj
 

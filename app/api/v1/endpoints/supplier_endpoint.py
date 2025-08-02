@@ -181,7 +181,7 @@ async def delete_supplier(
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Soft delete a supplier.
+    Delete a supplier.
 
     - **supplier_id**: The ID of the supplier to delete
 
