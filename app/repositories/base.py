@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, and_
 from app.core.base import Base
 from fastapi import HTTPException, status
+from app.models import Images
 
 # Definisikan tipe generik untuk model dan skema
 ModelType = TypeVar("ModelType", bound=Base)
@@ -165,5 +166,34 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=(
                     f"{foreign_model.__name__} with id {foreign_key_value} not found"
+                )
+            )
+
+    def check_and_validate_existing_image(
+        self,
+        image: Images | None,
+        image_id: int,
+        db_obj: ModelType,
+        content_type: str
+    ):
+        if not image:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Image with id {image_id} not found"
+            )
+
+        elif image.object_id != db_obj.id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=(
+                    f"Image with id {image_id} does not belong to "
+                    f"{db_obj.__class__.__name__} with id {db_obj.id}"
+                )
+            )
+        elif image.content_type != content_type:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=(
+                    f"Image with id {image_id} is not a {content_type} image"
                 )
             )

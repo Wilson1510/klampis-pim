@@ -218,68 +218,23 @@ class CategoryRepository(
             if obj_in.images_to_update:
                 for image_data in obj_in.images_to_update:
                     image = await db.get(Images, image_data.id)
-                    if (
-                        image and
-                        image.object_id == db_obj.id and
-                        image.content_type == "categories"
-                    ):
-                        update_data = image_data.model_dump(
-                            exclude_unset=True, exclude={'id'}
-                        )
-                        for field, value in update_data.items():
-                            setattr(image, field, value)
-                        db.add(image)
-                    elif not image:
-                        raise HTTPException(
-                            status_code=status.HTTP_404_NOT_FOUND,
-                            detail=f"Image with ID {image_data.id} not found"
-                        )
-                    elif image.object_id != db_obj.id:
-                        raise HTTPException(
-                            status_code=status.HTTP_400_BAD_REQUEST,
-                            detail=(
-                                f"Image with ID {image_data.id} does not belong to "
-                                f"category with ID {db_obj.id}"
-                            )
-                        )
-                    elif image.content_type != "categories":
-                        raise HTTPException(
-                            status_code=status.HTTP_400_BAD_REQUEST,
-                            detail=(
-                                f"Image with ID {image_data.id} is not a category image"
-                            )
-                        )
+                    self.check_and_validate_existing_image(
+                        image, image_data.id, db_obj, "categories"
+                    )
+                    update_data = image_data.model_dump(
+                        exclude_unset=True, exclude={'id'}
+                    )
+                    for field, value in update_data.items():
+                        setattr(image, field, value)
+                    db.add(image)
 
             if obj_in.images_to_delete:
                 for image_id in obj_in.images_to_delete:
                     image = await db.get(Images, image_id)
-                    if (
-                        image and
-                        image.object_id == db_obj.id and
-                        image.content_type == "categories"
-                    ):
-                        await db.delete(image)
-                    elif not image:
-                        raise HTTPException(
-                            status_code=status.HTTP_404_NOT_FOUND,
-                            detail=f"Image with ID {image_id} not found"
-                        )
-                    elif image.object_id != db_obj.id:
-                        raise HTTPException(
-                            status_code=status.HTTP_400_BAD_REQUEST,
-                            detail=(
-                                f"Image with ID {image_id} does not belong to "
-                                f"category with ID {db_obj.id}"
-                            )
-                        )
-                    elif image.content_type != "categories":
-                        raise HTTPException(
-                            status_code=status.HTTP_400_BAD_REQUEST,
-                            detail=(
-                                f"Image with ID {image_id} is not a category image"
-                            )
-                        )
-
+                    self.check_and_validate_existing_image(
+                        image, image_id, db_obj, "categories"
+                    )
+                    await db.delete(image)
             await db.commit()
             await self.load_children_recursively(db, db_obj)
             await db.refresh(db_obj, ['images'])
