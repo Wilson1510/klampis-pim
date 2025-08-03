@@ -4,6 +4,7 @@ from app.api.v1.endpoints import (
     category_type_endpoint,
     category_endpoint,
     supplier_endpoint,
+    product_endpoint,
     sku_endpoint
 )
 
@@ -28,6 +29,13 @@ api_router.include_router(
     supplier_endpoint.router,
     prefix="/suppliers",
     tags=["suppliers"]
+)
+
+# Include product endpoints
+api_router.include_router(
+    product_endpoint.router,
+    prefix="/products",
+    tags=["products"]
 )
 
 # Include SKU endpoints
