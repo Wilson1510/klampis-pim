@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import (
     CategoryTypes, Categories, Suppliers, CompanyType, Products, Skus,
-    Attributes, AttributeSets, SkuAttributeValue, Pricelists, PriceDetails,
+    Attributes, SkuAttributeValue, Pricelists, PriceDetails,
     Images
 )
 
@@ -326,30 +326,6 @@ async def attribute_factory(db_session: AsyncSession):
         # Save and return
         await save_object(db_session, attribute)
         return attribute
-
-    return _factory
-
-
-@pytest.fixture
-async def attribute_set_factory(db_session: AsyncSession):
-    """
-    Factory for creating AttributeSets with flexible parameters.
-    """
-    async def _factory(**kwargs):
-        # Define default values
-        defaults = {
-            "name": "Test Attribute Set"
-        }
-
-        # Merge defaults with provided kwargs
-        params = {**defaults, **kwargs}
-
-        # Create the object
-        attribute_set = AttributeSets(**params)
-
-        # Save and return
-        await save_object(db_session, attribute_set)
-        return attribute_set
 
     return _factory
 
