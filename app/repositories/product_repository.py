@@ -1,6 +1,6 @@
 from typing import List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, func
+from sqlalchemy import select, and_
 from sqlalchemy.orm import selectinload
 from fastapi import HTTPException, status
 
@@ -262,16 +262,6 @@ class ProductRepository(CRUDBase[Products, ProductCreate, ProductUpdate]):
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Failed to update product: {str(e)}"
             )
-
-    async def count_skus(
-        self, db: AsyncSession, product_id: int
-    ) -> int:
-        """Count SKUs by product."""
-        query = select(func.count(Skus.id)).where(
-            and_(Skus.product_id == product_id, Skus.is_active.is_(True))
-        )
-        result = await db.execute(query)
-        return result.scalar() or 0
 
 
 # Create the repository instance

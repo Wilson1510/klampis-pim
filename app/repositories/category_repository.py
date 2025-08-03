@@ -1,6 +1,6 @@
 from typing import List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, func
+from sqlalchemy import select, and_
 from sqlalchemy.orm import selectinload
 from fastapi import HTTPException, status
 
@@ -255,32 +255,6 @@ class CategoryRepository(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Failed to update category: {str(e)}"
             )
-
-    async def count_children(
-        self, db: AsyncSession, parent_id: int
-    ) -> int:
-        """Count direct children of a category."""
-        query = select(func.count(self.model.id)).where(
-            and_(
-                self.model.parent_id == parent_id,
-                self.model.is_active.is_(True)
-            )
-        )
-        result = await db.execute(query)
-        return result.scalar() or 0
-
-    async def count_products(
-        self, db: AsyncSession, category_id: int
-    ) -> int:
-        """Count products by category."""
-        query = select(func.count(Products.id)).where(
-            and_(
-                Products.category_id == category_id,
-                Products.is_active.is_(True)
-            )
-        )
-        result = await db.execute(query)
-        return result.scalar() or 0
 
     async def get_with_full_relations(
         self, db: AsyncSession, category_id: int

@@ -1,7 +1,7 @@
 from typing import Any, Dict, Generic, List, Type, TypeVar, Union
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update, and_
+from sqlalchemy import select, update, and_, func
 from app.core.base import Base
 from fastapi import HTTPException, status
 from app.models import Images
@@ -168,6 +168,19 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
                     f"{foreign_model.__name__} with id {foreign_key_value} not found"
                 )
             )
+
+    async def count_children(
+        self, db: AsyncSession, parent_column: str, parent_id: int, children: ModelType
+    ) -> int:
+        """Count records by any field."""
+        query = select(func.count(children.id)).where(
+            and_(
+                getattr(children, parent_column) == parent_id,
+                children.is_active.is_(True)
+            )
+        )
+        result = await db.execute(query)
+        return result.scalar() or 0
 
     def check_and_validate_existing_image(
         self,

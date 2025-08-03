@@ -1,6 +1,6 @@
 from typing import List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, func
+from sqlalchemy import select, and_
 from sqlalchemy.orm import selectinload
 
 from app.models.category_type_model import CategoryTypes
@@ -48,22 +48,6 @@ class CategoryTypeRepository(
 
         result = await db.execute(query)
         return result.scalars().all()
-
-    async def count_categories(
-        self, db: AsyncSession, category_type_id: int
-    ) -> int:
-        """Count categories associated with this category type."""
-        # Import here to avoid circular import
-        from app.models.category_model import Categories
-
-        query = select(func.count(Categories.id)).where(
-            and_(
-                Categories.category_type_id == category_type_id,
-                Categories.is_active.is_(True)
-            )
-        )
-        result = await db.execute(query)
-        return result.scalar() or 0
 
     async def get_categories_by_type(
         self,

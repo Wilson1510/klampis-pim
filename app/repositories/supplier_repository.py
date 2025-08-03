@@ -1,6 +1,6 @@
 from typing import List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, func
+from sqlalchemy import select, and_
 from sqlalchemy.orm import selectinload
 
 from app.models import Suppliers, Products
@@ -87,19 +87,6 @@ class SupplierRepository(
                 db, products[0].category
             )
         return products
-
-    async def count_products(
-        self, db: AsyncSession, supplier_id: int
-    ) -> int:
-        """Count products by supplier."""
-        query = select(func.count(Products.id)).where(
-            and_(
-                Products.supplier_id == supplier_id,
-                Products.is_active.is_(True)
-            )
-        )
-        result = await db.execute(query)
-        return result.scalar() or 0
 
 
 # Create instance to be used as dependency

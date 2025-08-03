@@ -173,7 +173,9 @@ class CategoryService:
             )
 
         # Check if category has children
-        children_count = await self.repository.count_children(db, category_id)
+        children_count = await self.repository.count_children(
+            db, 'parent_id', category_id, Categories
+        )
         if children_count > 0:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -184,7 +186,9 @@ class CategoryService:
             )
 
         # Check if category has products
-        products_count = await self.repository.count_products(db, category_id)
+        products_count = await self.repository.count_children(
+            db, 'category_id', category_id, Products
+        )
         if products_count > 0:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,

@@ -148,7 +148,9 @@ class ProductService:
             )
 
         # Check if product has SKUs
-        sku_count = await self.repository.count_skus(db, product_id)
+        sku_count = await self.repository.count_children(
+            db, 'product_id', product_id, Skus
+        )
         if sku_count > 0:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,

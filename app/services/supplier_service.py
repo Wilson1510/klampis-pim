@@ -200,7 +200,9 @@ class SupplierService:
             )
 
         # Check if supplier has products
-        products_count = await self.repository.count_products(db, supplier_id)
+        products_count = await self.repository.count_children(
+            db, 'supplier_id', supplier_id, Products
+        )
         if products_count > 0:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
