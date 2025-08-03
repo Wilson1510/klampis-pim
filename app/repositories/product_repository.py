@@ -15,7 +15,7 @@ from app.models import (
 )
 from app.schemas.product_schema import ProductCreate, ProductUpdate
 from app.repositories.base import CRUDBase
-from app.repositories.category_repository import category_repository
+from app.repositories import category_repository
 
 
 class ProductRepository(CRUDBase[Products, ProductCreate, ProductUpdate]):

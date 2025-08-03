@@ -3,10 +3,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_
 from sqlalchemy.orm import selectinload
 
-from app.models.category_type_model import CategoryTypes
+from app.models import CategoryTypes
 from app.schemas.category_type_schema import CategoryTypeCreate, CategoryTypeUpdate
 from app.repositories.base import CRUDBase
-from app.repositories.category_repository import category_repository
+from app.repositories import category_repository
 
 
 class CategoryTypeRepository(
@@ -58,7 +58,7 @@ class CategoryTypeRepository(
     ) -> List:
         """Get categories by category type."""
         # Import here to avoid circular import
-        from app.models.category_model import Categories
+        from app.models import Categories
 
         query = (
             select(Categories)

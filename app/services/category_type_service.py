@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException
 from fastapi import status
 
-from app.repositories.category_type_repository import category_type_repository
+from app.repositories import category_type_repository
 from app.models import CategoryTypes, Categories
 from app.schemas.category_type_schema import (
     CategoryTypeCreate,

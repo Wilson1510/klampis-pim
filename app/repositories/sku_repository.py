@@ -9,7 +9,7 @@ from app.models import (
 )
 from app.schemas.sku_schema import SkuCreate, SkuUpdate
 from app.repositories.base import CRUDBase
-from app.repositories.category_repository import category_repository
+from app.repositories import category_repository
 
 
 class SkuRepository(CRUDBase[Skus, SkuCreate, SkuUpdate]):
@@ -60,27 +60,6 @@ class SkuRepository(CRUDBase[Skus, SkuCreate, SkuUpdate]):
             query = query.where(and_(*conditions))
 
         query = query.offset(skip).limit(limit)
-        result = await db.execute(query)
-        data = result.scalars().all()
-        for sku in data:
-            await category_repository.load_parent_category_type_recursively(
-                db, sku.product.category
-            )
-        return data
-
-    async def get_multi_with_relationships(
-        self, db: AsyncSession, skip: int = 0, limit: int = 100
-    ) -> List[Skus]:
-        """Get all SKUs with relationships loaded."""
-        query = select(self.model).options(
-            selectinload(self.model.product).selectinload(Products.category),
-            selectinload(self.model.price_details).selectinload(
-                PriceDetails.pricelist
-            ),
-            selectinload(self.model.sku_attribute_values).selectinload(
-                SkuAttributeValue.attribute
-            )
-        ).offset(skip).limit(limit)
         result = await db.execute(query)
         data = result.scalars().all()
         for sku in data:

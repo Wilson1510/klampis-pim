@@ -3,8 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException
 from fastapi import status
 
-from app.repositories.category_repository import category_repository
-from app.repositories.product_repository import product_repository
+from app.repositories import product_repository
 from app.models import Products, Skus
 from app.schemas.product_schema import (
     ProductCreate,
@@ -17,21 +16,6 @@ class ProductService:
 
     def __init__(self):
         self.repository = product_repository
-
-    async def get_all_products(
-        self, db: AsyncSession, skip: int = 0, limit: int = 100
-    ) -> Tuple[List[Products], int]:
-        """Get all products with pagination and total count."""
-        data = await self.repository.get_multi(db, skip=skip, limit=limit)
-        # Load relationships for each product
-        for product in data:
-            await db.refresh(product, ["category", "supplier", "images"])
-            if product.category:
-                await category_repository.load_parent_category_type_recursively(
-                    db, product.category
-                )
-        total = len(data)
-        return data, total
 
     async def get_products_with_filter(
         self,
@@ -46,12 +30,6 @@ class ProductService:
         is_active: Optional[bool] = None
     ) -> Tuple[List[Products], int]:
         """Get products with filtering support and total count."""
-        if (
-            name is None and slug is None and category_id is None
-            and supplier_id is None and is_active is None
-        ):
-            return await self.get_all_products(db, skip=skip, limit=limit)
-
         data = await self.repository.get_multi_with_filter(
             db,
             skip=skip,

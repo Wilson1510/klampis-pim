@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException
 from fastapi import status
 
-from app.repositories.supplier_repository import supplier_repository
+from app.repositories import supplier_repository
 from app.models import Suppliers, Products
 from app.schemas.supplier_schema import (
     SupplierCreate,

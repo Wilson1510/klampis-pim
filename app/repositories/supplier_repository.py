@@ -6,7 +6,7 @@ from sqlalchemy.orm import selectinload
 from app.models import Suppliers, Products
 from app.schemas.supplier_schema import SupplierCreate, SupplierUpdate
 from app.repositories.base import CRUDBase
-from app.repositories.category_repository import category_repository
+from app.repositories import category_repository
 
 
 class SupplierRepository(
