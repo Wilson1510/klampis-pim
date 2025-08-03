@@ -83,12 +83,7 @@ class CategoryRepository(
                 selectinload(self.model.parent),
                 selectinload(self.model.images)
             )
-            .where(
-                and_(
-                    self.model.parent_id == parent_id,
-                    self.model.is_active.is_(True)
-                )
-            )
+            .where(self.model.parent_id == parent_id)
             .offset(skip)
             .limit(limit)
         )
@@ -112,12 +107,7 @@ class CategoryRepository(
                 selectinload(Products.category),
                 selectinload(Products.images)
             )
-            .where(
-                and_(
-                    Products.category_id == category_id,
-                    Products.is_active.is_(True)
-                )
-            )
+            .where(Products.category_id == category_id)
             .offset(skip)
             .limit(limit)
         )

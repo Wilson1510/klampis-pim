@@ -115,10 +115,7 @@ class SkuRepository(CRUDBase[Skus, SkuCreate, SkuUpdate]):
         self, db: AsyncSession, attribute_ids: List[int]
     ) -> List[Attributes]:
         """Validate that all attributes exist and return them."""
-        query = select(Attributes).where(and_(
-            Attributes.id.in_(attribute_ids),
-            Attributes.is_active.is_(True)
-        ))
+        query = select(Attributes).where(Attributes.id.in_(attribute_ids))
         result = await db.execute(query)
         attributes = result.scalars().all()
         return attributes
@@ -139,10 +136,7 @@ class SkuRepository(CRUDBase[Skus, SkuCreate, SkuUpdate]):
         self, db: AsyncSession, pricelist_ids: List[int]
     ) -> List[Pricelists]:
         """Validate that all pricelists exist and return them."""
-        query = select(Pricelists).where(and_(
-            Pricelists.id.in_(pricelist_ids),
-            Pricelists.is_active.is_(True)
-        ))
+        query = select(Pricelists).where(Pricelists.id.in_(pricelist_ids))
         result = await db.execute(query)
         pricelists = result.scalars().all()
         return pricelists
@@ -344,12 +338,7 @@ class SkuRepository(CRUDBase[Skus, SkuCreate, SkuUpdate]):
             HTTPException: If deletion would leave SKU without price details
         """
         # Get all active price details for this SKU
-        query = select(PriceDetails).where(
-            and_(
-                PriceDetails.sku_id == sku_id,
-                PriceDetails.is_active.is_(True)
-            )
-        )
+        query = select(PriceDetails).where(PriceDetails.sku_id == sku_id)
         result = await db.execute(query)
         current_price_details = result.scalars().all()
 

@@ -66,12 +66,7 @@ class CategoryTypeRepository(
                 selectinload(Categories.category_type),
                 selectinload(Categories.images)
             )
-            .where(
-                and_(
-                    Categories.category_type_id == category_type_id,
-                    Categories.is_active.is_(True)
-                )
-            )
+            .where(Categories.category_type_id == category_type_id)
             .offset(skip)
             .limit(limit)
         )

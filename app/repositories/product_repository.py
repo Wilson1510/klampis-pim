@@ -111,12 +111,7 @@ class ProductRepository(CRUDBase[Products, ProductCreate, ProductUpdate]):
                     SkuAttributeValue.attribute
                 )
             )
-            .where(
-                and_(
-                    Skus.product_id == product_id,
-                    Skus.is_active.is_(True)
-                )
-            )
+            .where(Skus.product_id == product_id)
             .offset(skip)
             .limit(limit)
         )

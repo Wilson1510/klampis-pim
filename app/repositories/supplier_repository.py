@@ -71,12 +71,7 @@ class SupplierRepository(
                 selectinload(Products.category),
                 selectinload(Products.images)
             )
-            .where(
-                and_(
-                    Products.supplier_id == supplier_id,
-                    Products.is_active.is_(True)
-                )
-            )
+            .where(Products.supplier_id == supplier_id)
             .offset(skip)
             .limit(limit)
         )

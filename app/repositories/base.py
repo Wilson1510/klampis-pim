@@ -1,7 +1,7 @@
 from typing import Any, Dict, Generic, List, Type, TypeVar, Union
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update, and_, func
+from sqlalchemy import select, update, func
 from app.core.base import Base
 from fastapi import HTTPException, status
 from app.models import Images
@@ -154,12 +154,7 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         foreign_key_value: int
     ):
         # Use generic field lookup
-        query = select(foreign_model).where(and_(
-                foreign_model.id == foreign_key_value,
-                foreign_model.is_active.is_(True)
-            ))
-        result = await db.execute(query)
-        foreign_obj = result.scalar_one_or_none()
+        foreign_obj = await db.get(foreign_model, foreign_key_value)
 
         if not foreign_obj:
             raise HTTPException(
@@ -174,10 +169,7 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
     ) -> int:
         """Count records by any field."""
         query = select(func.count(children.id)).where(
-            and_(
-                getattr(children, parent_column) == parent_id,
-                children.is_active.is_(True)
-            )
+            getattr(children, parent_column) == parent_id
         )
         result = await db.execute(query)
         return result.scalar() or 0
