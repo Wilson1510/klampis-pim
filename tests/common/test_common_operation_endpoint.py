@@ -802,6 +802,55 @@ class TestUpdateModel:
             "error": None
         }
 
+    async def test_update_simple_model_change_parent_id(
+        self, async_client: AsyncClient, category_factory, product_factory
+    ):
+        """Test updating model with new parent id."""
+        category = await category_factory(name="Electronics")
+        category2 = await category_factory(name="Mobile Phones")
+        product = await product_factory(name="iPhone 15", category_id=category.id)
+        update_data = {
+            "category_id": category2.id
+        }
+        response = await async_client.put(
+            f"/api/v1/products/{product.id}",
+            json=update_data
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data == {
+            "success": True,
+            "data": {
+                "id": 1,
+                "name": "iPhone 15",
+                "slug": "iphone-15",
+                "category_id": category2.id,
+                "supplier_id": 1,
+                "sequence": 0,
+                "description": None,
+                "is_active": True,
+                "created_at": data["data"]["created_at"],
+                "updated_at": data["data"]["updated_at"],
+                "created_by": 1,
+                "updated_by": 1,
+                "images": [],
+                "full_path": [
+                    {
+                        "name": "Mobile Phones",
+                        "slug": "mobile-phones",
+                        "category_type": "Test Category Type",
+                        "type": "Category"
+                    },
+                    {
+                        "name": "iPhone 15",
+                        "slug": "iphone-15",
+                        "type": "Product"
+                    }
+                ]
+            },
+            "error": None
+        }
+
     async def test_update_simple_model_invalid_parent_id(
         self, async_client: AsyncClient, category_factory
     ):
