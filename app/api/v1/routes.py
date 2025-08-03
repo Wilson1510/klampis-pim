@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 
 from app.api.v1.endpoints import (
+    attribute_endpoint,
     category_type_endpoint,
     category_endpoint,
     supplier_endpoint,
@@ -9,6 +10,13 @@ from app.api.v1.endpoints import (
 )
 
 api_router = APIRouter()
+
+# Include attribute endpoints
+api_router.include_router(
+    attribute_endpoint.router,
+    prefix="/attributes",
+    tags=["attributes"]
+)
 
 # Include category type endpoints
 api_router.include_router(
