@@ -46,6 +46,7 @@ class Settings(BaseSettings):
     # General settings
     DEBUG: bool
     SYSTEM_USER_ID: int
+    ADMIN_USER_ID: int
 
     model_config = {
         "env_file": ".env",

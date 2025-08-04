@@ -15,6 +15,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from app.core.session import async_session_factory  # noqa
 from app.models.user_model import Users  # noqa
 from app.core.config import settings  # noqa
+from app.core.security import hash_password  # noqa
 
 
 async def create_system_user():
@@ -30,10 +31,9 @@ async def create_system_user():
 
             # Create system user
             system_user = Users(
-                id=settings.SYSTEM_USER_ID,
                 username="system",
                 email="system@klampis-pim.local",
-                password="system",
+                password=hash_password("system"),
                 name="System User",
                 role="SYSTEM",
                 created_by=None,
@@ -46,14 +46,48 @@ async def create_system_user():
             await session.refresh(system_user)
 
             print(f"System user created successfully: {system_user}")
-            print(
-                f"login with username: {system_user.username} and password: "
-                f"{system_user.password}"
-            )
             return system_user
 
         except Exception as e:
             print(f"Error creating system user: {e}")
+            await session.rollback()
+            raise
+
+
+async def create_admin_user():
+    """Create admin user if it doesn't exist."""
+    async with async_session_factory() as session:
+        try:
+            # Check if admin user exists
+            result = await session.get(Users, settings.ADMIN_USER_ID)
+
+            if result:
+                print(f"Admin user already exists: {result}")
+                return result
+
+            # Create admin user
+            admin_user = Users(
+                username="admin",
+                email="admin@klampis-pim.local",
+                password=hash_password("admin"),
+                name="Administrator",
+                role="ADMIN",
+                created_by=settings.SYSTEM_USER_ID,
+                updated_by=settings.SYSTEM_USER_ID,
+                sequence=2
+            )
+
+            session.add(admin_user)
+            await session.commit()
+            await session.refresh(admin_user)
+
+            print(f"Admin user created successfully: {admin_user}")
+            print(f"Username: {admin_user.username}")
+            print("Password: admin")
+            return admin_user
+
+        except Exception as e:
+            print(f"Error creating admin user: {e}")
             await session.rollback()
             raise
 
@@ -63,12 +97,11 @@ async def main():
     print("Creating system user...")
 
     try:
-        system_user = await create_system_user()
+        await create_system_user()
+        await create_admin_user()
         print("✅ System user setup completed!")
-        print(f"Role: {system_user.role}")
 
-    except Exception as e:
-        print(f"❌ Failed to create system user: {e}")
+    except Exception:
         sys.exit(1)
 
 
