@@ -9,9 +9,11 @@ import pytest
 
 from app.core.base import Base
 from app.schemas.base import (
-    BaseSchema, BaseInDB, BaseCreateSchema, BaseUpdateSchema, StrictNonNegativeInt
+    BaseSchema, BaseInDB, BaseCreateSchema, BaseUpdateSchema, StrictNonNegativeInt,
+    StrictPositiveInt
 )
 from tests.utils.model_test_utils import save_object, get_object_by_id
+from app.core.config import settings
 
 
 class SampleModelBase2(Base):
@@ -65,7 +67,9 @@ class TestSampleSchemaCreate:
         self.sample_dict = {
             "name": "Test Sample",
             "is_active": False,
-            "sequence": 1
+            "sequence": 1,
+            "created_by": 2,
+            "updated_by": 1
         }
 
     def test_base_schema_create_inheritance(self):
@@ -78,10 +82,12 @@ class TestSampleSchemaCreate:
     def test_base_fields_inheritance(self):
         """Test that the base schema create inherits from BaseCreateSchema"""
         fields = SampleSchemaCreate.model_fields
-        assert len(fields) == 3
+        assert len(fields) == 5
         assert 'name' in fields
         assert 'is_active' in fields
         assert 'sequence' in fields
+        assert 'created_by' in fields
+        assert 'updated_by' in fields
 
         is_active = fields['is_active']
         assert is_active.is_required() is False
@@ -96,26 +102,48 @@ class TestSampleSchemaCreate:
         assert sequence.metadata[0].strict is True
         assert sequence.metadata[1].ge == 0
 
+        created_by = fields['created_by']
+        assert created_by.is_required() is False
+        assert created_by.annotation == int
+        assert created_by.default == settings.SYSTEM_USER_ID
+        assert created_by.metadata[0].strict is True
+        assert created_by.metadata[1].gt == 0
+
+        updated_by = fields['updated_by']
+        assert updated_by.is_required() is False
+        assert updated_by.annotation == int
+        assert updated_by.default == settings.SYSTEM_USER_ID
+        assert updated_by.metadata[0].strict is True
+        assert updated_by.metadata[1].gt == 0
+
     def test_base_schema_create_input(self):
         schema = SampleSchemaCreate(**self.sample_dict)
         assert schema.is_active is False
         assert schema.sequence == 1
+        assert schema.created_by == 2
+        assert schema.updated_by == 1
 
     def test_base_schema_create_input_updated(self):
         schema = SampleSchemaCreate(**self.sample_dict)
         assert schema.sequence == 1
         assert schema.is_active is False
+        assert schema.created_by == 2
+        assert schema.updated_by == 1
 
         schema.sequence = 2
         assert schema.sequence == 2
         assert schema.is_active is False
+        assert schema.created_by == 2
+        assert schema.updated_by == 1
 
     def test_base_schema_create_model_dump(self):
         schema = SampleSchemaCreate(**self.sample_dict)
         assert schema.model_dump() == {
             "name": "Test Sample",
             "is_active": False,
-            "sequence": 1
+            "sequence": 1,
+            "created_by": 2,
+            "updated_by": 1
         }
 
     def test_base_schema_create_model_dump_json(self):
@@ -123,6 +151,8 @@ class TestSampleSchemaCreate:
         assert schema.model_dump_json() == '{'\
             '"is_active":false,'\
             '"sequence":1,'\
+            '"created_by":2,'\
+            '"updated_by":1,'\
             '"name":"Test Sample"'\
             '}'
 
@@ -136,7 +166,8 @@ class TestSampleSchemaUpdate:
         self.sample_dict = {
             "name": "Test Sample",
             "is_active": False,
-            "sequence": 1
+            "sequence": 1,
+            "updated_by": 1
         }
 
     def test_base_schema_update_inheritance(self):
@@ -149,11 +180,12 @@ class TestSampleSchemaUpdate:
     def test_base_fields_inheritance(self):
         """Test that the base schema update inherits from BaseUpdateSchema"""
         fields = SampleSchemaUpdate.model_fields
-        assert len(fields) == 4
+        assert len(fields) == 5
         assert 'name' in fields
         assert 'is_active' in fields
         assert 'sequence' in fields
         assert 'description' in fields
+        assert 'updated_by' in fields
 
         is_active = fields['is_active']
         assert is_active.is_required() is False
@@ -164,6 +196,11 @@ class TestSampleSchemaUpdate:
         assert sequence.is_required() is False
         assert sequence.annotation == Optional[StrictNonNegativeInt]
         assert sequence.default is None
+
+        updated_by = fields['updated_by']
+        assert updated_by.is_required() is False
+        assert updated_by.annotation == Optional[StrictPositiveInt]
+        assert updated_by.default is None
 
     def test_base_schema_update_input(self):
         schema = SampleSchemaUpdate(**self.sample_dict)
@@ -185,7 +222,8 @@ class TestSampleSchemaUpdate:
             "name": "Test Sample",
             "description": None,
             "is_active": False,
-            "sequence": 1
+            "sequence": 1,
+            "updated_by": 1
         }
 
     def test_base_schema_update_model_dump_json(self):
@@ -193,6 +231,7 @@ class TestSampleSchemaUpdate:
         assert schema.model_dump_json() == '{'\
             '"is_active":false,'\
             '"sequence":1,'\
+            '"updated_by":1,'\
             '"name":"Test Sample",'\
             '"description":null'\
             '}'

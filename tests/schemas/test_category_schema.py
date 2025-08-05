@@ -106,7 +106,7 @@ class TestCategoryCreate:
     def test_category_create_fields_inheritance(self):
         """Test that the category create schema inherits from BaseCreateSchema"""
         fields = CategoryCreate.model_fields
-        assert len(fields) == 7
+        assert len(fields) == 9
         assert 'name' in fields
         assert 'description' in fields
         assert 'category_type_id' in fields
@@ -157,6 +157,8 @@ class TestCategoryCreate:
         assert schema.model_dump() == {
             "is_active": True,
             "sequence": 0,
+            "created_by": 1,
+            "updated_by": 1,
             "name": "Test Category 1",
             "description": "Test Category 1 Description",
             "category_type_id": 1,
@@ -169,6 +171,8 @@ class TestCategoryCreate:
         assert schema.model_dump_json() == '{'\
             '"is_active":true,'\
             '"sequence":0,'\
+            '"created_by":1,'\
+            '"updated_by":1,'\
             '"name":"Test Category 2",'\
             '"description":"Test Category 2 Description",'\
             '"category_type_id":null,'\
@@ -232,7 +236,7 @@ class TestCategoryUpdate:
     def test_category_update_fields_inheritance(self):
         """Test that the category update schema inherits from BaseUpdateSchema"""
         fields = CategoryUpdate.model_fields
-        assert len(fields) == 9
+        assert len(fields) == 10
         assert 'name' in fields
         assert 'description' in fields
         assert 'category_type_id' in fields
@@ -283,6 +287,7 @@ class TestCategoryUpdate:
         assert schema.model_dump() == {
             "is_active": None,
             "sequence": None,
+            "updated_by": None,
             "name": "Test Category",
             "description": "Test Category Description",
             "category_type_id": 1,
@@ -297,6 +302,7 @@ class TestCategoryUpdate:
         assert schema.model_dump_json() == '{'\
             '"is_active":null,'\
             '"sequence":null,'\
+            '"updated_by":null,'\
             '"name":"Test Category",'\
             '"description":"Test Category Description",'\
             '"category_type_id":1,'\

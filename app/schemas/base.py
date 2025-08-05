@@ -3,6 +3,7 @@ from typing import Annotated, Optional, Generic, TypeVar, List, Dict, Any
 
 from pydantic import BaseModel, StrictBool, StrictInt, Field, AfterValidator
 from decimal import Decimal, ROUND_HALF_UP
+from app.core.config import settings
 
 StrictNonNegativeInt = Annotated[StrictInt, Field(ge=0)]
 StrictPositiveInt = Annotated[StrictInt, Field(gt=0)]
@@ -27,12 +28,15 @@ class BaseCreateSchema(BaseSchema):
     """Base schema for creating entities."""
     is_active: StrictBool = True
     sequence: StrictNonNegativeInt = 0
+    created_by: StrictPositiveInt = settings.SYSTEM_USER_ID
+    updated_by: StrictPositiveInt = settings.SYSTEM_USER_ID
 
 
 class BaseUpdateSchema(BaseSchema):
     """Base schema for updating entities with optional fields."""
     is_active: Optional[StrictBool] = None
     sequence: Optional[StrictNonNegativeInt] = None
+    updated_by: Optional[StrictPositiveInt] = None
 
 
 class BaseInDB(BaseSchema):

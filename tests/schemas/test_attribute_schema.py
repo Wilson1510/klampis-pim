@@ -111,7 +111,7 @@ class TestAttributeCreate:
     def test_attribute_create_fields_inheritance(self):
         """Test that the attribute create schema has correct fields"""
         fields = AttributeCreate.model_fields
-        assert len(fields) == 5  # 3 base + 2 from BaseCreateSchema
+        assert len(fields) == 7  # 3 base + 4 from BaseCreateSchema
         assert 'name' in fields
         assert 'data_type' in fields
         assert 'uom' in fields
@@ -155,6 +155,8 @@ class TestAttributeCreate:
         assert schema.model_dump() == {
             "is_active": True,
             "sequence": 0,
+            "created_by": 1,
+            "updated_by": 1,
             "name": "Flavor",
             "data_type": "TEXT",
             "uom": None
@@ -165,6 +167,8 @@ class TestAttributeCreate:
         assert schema.model_dump_json() == '{'\
             '"is_active":true,'\
             '"sequence":0,'\
+            '"created_by":1,'\
+            '"updated_by":1,'\
             '"name":"Flavor",'\
             '"data_type":"TEXT",'\
             '"uom":null'\
@@ -191,7 +195,7 @@ class TestAttributeUpdate:
     def test_attribute_update_fields_inheritance(self):
         """Test that the attribute update schema has correct fields"""
         fields = AttributeUpdate.model_fields
-        assert len(fields) == 5  # 3 base + 2 from BaseUpdateSchema
+        assert len(fields) == 6  # 3 base + 3 from BaseUpdateSchema
         assert 'name' in fields
         assert 'data_type' in fields
         assert 'uom' in fields
@@ -236,6 +240,7 @@ class TestAttributeUpdate:
         assert schema.model_dump() == {
             "is_active": None,
             "sequence": None,
+            "updated_by": None,
             "name": "Weight",
             "data_type": "NUMBER",
             "uom": "kg"
@@ -246,6 +251,7 @@ class TestAttributeUpdate:
         assert schema.model_dump_json() == '{'\
             '"is_active":null,'\
             '"sequence":null,'\
+            '"updated_by":null,'\
             '"name":"Weight",'\
             '"data_type":"NUMBER",'\
             '"uom":"kg"'\

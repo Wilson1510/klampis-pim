@@ -90,7 +90,7 @@ class TestPricelistCreate:
     def test_pricelist_create_fields_inheritance(self):
         """Test that the pricelist create schema inherits from BaseCreateSchema"""
         fields = PricelistCreate.model_fields
-        assert len(fields) == 4
+        assert len(fields) == 6
         assert 'name' in fields
         assert 'description' in fields
 
@@ -123,6 +123,8 @@ class TestPricelistCreate:
         assert schema.model_dump() == {
             "is_active": True,
             "sequence": 0,
+            "created_by": 1,
+            "updated_by": 1,
             "name": "Test Pricelist",
             "description": None
         }
@@ -132,6 +134,8 @@ class TestPricelistCreate:
         assert schema.model_dump_json() == '{'\
             '"is_active":true,'\
             '"sequence":0,'\
+            '"created_by":1,'\
+            '"updated_by":1,'\
             '"name":"Test Pricelist",'\
             '"description":null'\
             '}'
@@ -153,7 +157,7 @@ class TestPricelistUpdate:
     def test_pricelist_update_fields_inheritance(self):
         """Test that the pricelist update schema inherits from BaseUpdateSchema"""
         fields = PricelistUpdate.model_fields
-        assert len(fields) == 4
+        assert len(fields) == 5
         assert 'name' in fields
         assert 'description' in fields
 
@@ -185,6 +189,7 @@ class TestPricelistUpdate:
         assert schema.model_dump() == {
             "is_active": None,
             "sequence": None,
+            "updated_by": None,
             "name": "Test Pricelist",
             "description": None
         }
@@ -194,6 +199,7 @@ class TestPricelistUpdate:
         assert schema.model_dump_json() == '{'\
             '"is_active":null,'\
             '"sequence":null,'\
+            '"updated_by":null,'\
             '"name":"Test Pricelist",'\
             '"description":null'\
             '}'
