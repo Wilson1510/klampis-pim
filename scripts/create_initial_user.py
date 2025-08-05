@@ -32,7 +32,7 @@ async def create_system_user():
             # Create system user
             system_user = Users(
                 username="system",
-                email="system@klampis-pim.local",
+                email="system@klampis.com",
                 password=hash_password("system"),
                 name="System User",
                 role="SYSTEM",
@@ -68,7 +68,7 @@ async def create_admin_user():
             # Create admin user
             admin_user = Users(
                 username="admin",
-                email="admin@klampis-pim.local",
+                email="admin@klampis.com",
                 password=hash_password("admin"),
                 name="Administrator",
                 role="ADMIN",
