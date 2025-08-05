@@ -6,6 +6,7 @@ from app.services.pricelist_service import pricelist_service
 from app.services.supplier_service import supplier_service
 from app.services.product_service import product_service
 from app.services.sku_service import sku_service
+from app.services.user_service import user_service
 
 # Export all services
 __all__ = [
@@ -16,4 +17,5 @@ __all__ = [
     "supplier_service",
     "product_service",
     "sku_service",
+    "user_service",
 ]

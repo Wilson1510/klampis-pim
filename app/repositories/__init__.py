@@ -7,6 +7,7 @@ from app.repositories.pricelist_repository import pricelist_repository
 from app.repositories.supplier_repository import supplier_repository
 from app.repositories.product_repository import product_repository
 from app.repositories.sku_repository import sku_repository
+from app.repositories.user_repository import user_repository
 
 # Export all repositories
 __all__ = [
@@ -18,4 +19,5 @@ __all__ = [
     "supplier_repository",
     "product_repository",
     "sku_repository",
+    "user_repository",
 ]

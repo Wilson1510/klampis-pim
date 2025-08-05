@@ -1,6 +1,8 @@
 from fastapi import APIRouter
 
 from app.api.v1.endpoints import (
+    auth_endpoint,
+    user_endpoint,
     attribute_endpoint,
     category_type_endpoint,
     category_endpoint,
@@ -11,6 +13,20 @@ from app.api.v1.endpoints import (
 )
 
 api_router = APIRouter()
+
+# Include authentication endpoints
+api_router.include_router(
+    auth_endpoint.router,
+    prefix="/auth",
+    tags=["authentication"]
+)
+
+# Include user management endpoints
+api_router.include_router(
+    user_endpoint.router,
+    prefix="/users",
+    tags=["users"]
+)
 
 # Include attribute endpoints
 api_router.include_router(
