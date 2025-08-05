@@ -108,3 +108,8 @@ async def can_modify_resource(
         or current_user.id == resource_created_by
     ):
         return current_user
+
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="Not authorized to modify this resource"
+    )
