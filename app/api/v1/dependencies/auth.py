@@ -51,11 +51,13 @@ async def get_current_user(
     return user
 
 
-# Role-based access control dependencies
-async def require_admin(
+async def get_current_admin_user(
     current_user: Users = Depends(get_current_user)
 ) -> Users:
-    """Require ADMIN role."""
+    """
+    Get current user and ensure they have ADMIN role.
+    Used for admin-only endpoints.
+    """
     if current_user.role != Role.ADMIN:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -64,52 +66,58 @@ async def require_admin(
     return current_user
 
 
-async def require_admin_or_manager(
+async def get_current_manager_or_admin_user(
     current_user: Users = Depends(get_current_user)
 ) -> Users:
-    """Require ADMIN or MANAGER role."""
+    """
+    Get current user and ensure they have ADMIN, MANAGER, or SYSTEM role.
+    Used for management-level endpoints.
+    """
     if current_user.role not in [Role.ADMIN, Role.MANAGER, Role.SYSTEM]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Admin, Manager, or System access required"
+            detail="Manager or Admin access required"
         )
     return current_user
 
 
-def check_ownership_or_admin(current_user: Users, resource_created_by: int) -> bool:
+def check_resource_ownership(current_user: Users, resource_created_by: int) -> bool:
     """
-    Check if user owns the resource or is admin/manager/system.
-
+    Check if user can modify a resource based on ownership and role.
+    
+    Rules:
+    - ADMIN: Can modify any resource
+    - MANAGER, SYSTEM: Can modify any resource  
+    - USER: Can only modify their own resources
+    
     Args:
         current_user: Current authenticated user
         resource_created_by: ID of user who created the resource
-
+    
     Returns:
-        bool: True if user can access the resource
+        bool: True if user can modify the resource
     """
-    # Admin, Manager, and System can access all resources
+    # ADMIN, MANAGER, SYSTEM can modify any resource
     if current_user.role in [Role.ADMIN, Role.MANAGER, Role.SYSTEM]:
         return True
-
-    # User can only access their own resources
+    
+    # USER can only modify their own resources
     return current_user.id == resource_created_by
 
 
-async def can_modify_resource(
-    resource_created_by: int,
-    current_user: Users = Depends(get_current_user)
-) -> Users:
+def require_resource_ownership(current_user: Users, resource_created_by: int):
     """
-    Check if user can modify resources (not just USER role or owns the resource).
-    This dependency should be used with additional ownership checks in the endpoint.
+    Raise exception if user doesn't have permission to modify resource.
+    
+    Args:
+        current_user: Current authenticated user
+        resource_created_by: ID of user who created the resource
+    
+    Raises:
+        HTTPException: If user doesn't have permission
     """
-    if (
-        current_user.role in [Role.ADMIN, Role.MANAGER, Role.SYSTEM]
-        or current_user.id == resource_created_by
-    ):
-        return current_user
-
-    raise HTTPException(
-        status_code=status.HTTP_403_FORBIDDEN,
-        detail="Not authorized to modify this resource"
-    )
+    if not check_resource_ownership(current_user, resource_created_by):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can only modify your own resources"
+        )

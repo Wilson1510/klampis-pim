@@ -7,18 +7,14 @@ from app.services.user_service import user_service
 from app.schemas.user_schema import (
     UserResponse,
     UserCreate,
-    UserUpdate,
-    UserChangePassword
+    UserUpdate
 )
 from app.schemas.base import SingleItemResponse, MultipleItemsResponse
 from app.utils.response_helpers import (
     create_single_item_response,
     create_multiple_items_response
 )
-from app.api.v1.dependencies.auth import (
-    get_current_user,
-    require_admin
-)
+from app.api.v1.dependencies.auth import get_current_user
 from app.models import Users
 
 router = APIRouter()
@@ -49,13 +45,12 @@ async def get_users(
     is_active: Optional[bool] = Query(
         None, description="Filter by active status"
     ),
-    db: AsyncSession = Depends(get_db),
-    current_user: Users = Depends(require_admin)
+    db: AsyncSession = Depends(get_db)
 ):
     """
     Get users with optional filtering and pagination.
 
-    **Requires ADMIN role.**
+    **Requires ADMIN role** (enforced at router level).
 
     - **skip**: Number of records to skip (default: 0)
     - **limit**: Maximum number of records to return (default: 100, max: 1000)
@@ -95,12 +90,12 @@ async def get_users(
 async def create_user(
     user_create: UserCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: Users = Depends(require_admin)
+    current_user: Users = Depends(get_current_user)  # Need user ID for created_by
 ):
     """
     Create a new user.
 
-    **Requires ADMIN role.**
+    **Requires ADMIN role** (enforced at router level).
 
     Creates a new user with the provided information.
     Username and email must be unique across the system.
@@ -120,13 +115,12 @@ async def create_user(
 )
 async def get_user(
     user_id: int,
-    db: AsyncSession = Depends(get_db),
-    current_user: Users = Depends(require_admin)
+    db: AsyncSession = Depends(get_db)
 ):
     """
     Get user by ID.
 
-    **Requires ADMIN role.**
+    **Requires ADMIN role** (enforced at router level).
 
     Returns detailed information about a specific user.
     """
@@ -149,12 +143,12 @@ async def update_user(
     user_id: int,
     user_update: UserUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user: Users = Depends(require_admin)
+    current_user: Users = Depends(get_current_user)  # Need user ID for updated_by
 ):
     """
     Update user by ID.
 
-    **Requires ADMIN role.**
+    **Requires ADMIN role** (enforced at router level).
 
     Updates user information. Only provided fields will be updated.
     Username and email must remain unique if changed.
@@ -174,45 +168,13 @@ async def update_user(
 )
 async def delete_user(
     user_id: int,
-    db: AsyncSession = Depends(get_db),
-    current_user: Users = Depends(require_admin)
+    db: AsyncSession = Depends(get_db)
 ):
     """
     Delete user by ID.
 
-    **Requires ADMIN role.**
+    **Requires ADMIN role** (enforced at router level).
 
     System and Admin users cannot be deleted.
     """
     await user_service.delete_user(db, user_id=user_id)
-
-
-@router.post(
-    "/change-password",
-    response_model=SingleItemResponse[UserResponse],
-    status_code=status.HTTP_200_OK
-)
-async def change_password(
-    password_change: UserChangePassword,
-    db: AsyncSession = Depends(get_db),
-    current_user: Users = Depends(get_current_user)
-):
-    """
-    Change current user's password.
-
-    **Requires authentication.**
-
-    Allows users to change their own password.
-    Must provide current password for verification.
-
-    **Validation Rules:**
-    - Current password must be correct
-    - New password must be at least 6 characters long
-    - New password must be different from current password
-    """
-    user = await user_service.change_password(
-        db=db,
-        user_id=current_user.id,
-        password_change=password_change
-    )
-    return create_single_item_response(data=user)
