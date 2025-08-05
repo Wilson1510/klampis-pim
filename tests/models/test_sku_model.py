@@ -762,7 +762,7 @@ class TestSkuSkuAttributeValueRelationship:
         assert await get_object_by_id(
             db_session,
             SkuAttributeValue,
-            sku_attribute_value.i
+            sku_attribute_value.id
         ) is None
 
     @pytest.mark.asyncio

@@ -2,7 +2,7 @@ from typing import List, Optional, Tuple
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException, status
 
-from app.repositories.sku_repository import sku_repository
+from app.repositories import sku_repository
 from app.models import Skus, Attributes
 from app.schemas.sku_schema import SkuCreate, SkuUpdate, AttributeValueInput
 
@@ -26,27 +26,17 @@ class SkuService:
         is_active: Optional[bool] = None
     ) -> Tuple[List[Skus], int]:
         """Get SKUs with filtering support and total count."""
-        if (
-            name is None and slug is None and sku_number is None
-            and product_id is None and is_active is None
-        ):
-            data = await self.repository.get_multi_with_relationships(
-                db, skip=skip, limit=limit
-            )
-            total = len(data)
-
-        else:
-            data = await self.repository.get_multi_with_filter(
-                db,
-                skip=skip,
-                limit=limit,
-                name=name,
-                slug=slug,
-                sku_number=sku_number,
-                product_id=product_id,
-                is_active=is_active
-            )
-            total = len(data)
+        data = await self.repository.get_multi_with_filter(
+            db,
+            skip=skip,
+            limit=limit,
+            name=name,
+            slug=slug,
+            sku_number=sku_number,
+            product_id=product_id,
+            is_active=is_active
+        )
+        total = len(data)
         return data, total
 
     async def get_sku_by_id(

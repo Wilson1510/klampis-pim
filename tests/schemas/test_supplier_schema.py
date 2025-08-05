@@ -147,7 +147,7 @@ class TestSupplierCreate:
     def test_supplier_create_fields_inheritance(self):
         """Test that the supplier create schema has correct fields"""
         fields = SupplierCreate.model_fields
-        assert len(fields) == 7  # 5 base + 2 from BaseCreateSchema
+        assert len(fields) == 9  # 5 base + 4 from BaseCreateSchema
         assert 'name' in fields
         assert 'company_type' in fields
         assert 'address' in fields
@@ -210,6 +210,8 @@ class TestSupplierCreate:
         assert schema.model_dump() == {
             "is_active": True,
             "sequence": 0,
+            "created_by": 1,
+            "updated_by": 1,
             "name": "CV Test Supplier",
             "company_type": "CV",
             "address": "Jl. Create No. 456, Bandung",
@@ -222,6 +224,8 @@ class TestSupplierCreate:
         assert schema.model_dump_json() == '{'\
             '"is_active":true,'\
             '"sequence":0,'\
+            '"created_by":1,'\
+            '"updated_by":1,'\
             '"name":"CV Test Supplier",'\
             '"company_type":"CV",'\
             '"address":"Jl. Create No. 456, Bandung",'\
@@ -252,7 +256,7 @@ class TestSupplierUpdate:
     def test_supplier_update_fields_inheritance(self):
         """Test that the supplier update schema has correct fields"""
         fields = SupplierUpdate.model_fields
-        assert len(fields) == 7  # 5 base + 2 from BaseUpdateSchema
+        assert len(fields) == 8  # 5 base + 3 from BaseUpdateSchema
         assert 'name' in fields
         assert 'company_type' in fields
         assert 'address' in fields
@@ -315,6 +319,7 @@ class TestSupplierUpdate:
         assert schema.model_dump() == {
             "is_active": None,
             "sequence": None,
+            "updated_by": None,
             "name": "UD Test Supplier",
             "company_type": "UD",
             "address": "Jl. Update No. 789, Surabaya",
@@ -327,6 +332,7 @@ class TestSupplierUpdate:
         assert schema.model_dump_json() == '{'\
             '"is_active":null,'\
             '"sequence":null,'\
+            '"updated_by":null,'\
             '"name":"UD Test Supplier",'\
             '"company_type":"UD",'\
             '"address":"Jl. Update No. 789, Surabaya",'\

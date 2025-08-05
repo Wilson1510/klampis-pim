@@ -16,7 +16,6 @@ from app.models.product_model import Products
 from app.models.sku_model import Skus
 from app.models.user_model import Users
 from app.models.attribute_model import Attributes
-from app.models.attribute_set_model import AttributeSets
 from app.models.pricelist_model import Pricelists
 from app.core.security import hash_password
 from slugify import slugify
@@ -606,7 +605,6 @@ def register_listeners():
     event.listen(Suppliers.name, 'set', _set_slug)
     event.listen(Products.name, 'set', _set_slug)
     event.listen(Skus.name, 'set', _set_slug)
-    event.listen(AttributeSets.name, 'set', _set_slug)
 
     event.listen(Attributes.name, 'set', _set_code)
     event.listen(Pricelists.name, 'set', _set_code)

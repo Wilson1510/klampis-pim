@@ -1,13 +1,39 @@
 from fastapi import APIRouter
 
 from app.api.v1.endpoints import (
+    auth_endpoint,
+    user_endpoint,
+    attribute_endpoint,
     category_type_endpoint,
     category_endpoint,
+    pricelist_endpoint,
     supplier_endpoint,
+    product_endpoint,
     sku_endpoint
 )
 
 api_router = APIRouter()
+
+# Include authentication endpoints
+api_router.include_router(
+    auth_endpoint.router,
+    prefix="/auth",
+    tags=["authentication"]
+)
+
+# Include user management endpoints
+api_router.include_router(
+    user_endpoint.router,
+    prefix="/users",
+    tags=["users"]
+)
+
+# Include attribute endpoints
+api_router.include_router(
+    attribute_endpoint.router,
+    prefix="/attributes",
+    tags=["attributes"]
+)
 
 # Include category type endpoints
 api_router.include_router(
@@ -23,11 +49,25 @@ api_router.include_router(
     tags=["categories"]
 )
 
+# Include pricelist endpoints
+api_router.include_router(
+    pricelist_endpoint.router,
+    prefix="/pricelists",
+    tags=["pricelists"]
+)
+
 # Include supplier endpoints
 api_router.include_router(
     supplier_endpoint.router,
     prefix="/suppliers",
     tags=["suppliers"]
+)
+
+# Include product endpoints
+api_router.include_router(
+    product_endpoint.router,
+    prefix="/products",
+    tags=["products"]
 )
 
 # Include SKU endpoints

@@ -1,12 +1,12 @@
 from typing import List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, func
+from sqlalchemy import select, and_
 from sqlalchemy.orm import selectinload
 
 from app.models import Suppliers, Products
 from app.schemas.supplier_schema import SupplierCreate, SupplierUpdate
 from app.repositories.base import CRUDBase
-from app.repositories.category_repository import category_repository
+from app.repositories import category_repository
 
 
 class SupplierRepository(
@@ -71,12 +71,7 @@ class SupplierRepository(
                 selectinload(Products.category),
                 selectinload(Products.images)
             )
-            .where(
-                and_(
-                    Products.supplier_id == supplier_id,
-                    Products.is_active.is_(True)
-                )
-            )
+            .where(Products.supplier_id == supplier_id)
             .offset(skip)
             .limit(limit)
         )
@@ -87,19 +82,6 @@ class SupplierRepository(
                 db, products[0].category
             )
         return products
-
-    async def count_products(
-        self, db: AsyncSession, supplier_id: int
-    ) -> int:
-        """Count products by supplier."""
-        query = select(func.count(Products.id)).where(
-            and_(
-                Products.supplier_id == supplier_id,
-                Products.is_active.is_(True)
-            )
-        )
-        result = await db.execute(query)
-        return result.scalar() or 0
 
 
 # Create instance to be used as dependency

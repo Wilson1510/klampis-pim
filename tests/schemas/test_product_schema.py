@@ -128,7 +128,7 @@ class TestProductCreate:
     def test_product_create_fields_inheritance(self):
         """Test that the product create schema has correct fields"""
         fields = ProductCreate.model_fields
-        assert len(fields) == 7
+        assert len(fields) == 9
         assert 'name' in fields
         assert 'description' in fields
         assert 'category_id' in fields
@@ -183,6 +183,8 @@ class TestProductCreate:
         assert schema.model_dump() == {
             "is_active": True,
             "sequence": 0,
+            "created_by": 1,
+            "updated_by": 1,
             "name": "Test Product",
             "description": "Test Product Description",
             "category_id": 1,
@@ -195,6 +197,8 @@ class TestProductCreate:
         assert schema.model_dump_json() == '{'\
             '"is_active":true,'\
             '"sequence":0,'\
+            '"created_by":1,'\
+            '"updated_by":1,'\
             '"name":"Test Product",'\
             '"description":"Test Product Description",'\
             '"category_id":1,'\
@@ -224,7 +228,7 @@ class TestProductUpdate:
     def test_product_update_fields_inheritance(self):
         """Test that the product update schema has correct fields"""
         fields = ProductUpdate.model_fields
-        assert len(fields) == 9
+        assert len(fields) == 10
         assert 'name' in fields
         assert 'description' in fields
         assert 'category_id' in fields
@@ -274,6 +278,7 @@ class TestProductUpdate:
         assert schema.model_dump() == {
             "is_active": None,
             "sequence": None,
+            "updated_by": None,
             "name": "Test Product",
             "description": "Test Product Description",
             "category_id": 1,
@@ -288,6 +293,7 @@ class TestProductUpdate:
         assert schema.model_dump_json() == '{'\
             '"is_active":null,'\
             '"sequence":null,'\
+            '"updated_by":null,'\
             '"name":"Test Product",'\
             '"description":"Test Product Description",'\
             '"category_id":1,'\

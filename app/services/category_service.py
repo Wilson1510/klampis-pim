@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException
 from fastapi import status
 
-from app.repositories.category_repository import category_repository
+from app.repositories import category_repository
 from app.models import Categories, Products
 from app.schemas.category_schema import (
     CategoryCreate,
@@ -16,17 +16,6 @@ class CategoryService:
 
     def __init__(self):
         self.repository = category_repository
-
-    async def get_all_categories(
-        self, db: AsyncSession, skip: int = 0, limit: int = 100
-    ) -> Tuple[List[Categories], int]:
-        """Get all categories with pagination and total count."""
-        data = await self.repository.get_multi(db, skip=skip, limit=limit)
-        for category in data:
-            await self.repository.load_children_recursively(db, category)
-            await db.refresh(category, ["images", "category_type"])
-        total = len(data)
-        return data, total
 
     async def get_categories_with_filter(
         self,
@@ -41,11 +30,6 @@ class CategoryService:
         is_active: Optional[bool] = None
     ) -> Tuple[List[Categories], int]:
         """Get categories with filtering support and total count."""
-        if (
-            name is None and slug is None and category_type_id is None
-            and parent_id is None and is_active is None
-        ):
-            return await self.get_all_categories(db, skip=skip, limit=limit)
 
         data = await self.repository.get_multi_with_filter(
             db,
@@ -173,7 +157,9 @@ class CategoryService:
             )
 
         # Check if category has children
-        children_count = await self.repository.count_children(db, category_id)
+        children_count = await self.repository.count_children(
+            db, 'parent_id', category_id, Categories
+        )
         if children_count > 0:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -184,7 +170,9 @@ class CategoryService:
             )
 
         # Check if category has products
-        products_count = await self.repository.count_products(db, category_id)
+        products_count = await self.repository.count_children(
+            db, 'category_id', category_id, Products
+        )
         if products_count > 0:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,

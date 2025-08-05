@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException
 from fastapi import status
 
-from app.repositories.supplier_repository import supplier_repository
+from app.repositories import supplier_repository
 from app.models import Suppliers, Products
 from app.schemas.supplier_schema import (
     SupplierCreate,
@@ -200,7 +200,9 @@ class SupplierService:
             )
 
         # Check if supplier has products
-        products_count = await self.repository.count_products(db, supplier_id)
+        products_count = await self.repository.count_children(
+            db, 'supplier_id', supplier_id, Products
+        )
         if products_count > 0:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,

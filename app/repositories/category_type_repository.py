@@ -1,12 +1,12 @@
 from typing import List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, func
+from sqlalchemy import select, and_
 from sqlalchemy.orm import selectinload
 
-from app.models.category_type_model import CategoryTypes
+from app.models import CategoryTypes
 from app.schemas.category_type_schema import CategoryTypeCreate, CategoryTypeUpdate
 from app.repositories.base import CRUDBase
-from app.repositories.category_repository import category_repository
+from app.repositories import category_repository
 
 
 class CategoryTypeRepository(
@@ -49,22 +49,6 @@ class CategoryTypeRepository(
         result = await db.execute(query)
         return result.scalars().all()
 
-    async def count_categories(
-        self, db: AsyncSession, category_type_id: int
-    ) -> int:
-        """Count categories associated with this category type."""
-        # Import here to avoid circular import
-        from app.models.category_model import Categories
-
-        query = select(func.count(Categories.id)).where(
-            and_(
-                Categories.category_type_id == category_type_id,
-                Categories.is_active.is_(True)
-            )
-        )
-        result = await db.execute(query)
-        return result.scalar() or 0
-
     async def get_categories_by_type(
         self,
         db: AsyncSession,
@@ -74,7 +58,7 @@ class CategoryTypeRepository(
     ) -> List:
         """Get categories by category type."""
         # Import here to avoid circular import
-        from app.models.category_model import Categories
+        from app.models import Categories
 
         query = (
             select(Categories)
@@ -82,12 +66,7 @@ class CategoryTypeRepository(
                 selectinload(Categories.category_type),
                 selectinload(Categories.images)
             )
-            .where(
-                and_(
-                    Categories.category_type_id == category_type_id,
-                    Categories.is_active.is_(True)
-                )
-            )
+            .where(Categories.category_type_id == category_type_id)
             .offset(skip)
             .limit(limit)
         )

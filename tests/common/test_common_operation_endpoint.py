@@ -802,6 +802,55 @@ class TestUpdateModel:
             "error": None
         }
 
+    async def test_update_simple_model_change_parent_id(
+        self, async_client: AsyncClient, category_factory, product_factory
+    ):
+        """Test updating model with new parent id."""
+        category = await category_factory(name="Electronics")
+        category2 = await category_factory(name="Mobile Phones")
+        product = await product_factory(name="iPhone 15", category_id=category.id)
+        update_data = {
+            "category_id": category2.id
+        }
+        response = await async_client.put(
+            f"/api/v1/products/{product.id}",
+            json=update_data
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data == {
+            "success": True,
+            "data": {
+                "id": 1,
+                "name": "iPhone 15",
+                "slug": "iphone-15",
+                "category_id": category2.id,
+                "supplier_id": 1,
+                "sequence": 0,
+                "description": None,
+                "is_active": True,
+                "created_at": data["data"]["created_at"],
+                "updated_at": data["data"]["updated_at"],
+                "created_by": 1,
+                "updated_by": 1,
+                "images": [],
+                "full_path": [
+                    {
+                        "name": "Mobile Phones",
+                        "slug": "mobile-phones",
+                        "category_type": "Test Category Type",
+                        "type": "Category"
+                    },
+                    {
+                        "name": "iPhone 15",
+                        "slug": "iphone-15",
+                        "type": "Product"
+                    }
+                ]
+            },
+            "error": None
+        }
+
     async def test_update_simple_model_invalid_parent_id(
         self, async_client: AsyncClient, category_factory
     ):
@@ -1112,6 +1161,176 @@ class TestUpdateModel:
                 "updated_by": 1
             },
             "error": None
+        }
+
+    async def test_update_simple_model_invalid_image_id(
+        self, async_client: AsyncClient, category_factory, image_factory
+    ):
+        """Test updating model with invalid image id."""
+        category = await category_factory(name="Electronics")
+        await image_factory(
+            file="test_folder/test1.jpg",
+            object_id=category.id,
+            content_type="categories"
+        )
+        update_data = {
+            "images_to_update": [
+                {
+                    "id": 999,
+                    "file": "test_folder/test8.jpg"
+                }
+            ]
+        }
+        response = await async_client.put(
+            f"/api/v1/categories/{category.id}",
+            json=update_data
+        )
+
+        assert response.status_code == 404
+        assert response.json() == {
+            "success": False,
+            "data": None,
+            "error": {
+                "code": "HTTP_ERROR_404",
+                "message": "Image with id 999 not found",
+                "details": None
+            }
+        }
+
+        update_data = {
+            "images_to_delete": [999, 1000]
+        }
+        response = await async_client.put(
+            f"/api/v1/categories/{category.id}",
+            json=update_data
+        )
+
+        assert response.status_code == 404
+        assert response.json() == {
+            "success": False,
+            "data": None,
+            "error": {
+                "code": "HTTP_ERROR_404",
+                "message": "Image with id 999 not found",
+                "details": None
+            }
+        }
+
+    async def test_update_simple_model_image_object_id_mismatch(
+        self, async_client: AsyncClient, category_factory, image_factory
+    ):
+        """Test updating model with object id mismatch."""
+        category = await category_factory(name="Electronics")
+        await image_factory(
+            file="test_folder/test1.jpg",
+            object_id=category.id,
+            content_type="categories"
+        )
+        category2 = await category_factory(name="Food")
+        await image_factory(
+            file="test_folder/test2.jpg",
+            object_id=category2.id,
+            content_type="categories"
+        )
+        update_data = {
+            "images_to_update": [
+                {
+                    "id": 2,
+                    "file": "test_folder/test8.jpg",
+                    "title": "Test Image 2",
+                    "is_primary": True
+                }
+            ]
+        }
+        response = await async_client.put(
+            f"/api/v1/categories/{category.id}",
+            json=update_data
+        )
+        assert response.status_code == 400
+        assert response.json() == {
+            "success": False,
+            "data": None,
+            "error": {
+                "code": "HTTP_ERROR_400",
+                "message": "Image with id 2 does not belong to Categories with id 1",
+                "details": None
+            }
+        }
+
+        update_data = {
+            "images_to_delete": [2]
+        }
+        response = await async_client.put(
+            f"/api/v1/categories/{category.id}",
+            json=update_data
+        )
+        assert response.status_code == 400
+        assert response.json() == {
+            "success": False,
+            "data": None,
+            "error": {
+                "code": "HTTP_ERROR_400",
+                "message": "Image with id 2 does not belong to Categories with id 1",
+                "details": None
+            }
+        }
+
+    async def test_update_simple_model_invalid_image_content_type(
+        self, async_client: AsyncClient, category_factory, image_factory
+    ):
+        """Test updating model with invalid image content type."""
+        category = await category_factory(name="Electronics")
+        await image_factory(
+            file="test_folder/test1.jpg",
+            object_id=category.id,
+            content_type="categories"
+        )
+        await image_factory(
+            file="test_folder/test2.jpg",
+            object_id=category.id,
+            content_type="products"
+        )
+        update_data = {
+            "images_to_update": [
+                {
+                    "id": 2,
+                    "file": "test_folder/test8.jpg",
+                    "title": "Test Image 2",
+                    "is_primary": True
+                }
+            ]
+        }
+        response = await async_client.put(
+            f"/api/v1/categories/{category.id}",
+            json=update_data
+        )
+        assert response.status_code == 400
+        assert response.json() == {
+            "success": False,
+            "data": None,
+            "error": {
+                "code": "HTTP_ERROR_400",
+                "message": "Image with id 2 is not a categories image",
+                "details": None
+            }
+        }
+
+        update_data = {
+            "images_to_delete": [2]
+        }
+        response = await async_client.put(
+            f"/api/v1/categories/{category.id}",
+            json=update_data
+        )
+        assert response.status_code == 400
+        assert response.json() == {
+            "success": False,
+            "data": None,
+            "error": {
+                "code": "HTTP_ERROR_400",
+                "message": "Image with id 2 is not a categories image",
+                "details": None
+            }
         }
 
 

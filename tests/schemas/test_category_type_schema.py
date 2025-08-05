@@ -82,7 +82,7 @@ class TestCategoryTypeCreate:
     def test_category_type_create_fields_inheritance(self):
         """Test that the category type create schema inherits from BaseCreateSchema"""
         fields = CategoryTypeCreate.model_fields
-        assert len(fields) == 3
+        assert len(fields) == 5
         assert 'name' in fields
 
         name = fields['name']
@@ -109,6 +109,8 @@ class TestCategoryTypeCreate:
         assert schema.model_dump() == {
             "is_active": True,
             "sequence": 0,
+            "created_by": 1,
+            "updated_by": 1,
             "name": "Test Category Type"
         }
 
@@ -117,6 +119,8 @@ class TestCategoryTypeCreate:
         assert schema.model_dump_json() == '{'\
             '"is_active":true,'\
             '"sequence":0,'\
+            '"created_by":1,'\
+            '"updated_by":1,'\
             '"name":"Test Category Type"'\
             '}'
 
@@ -137,7 +141,7 @@ class TestCategoryTypeUpdate:
     def test_category_type_update_fields_inheritance(self):
         """Test that the category type update schema inherits from BaseUpdateSchema"""
         fields = CategoryTypeUpdate.model_fields
-        assert len(fields) == 3
+        assert len(fields) == 4
         assert 'name' in fields
 
         name = fields['name']
@@ -163,6 +167,7 @@ class TestCategoryTypeUpdate:
         assert schema.model_dump() == {
             "is_active": None,
             "sequence": None,
+            "updated_by": None,
             "name": "Test Category Type"
         }
 
@@ -171,6 +176,7 @@ class TestCategoryTypeUpdate:
         assert schema.model_dump_json() == '{'\
             '"is_active":null,'\
             '"sequence":null,'\
+            '"updated_by":null,'\
             '"name":"Test Category Type"'\
             '}'
 

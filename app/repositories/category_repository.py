@@ -1,6 +1,6 @@
 from typing import List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, func
+from sqlalchemy import select, and_
 from sqlalchemy.orm import selectinload
 from fastapi import HTTPException, status
 
@@ -83,12 +83,7 @@ class CategoryRepository(
                 selectinload(self.model.parent),
                 selectinload(self.model.images)
             )
-            .where(
-                and_(
-                    self.model.parent_id == parent_id,
-                    self.model.is_active.is_(True)
-                )
-            )
+            .where(self.model.parent_id == parent_id)
             .offset(skip)
             .limit(limit)
         )
@@ -112,12 +107,7 @@ class CategoryRepository(
                 selectinload(Products.category),
                 selectinload(Products.images)
             )
-            .where(
-                and_(
-                    Products.category_id == category_id,
-                    Products.is_active.is_(True)
-                )
-            )
+            .where(Products.category_id == category_id)
             .offset(skip)
             .limit(limit)
         )
@@ -218,68 +208,23 @@ class CategoryRepository(
             if obj_in.images_to_update:
                 for image_data in obj_in.images_to_update:
                     image = await db.get(Images, image_data.id)
-                    if (
-                        image and
-                        image.object_id == db_obj.id and
-                        image.content_type == "categories"
-                    ):
-                        update_data = image_data.model_dump(
-                            exclude_unset=True, exclude={'id'}
-                        )
-                        for field, value in update_data.items():
-                            setattr(image, field, value)
-                        db.add(image)
-                    elif not image:
-                        raise HTTPException(
-                            status_code=status.HTTP_404_NOT_FOUND,
-                            detail=f"Image with ID {image_data.id} not found"
-                        )
-                    elif image.object_id != db_obj.id:
-                        raise HTTPException(
-                            status_code=status.HTTP_400_BAD_REQUEST,
-                            detail=(
-                                f"Image with ID {image_data.id} does not belong to "
-                                f"category with ID {db_obj.id}"
-                            )
-                        )
-                    elif image.content_type != "categories":
-                        raise HTTPException(
-                            status_code=status.HTTP_400_BAD_REQUEST,
-                            detail=(
-                                f"Image with ID {image_data.id} is not a category image"
-                            )
-                        )
+                    self.check_and_validate_existing_image(
+                        image, image_data.id, db_obj, "categories"
+                    )
+                    update_data = image_data.model_dump(
+                        exclude_unset=True, exclude={'id'}
+                    )
+                    for field, value in update_data.items():
+                        setattr(image, field, value)
+                    db.add(image)
 
             if obj_in.images_to_delete:
                 for image_id in obj_in.images_to_delete:
                     image = await db.get(Images, image_id)
-                    if (
-                        image and
-                        image.object_id == db_obj.id and
-                        image.content_type == "categories"
-                    ):
-                        await db.delete(image)
-                    elif not image:
-                        raise HTTPException(
-                            status_code=status.HTTP_404_NOT_FOUND,
-                            detail=f"Image with ID {image_id} not found"
-                        )
-                    elif image.object_id != db_obj.id:
-                        raise HTTPException(
-                            status_code=status.HTTP_400_BAD_REQUEST,
-                            detail=(
-                                f"Image with ID {image_id} does not belong to "
-                                f"category with ID {db_obj.id}"
-                            )
-                        )
-                    elif image.content_type != "categories":
-                        raise HTTPException(
-                            status_code=status.HTTP_400_BAD_REQUEST,
-                            detail=(
-                                f"Image with ID {image_id} is not a category image"
-                            )
-                        )
-
+                    self.check_and_validate_existing_image(
+                        image, image_id, db_obj, "categories"
+                    )
+                    await db.delete(image)
             await db.commit()
             await self.load_children_recursively(db, db_obj)
             await db.refresh(db_obj, ['images'])
@@ -300,32 +245,6 @@ class CategoryRepository(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Failed to update category: {str(e)}"
             )
-
-    async def count_children(
-        self, db: AsyncSession, parent_id: int
-    ) -> int:
-        """Count direct children of a category."""
-        query = select(func.count(self.model.id)).where(
-            and_(
-                self.model.parent_id == parent_id,
-                self.model.is_active.is_(True)
-            )
-        )
-        result = await db.execute(query)
-        return result.scalar() or 0
-
-    async def count_products(
-        self, db: AsyncSession, category_id: int
-    ) -> int:
-        """Count products by category."""
-        query = select(func.count(Products.id)).where(
-            and_(
-                Products.category_id == category_id,
-                Products.is_active.is_(True)
-            )
-        )
-        result = await db.execute(query)
-        return result.scalar() or 0
 
     async def get_with_full_relations(
         self, db: AsyncSession, category_id: int

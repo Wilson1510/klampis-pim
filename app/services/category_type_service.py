@@ -3,8 +3,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException
 from fastapi import status
 
-from app.repositories.category_type_repository import category_type_repository
-from app.models.category_type_model import CategoryTypes
+from app.repositories import category_type_repository
+from app.models import CategoryTypes, Categories
 from app.schemas.category_type_schema import (
     CategoryTypeCreate,
     CategoryTypeUpdate
@@ -123,7 +123,9 @@ class CategoryTypeService:
             )
 
         # Check if category type has associated categories
-        categories_count = await self.repository.count_categories(db, category_type_id)
+        categories_count = await self.repository.count_children(
+            db, 'category_type_id', category_type_id, Categories
+        )
         if categories_count > 0:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,

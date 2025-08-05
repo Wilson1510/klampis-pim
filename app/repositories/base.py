@@ -1,9 +1,10 @@
 from typing import Any, Dict, Generic, List, Type, TypeVar, Union
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update, and_
+from sqlalchemy import select, update, func
 from app.core.base import Base
 from fastapi import HTTPException, status
+from app.models import Images
 
 # Definisikan tipe generik untuk model dan skema
 ModelType = TypeVar("ModelType", bound=Base)
@@ -153,17 +154,51 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         foreign_key_value: int
     ):
         # Use generic field lookup
-        query = select(foreign_model).where(and_(
-                foreign_model.id == foreign_key_value,
-                foreign_model.is_active.is_(True)
-            ))
-        result = await db.execute(query)
-        foreign_obj = result.scalar_one_or_none()
+        foreign_obj = await db.get(foreign_model, foreign_key_value)
 
         if not foreign_obj:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=(
                     f"{foreign_model.__name__} with id {foreign_key_value} not found"
+                )
+            )
+
+    async def count_children(
+        self, db: AsyncSession, parent_column: str, parent_id: int, children: ModelType
+    ) -> int:
+        """Count records by any field."""
+        query = select(func.count(children.id)).where(
+            getattr(children, parent_column) == parent_id
+        )
+        result = await db.execute(query)
+        return result.scalar() or 0
+
+    def check_and_validate_existing_image(
+        self,
+        image: Images | None,
+        image_id: int,
+        db_obj: ModelType,
+        content_type: str
+    ):
+        if not image:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Image with id {image_id} not found"
+            )
+
+        elif image.object_id != db_obj.id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=(
+                    f"Image with id {image_id} does not belong to "
+                    f"{db_obj.__class__.__name__} with id {db_obj.id}"
+                )
+            )
+        elif image.content_type != content_type:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=(
+                    f"Image with id {image_id} is not a {content_type} image"
                 )
             )

@@ -34,11 +34,6 @@ class Attributes(Base):
     uom = Column(String(15), nullable=True)
 
     # Relationships
-    attribute_sets = relationship(
-        "AttributeSets",
-        secondary="attribute_set_attribute",
-        back_populates="attributes"
-    )
     sku_attribute_values = relationship(
         "SkuAttributeValue",
         back_populates="attribute"

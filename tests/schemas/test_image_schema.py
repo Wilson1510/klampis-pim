@@ -73,7 +73,7 @@ class TestSampleSchemaCreate:
     def test_sample_schema_create_fields_inheritance(self):
         """Test that the SampleSchemaCreate schema has correct fields"""
         fields = SampleSchemaCreate.model_fields
-        assert len(fields) == 4
+        assert len(fields) == 6
         assert 'name' in fields
         assert 'images' in fields
 
@@ -108,6 +108,8 @@ class TestSampleSchemaCreate:
         assert schema.model_dump() == {
             "is_active": True,
             "sequence": 0,
+            "created_by": 1,
+            "updated_by": 1,
             "name": "Test Sample",
             "images": [
                 {
@@ -128,6 +130,8 @@ class TestSampleSchemaCreate:
         assert schema.model_dump_json() == '{'\
             '"is_active":true,'\
             '"sequence":0,'\
+            '"created_by":1,'\
+            '"updated_by":1,'\
             '"name":"Test Sample",'\
             '"images":['\
             '{"file":"test-image-1.jpg",'\
@@ -169,7 +173,7 @@ class TestSampleSchemaUpdate:
     def test_sample_schema_update_fields_inheritance(self):
         """Test that the SampleSchemaUpdate schema has correct fields"""
         fields = SampleSchemaUpdate.model_fields
-        assert len(fields) == 6
+        assert len(fields) == 7
         assert 'name' in fields
         assert 'images_to_create' in fields
         assert 'images_to_update' in fields
@@ -238,6 +242,7 @@ class TestSampleSchemaUpdate:
         assert schema.model_dump() == {
             "is_active": None,
             "sequence": None,
+            "updated_by": None,
             "name": "Test Sample",
             "images_to_create": [
                 {
@@ -262,6 +267,7 @@ class TestSampleSchemaUpdate:
         assert schema.model_dump_json() == '{'\
             '"is_active":null,'\
             '"sequence":null,'\
+            '"updated_by":null,'\
             '"name":"Test Sample",'\
             '"images_to_create":['\
             '{"file":"test-image-1.jpg",'\
