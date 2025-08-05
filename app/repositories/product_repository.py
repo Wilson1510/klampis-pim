@@ -127,14 +127,19 @@ class ProductRepository(CRUDBase[Products, ProductCreate, ProductUpdate]):
         return skus
 
     async def create_product(
-        self, db: AsyncSession, obj_in: ProductCreate
+        self, db: AsyncSession, obj_in: ProductCreate, created_by: int
     ) -> Products:
-        """Create a new product with business validation."""
+        """Create a new product with business validation and audit trail."""
 
         try:
             product_data = obj_in.model_dump(
                 exclude={'images'}
             )
+
+            # Add audit trail fields
+            product_data['created_by'] = created_by
+            product_data['updated_by'] = created_by
+
             await self.validate_foreign_key(
                 db, Categories, product_data['category_id']
             )
@@ -179,7 +184,8 @@ class ProductRepository(CRUDBase[Products, ProductCreate, ProductUpdate]):
         self,
         db: AsyncSession,
         db_obj: Products,
-        obj_in: ProductUpdate
+        obj_in: ProductUpdate,
+        updated_by: int
     ) -> Products:
         """Update an existing product with business validation."""
 
@@ -189,6 +195,7 @@ class ProductRepository(CRUDBase[Products, ProductCreate, ProductUpdate]):
                 exclude_unset=True,
                 exclude={'images_to_create', 'images_to_update', 'images_to_delete'}
             )
+            update_data['updated_by'] = updated_by
 
             if update_data:
                 if 'category_id' in update_data:
@@ -235,7 +242,7 @@ class ProductRepository(CRUDBase[Products, ProductCreate, ProductUpdate]):
                     self.check_and_validate_existing_image(
                         image, image_id, db_obj, "products"
                     )
-                    db.delete(image)
+                    await db.delete(image)
             await db.commit()
             await db.refresh(db_obj, ['images', 'category', 'supplier'])
             await category_repository.load_parent_category_type_recursively(

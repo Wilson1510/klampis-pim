@@ -1,18 +1,28 @@
 from httpx import AsyncClient
+import pytest
+from app.core.security import create_access_token
+from app.core.config import settings
+
+
+@pytest.fixture
+async def auth_headers():
+    """Create authentication headers with JWT token."""
+    token = create_access_token(subject=settings.SYSTEM_USER_ID)
+    return {"Authorization": f"Bearer {token}"}
 
 
 class TestGetProducts:
     """Test cases for GET /products/ endpoint."""
 
     async def test_get_products_success(
-        self, async_client: AsyncClient, product_factory
+        self, async_client: AsyncClient, product_factory, auth_headers
     ):
         """Test getting products successfully."""
         # Create test data
         await product_factory(name="iPhone 15")
         await product_factory(name="Samsung Galaxy S24")
 
-        response = await async_client.get("/api/v1/products/")
+        response = await async_client.get("/api/v1/products/", headers=auth_headers)
 
         assert response.status_code == 200
         data = response.json()["data"]

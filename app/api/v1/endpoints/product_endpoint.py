@@ -15,6 +15,8 @@ from app.utils.response_helpers import (
     create_single_item_response,
     create_multiple_items_response
 )
+from app.api.v1.dependencies.auth import get_current_user
+from app.models import Users
 
 router = APIRouter()
 
@@ -87,10 +89,14 @@ async def get_products(
 )
 async def create_product(
     product_create: ProductCreate,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: Users = Depends(get_current_user)
 ):
     """
     Create a new product.
+
+    **Requires authentication** (enforced at router level).
+    All authenticated users can create products.
 
     - **name**: Name of the product (required, max 100 chars)
     - **description**: Optional description
@@ -101,9 +107,10 @@ async def create_product(
     Business Rules:
     - Product name must be unique
     - Category and supplier must exist
+    - Created by current authenticated user
     """
     product = await product_service.create_product(
-        db=db, product_create=product_create
+        db=db, product_create=product_create, created_by=current_user.id
     )
     return create_single_item_response(data=product)
 
@@ -141,10 +148,15 @@ async def get_product(
 async def update_product(
     product_id: int,
     product_update: ProductUpdate,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: Users = Depends(get_current_user)
 ):
     """
     Update an existing product.
+
+    **Access Control:**
+    - ADMIN, MANAGER, SYSTEM: Can update any product
+    - USER: Can only update products they created
 
     - **product_id**: The ID of the product to update
     - **name**: New name for the product (optional, max 100 chars)
@@ -158,11 +170,14 @@ async def update_product(
     Business Rules:
     - Product name must be unique if updated
     - Category and supplier must exist if updated
+    - Authorization check handled by service layer
     """
     product = await product_service.update_product(
         db=db,
         product_id=product_id,
-        product_update=product_update
+        product_update=product_update,
+        updated_by=current_user.id,
+        current_user=current_user
     )
     return create_single_item_response(data=product)
 
@@ -173,7 +188,8 @@ async def update_product(
 )
 async def delete_product(
     product_id: int,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: Users = Depends(get_current_user)
 ):
     """
     Delete a product.
@@ -182,7 +198,9 @@ async def delete_product(
 
     Note: Product cannot be deleted if it has SKUs.
     """
-    await product_service.delete_product(db=db, product_id=product_id)
+    await product_service.delete_product(
+        db=db, product_id=product_id, current_user=current_user
+    )
 
 
 @router.get(
