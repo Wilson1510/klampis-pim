@@ -65,18 +65,3 @@ class Token(BaseModel):
 class TokenRefresh(BaseModel):
     """Schema for token refresh request."""
     refresh_token: str
-
-
-class UserProfile(BaseModel):
-    """Schema for user profile response."""
-    id: int
-    username: str
-    email: str
-    name: str
-    role: Role
-    is_active: bool
-    last_login: Optional[datetime] = None
-
-    model_config = {
-        "from_attributes": True
-    }

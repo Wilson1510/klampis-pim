@@ -98,7 +98,7 @@ class UserService:
 
         # Create user
         user_data = user_create.model_dump()
-        user_data["password"] = hash_password(user_create.password)
+        # Password will be hashed automatically by the listener
         user_data["created_by"] = created_by
         user_data["updated_by"] = created_by
         user_data["sequence"] = next_sequence

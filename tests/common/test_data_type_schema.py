@@ -713,6 +713,7 @@ class TestDataTypeSchema:
             "user.name@domain.co.uk",
             "test+tag@example.org",
             "123@example.com",
+            'system@klampis-pim.c'
         ]
         invalid_data = [
             [
@@ -738,6 +739,18 @@ class TestDataTypeSchema:
                 ValidationError,
                 "value is not a valid email address: An email address must have an "
                 "@-sign."
+            ],
+            [
+                "system@klampis-pim.local",
+                ValidationError,
+                "value is not a valid email address: The part after the @-sign is a "
+                "special-use or reserved name that cannot be used with email."
+            ],
+            [
+                "system@klampis-pim",
+                ValidationError,
+                "value is not a valid email address: The part after the @-sign is"
+                " not valid. It should have a period."
             ],
             [123, ValidationError, "Input should be a valid string"],
             [12.3, ValidationError, "Input should be a valid string"],

@@ -9,7 +9,7 @@ from app.core.security import (
     verify_refresh_token
 )
 from app.services.user_service import user_service
-from app.schemas.user_schema import UserLogin, Token, TokenRefresh, UserProfile
+from app.schemas.user_schema import UserLogin, Token, TokenRefresh
 from app.api.v1.dependencies.auth import get_current_user
 from app.models import Users
 
@@ -105,33 +105,6 @@ async def refresh_token(
     )
 
     return token_data
-
-
-@router.get(
-    "/me",
-    response_model=UserProfile,
-    status_code=status.HTTP_200_OK
-)
-async def get_current_user_profile(
-    current_user: Users = Depends(get_current_user)
-):
-    """
-    Get current user profile.
-
-    Returns the profile information of the currently authenticated user.
-    Requires valid JWT token in Authorization header.
-    """
-    user_profile = UserProfile(
-        id=current_user.id,
-        username=current_user.username,
-        email=current_user.email,
-        name=current_user.name,
-        role=current_user.role,
-        is_active=current_user.is_active,
-        last_login=current_user.last_login
-    )
-
-    return user_profile
 
 
 @router.post(

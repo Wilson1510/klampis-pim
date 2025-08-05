@@ -4,11 +4,12 @@ from fastapi import HTTPException
 from fastapi import status
 
 from app.repositories import product_repository
-from app.models import Products, Skus
+from app.models import Products, Skus, Users
 from app.schemas.product_schema import (
     ProductCreate,
     ProductUpdate
 )
+from app.api.v1.dependencies.auth import require_resource_ownership
 
 
 class ProductService:
@@ -68,9 +69,9 @@ class ProductService:
         return data, total
 
     async def create_product(
-        self, db: AsyncSession, product_create: ProductCreate
+        self, db: AsyncSession, product_create: ProductCreate, created_by: int
     ) -> Products:
-        """Create a new product with business validation."""
+        """Create a new product with business validation and audit trail."""
 
         # Validate name uniqueness
         existing = await self.repository.get_by_field(db, 'name', product_create.name)
@@ -80,16 +81,20 @@ class ProductService:
                 detail=f"Product with name '{product_create.name}' already exists"
             )
 
-        data = await self.repository.create_product(db, obj_in=product_create)
+        data = await self.repository.create_product(
+            db, obj_in=product_create, created_by=created_by
+        )
         return data
 
     async def update_product(
         self,
         db: AsyncSession,
         product_id: int,
-        product_update: ProductUpdate
+        product_update: ProductUpdate,
+        updated_by: int,
+        current_user: Users
     ) -> Products:
-        """Update an existing product with business validation."""
+        """Update an existing product with business validation and authorization."""
 
         # Get existing product
         db_product = await self.repository.get(db, id=product_id)
@@ -98,6 +103,9 @@ class ProductService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Product with id {product_id} not found"
             )
+
+        # Check ownership - ADMIN/MANAGER/SYSTEM can update any, USER only their own
+        require_resource_ownership(current_user, db_product.created_by)
 
         # Validate name uniqueness if being updated
         if product_update.name and product_update.name != db_product.name:
@@ -111,10 +119,12 @@ class ProductService:
                 )
 
         return await self.repository.update_product(
-            db, db_obj=db_product, obj_in=product_update
+            db, db_obj=db_product, obj_in=product_update, updated_by=updated_by
         )
 
-    async def delete_product(self, db: AsyncSession, product_id: int) -> None:
+    async def delete_product(
+        self, db: AsyncSession, product_id: int, current_user: Users
+    ) -> None:
         """Delete a product."""
 
         # Get existing product
@@ -137,6 +147,9 @@ class ProductService:
                     "SKUs"
                 )
             )
+
+        # Check ownership - ADMIN/MANAGER/SYSTEM can delete any, USER only their own
+        require_resource_ownership(current_user, db_product.created_by)
 
         await self.repository.delete(db, id=product_id)
 
