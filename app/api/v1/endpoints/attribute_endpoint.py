@@ -14,6 +14,8 @@ from app.utils.response_helpers import (
     create_single_item_response,
     create_multiple_items_response
 )
+from app.api.v1.dependencies.auth import get_current_user
+from app.models.user_model import Users
 
 router = APIRouter()
 
@@ -74,7 +76,8 @@ async def get_attributes(
 )
 async def create_attribute(
     attribute_create: AttributeCreate,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: Users = Depends(get_current_user)
 ):
     """
     Create a new attribute.
@@ -84,7 +87,7 @@ async def create_attribute(
     - **uom**: Unit of measure (optional, max 15 chars)
     """
     attribute = await attribute_service.create_attribute(
-        db=db, attribute_create=attribute_create
+        db=db, attribute_create=attribute_create, created_by=current_user.id
     )
     return create_single_item_response(data=attribute)
 
@@ -122,7 +125,8 @@ async def get_attribute(
 async def update_attribute(
     attribute_id: int,
     attribute_update: AttributeUpdate,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: Users = Depends(get_current_user)
 ):
     """
     Update an existing attribute.
@@ -135,7 +139,9 @@ async def update_attribute(
     attribute = await attribute_service.update_attribute(
         db=db,
         attribute_id=attribute_id,
-        attribute_update=attribute_update
+        attribute_update=attribute_update,
+        updated_by=current_user.id,
+        current_user=current_user
     )
     return create_single_item_response(data=attribute)
 
@@ -146,7 +152,8 @@ async def update_attribute(
 )
 async def delete_attribute(
     attribute_id: int,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: Users = Depends(get_current_user)
 ):
     """
     Delete an attribute.
@@ -156,5 +163,5 @@ async def delete_attribute(
     Note: Attribute cannot be deleted if it has associated SKU attribute values.
     """
     await attribute_service.delete_attribute(
-        db=db, attribute_id=attribute_id
+        db=db, attribute_id=attribute_id, current_user=current_user
     )

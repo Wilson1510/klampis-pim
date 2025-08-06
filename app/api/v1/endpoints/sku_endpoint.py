@@ -14,6 +14,8 @@ from app.utils.response_helpers import (
     create_single_item_response,
     create_multiple_items_response
 )
+from app.api.v1.dependencies.auth import get_current_user
+from app.models.user_model import Users
 
 router = APIRouter()
 
@@ -86,7 +88,8 @@ async def get_skus(
 )
 async def create_sku(
     sku_create: SkuCreate,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: Users = Depends(get_current_user)
 ):
     """
     Create a new SKU.
@@ -113,7 +116,7 @@ async def create_sku(
     - No complex hierarchy validation (AttributeSet is kept but not enforced)
     """
     sku = await sku_service.create_sku(
-        db=db, sku_create=sku_create
+        db=db, sku_create=sku_create, created_by=current_user.id
     )
     return create_single_item_response(data=sku)
 
@@ -153,7 +156,8 @@ async def get_sku(
 async def update_sku(
     sku_id: int,
     sku_update: SkuUpdate,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: Users = Depends(get_current_user)
 ):
     """
     Update an existing SKU.
@@ -179,7 +183,9 @@ async def update_sku(
     - When updating name, uniqueness is checked within the product
     """
     sku = await sku_service.update_sku(
-        db=db, sku_id=sku_id, sku_update=sku_update
+        db=db, sku_id=sku_id, sku_update=sku_update,
+        updated_by=current_user.id,
+        current_user=current_user
     )
     return create_single_item_response(data=sku)
 
@@ -190,7 +196,8 @@ async def update_sku(
 )
 async def delete_sku(
     sku_id: int,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: Users = Depends(get_current_user)
 ):
     """
     Delete a SKU.
@@ -199,4 +206,6 @@ async def delete_sku(
 
     Note: SKU cannot be deleted if it has products.
     """
-    await sku_service.delete_sku(db=db, sku_id=sku_id)
+    await sku_service.delete_sku(
+        db=db, sku_id=sku_id, current_user=current_user
+    )

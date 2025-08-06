@@ -15,6 +15,8 @@ from app.utils.response_helpers import (
     create_single_item_response,
     create_multiple_items_response
 )
+from app.api.v1.dependencies.auth import get_current_user
+from app.models.user_model import Users
 
 router = APIRouter()
 
@@ -92,7 +94,8 @@ async def get_suppliers(
 )
 async def create_supplier(
     supplier_create: SupplierCreate,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: Users = Depends(get_current_user)
 ):
     """
     Create a new supplier.
@@ -109,7 +112,7 @@ async def create_supplier(
     - Contact must be unique and contain only digits
     """
     supplier = await supplier_service.create_supplier(
-        db=db, supplier_create=supplier_create
+        db=db, supplier_create=supplier_create, created_by=current_user.id
     )
     return create_single_item_response(data=supplier)
 
@@ -147,7 +150,8 @@ async def get_supplier(
 async def update_supplier(
     supplier_id: int,
     supplier_update: SupplierUpdate,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: Users = Depends(get_current_user)
 ):
     """
     Update an existing supplier.
@@ -167,7 +171,9 @@ async def update_supplier(
     supplier = await supplier_service.update_supplier(
         db=db,
         supplier_id=supplier_id,
-        supplier_update=supplier_update
+        supplier_update=supplier_update,
+        updated_by=current_user.id,
+        current_user=current_user
     )
     return create_single_item_response(data=supplier)
 
@@ -178,7 +184,8 @@ async def update_supplier(
 )
 async def delete_supplier(
     supplier_id: int,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: Users = Depends(get_current_user)
 ):
     """
     Delete a supplier.
@@ -187,7 +194,9 @@ async def delete_supplier(
 
     Note: Supplier cannot be deleted if it has products.
     """
-    await supplier_service.delete_supplier(db=db, supplier_id=supplier_id)
+    await supplier_service.delete_supplier(
+        db=db, supplier_id=supplier_id, current_user=current_user
+    )
 
 
 @router.get(

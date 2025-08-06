@@ -810,3 +810,131 @@ class TestProductEndpointIntegration:
         assert response.status_code == 400
         error = response.json()["error"]
         assert "Cannot delete product. It has 2 SKUs" in error["message"]
+
+    async def test_full_crud_workflow_by_user(
+        self, async_client: AsyncClient, category_factory, supplier_factory,
+        auth_headers_system, auth_headers_user
+    ):
+        """Test CRUD workflow with resource ownership by user vs system."""
+        # Create dependencies first
+        category = await category_factory(name="Electronics")
+        supplier = await supplier_factory(name="Apple Inc")
+
+        # === CREATE PHASE ===
+        # Create product by SYSTEM
+        system_product_data = {
+            "name": "iPhone 15 System",
+            "description": "Product created by system",
+            "category_id": category.id,
+            "supplier_id": supplier.id
+        }
+        response = await async_client.post(
+            "/api/v1/products/", json=system_product_data, headers=auth_headers_system
+        )
+        assert response.status_code == 201
+        system_product_id = response.json()["data"]["id"]
+
+        # Create product by USER
+        user_product_data = {
+            "name": "iPhone 15 User",
+            "description": "Product created by user",
+            "category_id": category.id,
+            "supplier_id": supplier.id
+        }
+        response = await async_client.post(
+            "/api/v1/products/", json=user_product_data, headers=auth_headers_user
+        )
+        assert response.status_code == 201
+        user_product_id = response.json()["data"]["id"]
+
+        # === READ PHASE ===
+        # User can read both products (system and their own)
+        response = await async_client.get(
+            f"/api/v1/products/{system_product_id}", headers=auth_headers_user
+        )
+        assert response.status_code == 200
+        assert response.json()["data"]["name"] == "iPhone 15 System"
+
+        response = await async_client.get(
+            f"/api/v1/products/{user_product_id}", headers=auth_headers_user
+        )
+        assert response.status_code == 200
+        assert response.json()["data"]["name"] == "iPhone 15 User"
+
+        # === UPDATE PHASE ===
+        # User tries to update SYSTEM product (should fail - ownership check)
+        update_data = {"description": "Updated by user"}
+        response = await async_client.put(
+            f"/api/v1/products/{system_product_id}",
+            json=update_data,
+            headers=auth_headers_user
+        )
+        assert response.status_code == 403
+        error = response.json()["error"]
+        assert error["code"] == "HTTP_ERROR_403"
+        assert error["message"] == "You can only modify your own resources"
+        assert error["details"] is None
+
+        # User updates their OWN product (should succeed)
+        update_data = {"description": "Updated by user - own product"}
+        response = await async_client.put(
+            f"/api/v1/products/{user_product_id}",
+            json=update_data,
+            headers=auth_headers_user
+        )
+        assert response.status_code == 200
+        data = response.json()["data"]
+        assert data["description"] == "Updated by user - own product"
+
+        # System can update both products (admin privileges)
+        update_data = {"description": "Updated by system"}
+        response = await async_client.put(
+            f"/api/v1/products/{system_product_id}",
+            json=update_data,
+            headers=auth_headers_system
+        )
+        assert response.status_code == 200
+        assert response.json()["data"]["description"] == "Updated by system"
+
+        response = await async_client.put(
+            f"/api/v1/products/{user_product_id}",
+            json=update_data,
+            headers=auth_headers_system
+        )
+        assert response.status_code == 200
+        assert response.json()["data"]["description"] == "Updated by system"
+
+        # === DELETE PHASE ===
+        # User tries to delete SYSTEM product (should fail - ownership check)
+        response = await async_client.delete(
+            f"/api/v1/products/{system_product_id}", headers=auth_headers_user
+        )
+        assert response.status_code == 403
+        error = response.json()["error"]
+        assert error["code"] == "HTTP_ERROR_403"
+        assert error["message"] == "You can only modify your own resources"
+        assert error["details"] is None
+
+        # User deletes their OWN product (should succeed)
+        response = await async_client.delete(
+            f"/api/v1/products/{user_product_id}", headers=auth_headers_user
+        )
+        assert response.status_code == 204
+
+        # Verify user's product is deleted
+        response = await async_client.get(
+            f"/api/v1/products/{user_product_id}", headers=auth_headers_user
+        )
+        assert response.status_code == 404
+
+        # System deletes their own product (should succeed)
+        response = await async_client.delete(
+            f"/api/v1/products/{system_product_id}", headers=auth_headers_system
+        )
+        assert response.status_code == 204
+
+        # Verify system product is deleted
+        response = await async_client.get(
+            f"/api/v1/products/{system_product_id}", headers=auth_headers_system
+        )
+        assert response.status_code == 404
