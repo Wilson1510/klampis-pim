@@ -198,7 +198,7 @@ class TestUser:
 
         assert item[0].id == 1
         assert item[0].username == "system"
-        assert item[0].email == "system@test.local"
+        assert item[0].email == "system@test.com"
         assert item[0].name == "System User"
         assert verify_password("systempassword", item[0].password)
         assert item[0].role == "SYSTEM"

@@ -16,9 +16,8 @@ async def auth_headers_system():
 async def auth_headers_admin(db_session: AsyncSession):
     """Create authentication headers with JWT token."""
     admin_user = Users(
-        id=settings.ADMIN_USER_ID,
         username="admin",
-        email="admin@test.local",
+        email="admin@test.com",
         password="adminpassword",
         name="Admin User",
         role="ADMIN",
@@ -36,7 +35,7 @@ async def auth_headers_user(db_session: AsyncSession):
     """Create authentication headers with JWT token."""
     user_user = Users(
         username="user",
-        email="user@test.local",
+        email="user@test.com",
         password="userpassword",
         name="User User",
         role="USER",

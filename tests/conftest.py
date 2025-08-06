@@ -114,7 +114,7 @@ async def db_engine(create_test_database):
         # Create system user if it doesn't exist
         system_user = Users(
             username="system",
-            email="system@test.local",
+            email="system@test.com",
             password="systempassword",
             name="System User",
             role="SYSTEM",

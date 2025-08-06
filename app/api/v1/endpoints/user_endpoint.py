@@ -128,7 +128,7 @@ async def get_user(
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
+            detail=f"User with id {user_id} not found"
         )
 
     return create_single_item_response(data=user)

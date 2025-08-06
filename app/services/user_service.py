@@ -6,7 +6,7 @@ from fastapi import HTTPException, status
 from app.models import Users
 from app.repositories import user_repository
 from app.schemas.user_schema import UserCreate, UserUpdate, UserChangePassword
-from app.core.security import hash_password, verify_password
+from app.core.security import verify_password
 from app.core.config import settings
 
 
@@ -80,7 +80,7 @@ class UserService:
         if existing_username:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Username '{user_create.username}' already exists"
+                detail=f"User with username '{user_create.username}' already exists"
             )
 
         # Check if email exists
@@ -90,7 +90,7 @@ class UserService:
         if existing_email:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Email '{user_create.email}' already exists"
+                detail=f"User with email '{user_create.email}' already exists"
             )
 
         # Get next sequence number
@@ -262,7 +262,7 @@ class UserService:
 
         # Update password
         update_data = {
-            "password": hash_password(password_change.new_password),
+            "password": password_change.new_password,
             "updated_by": user_id
         }
 
