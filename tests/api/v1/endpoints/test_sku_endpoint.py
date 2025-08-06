@@ -1200,18 +1200,19 @@ class TestSkuEndpointIntegration:
 
     async def test_full_crud_workflow_by_user(
         self, async_client: AsyncClient, product_factory, pricelist_factory,
-        attribute_factory, auth_headers_user
+        attribute_factory, auth_headers_system, auth_headers_user
     ):
-        """Test complete CRUD workflow for SKUs by user."""
+        """Test CRUD workflow with resource ownership by user vs system."""
         # Setup dependencies
         product = await product_factory(name="iPhone 15")
         pricelist = await pricelist_factory(name="Retail")
         attribute = await attribute_factory(name="Color", data_type="TEXT")
 
-        # Create
-        create_data = {
-            "name": "iPhone 15 Pro",
-            "description": "Latest iPhone Pro model",
+        # === CREATE PHASE ===
+        # Create SKU by SYSTEM
+        system_sku_data = {
+            "name": "iPhone 15 Pro System",
+            "description": "SKU created by system",
             "product_id": product.id,
             "price_details": [
                 {
@@ -1227,48 +1228,129 @@ class TestSkuEndpointIntegration:
                 }
             ]
         }
-        response = await async_client.post("/api/v1/skus/", json=create_data, headers=auth_headers_user)
+        response = await async_client.post(
+            "/api/v1/skus/",
+            json=system_sku_data,
+            headers=auth_headers_system
+        )
         assert response.status_code == 201
-        created_data = response.json()["data"]
-        sku_id = created_data["id"]
+        system_sku_id = response.json()["data"]["id"]
 
-        # Read individual
-        response = await async_client.get(f"/api/v1/skus/{sku_id}", headers=auth_headers_user)
-        assert response.status_code == 200
-        data = response.json()["data"]
-        assert data["name"] == "iPhone 15 Pro"
-        assert data["slug"] == "iphone-15-pro"
-        assert data["description"] == "Latest iPhone Pro model"
-        assert len(data["price_details"]) == 1
-        assert len(data["sku_attribute_values"]) == 1
-
-        # Read list
-        response = await async_client.get("/api/v1/skus/", headers=auth_headers_user)
-        assert response.status_code == 200
-        data = response.json()["data"]
-        assert len(data) == 1
-        assert data[0]["name"] == "iPhone 15 Pro"
-
-        # Update
-        update_data = {
-            "name": "iPhone 15 Pro Max",
-            "description": "Updated description",
-            "is_active": False
+        # Create SKU by USER
+        user_sku_data = {
+            "name": "iPhone 15 Pro User",
+            "description": "SKU created by user",
+            "product_id": product.id,
+            "price_details": [
+                {
+                    "pricelist_id": pricelist.id,
+                    "price": 1099.99,
+                    "minimum_quantity": 1
+                }
+            ],
+            "attribute_values": [
+                {
+                    "attribute_id": attribute.id,
+                    "value": "Blue"
+                }
+            ]
         }
-        response = await async_client.put(f"/api/v1/skus/{sku_id}", json=update_data, headers=auth_headers_user)
+        response = await async_client.post(
+            "/api/v1/skus/",
+            json=user_sku_data,
+            headers=auth_headers_user
+        )
+        assert response.status_code == 201
+        user_sku_id = response.json()["data"]["id"]
+
+        # === READ PHASE ===
+        # User can read both SKUs (system and their own)
+        response = await async_client.get(
+            f"/api/v1/skus/{system_sku_id}", headers=auth_headers_user
+        )
+        assert response.status_code == 200
+        assert response.json()["data"]["name"] == "iPhone 15 Pro System"
+
+        response = await async_client.get(
+            f"/api/v1/skus/{user_sku_id}", headers=auth_headers_user
+        )
+        assert response.status_code == 200
+        assert response.json()["data"]["name"] == "iPhone 15 Pro User"
+
+        # === UPDATE PHASE ===
+        # User tries to update SYSTEM SKU (should fail - ownership check)
+        update_data = {"description": "Updated by user"}
+        response = await async_client.put(
+            f"/api/v1/skus/{system_sku_id}",
+            json=update_data,
+            headers=auth_headers_user
+        )
+        assert response.status_code == 403
+        error = response.json()["error"]
+        assert error["code"] == "HTTP_ERROR_403"
+        assert error["message"] == "You can only modify your own resources"
+        assert error["details"] is None
+
+        # User updates their OWN SKU (should succeed)
+        update_data = {"description": "Updated by user - own SKU"}
+        response = await async_client.put(
+            f"/api/v1/skus/{user_sku_id}",
+            json=update_data,
+            headers=auth_headers_user
+        )
         assert response.status_code == 200
         data = response.json()["data"]
-        assert data["name"] == "iPhone 15 Pro Max"
-        assert data["slug"] == "iphone-15-pro-max"
-        assert data["description"] == "Updated description"
-        assert data["is_active"] is False
+        assert data["description"] == "Updated by user - own SKU"
 
-        # Delete
-        response = await async_client.delete(f"/api/v1/skus/{sku_id}", headers=auth_headers_user)
+        # System can update both SKUs (admin privileges)
+        update_data = {"description": "Updated by system"}
+        response = await async_client.put(
+            f"/api/v1/skus/{system_sku_id}",
+            json=update_data,
+            headers=auth_headers_system
+        )
+        assert response.status_code == 200
+        assert response.json()["data"]["description"] == "Updated by system"
+
+        response = await async_client.put(
+            f"/api/v1/skus/{user_sku_id}",
+            json=update_data,
+            headers=auth_headers_system
+        )
+        assert response.status_code == 200
+        assert response.json()["data"]["description"] == "Updated by system"
+
+        # === DELETE PHASE ===
+        # User tries to delete SYSTEM SKU (should fail - ownership check)
+        response = await async_client.delete(
+            f"/api/v1/skus/{system_sku_id}", headers=auth_headers_user
+        )
+        assert response.status_code == 403
+        error = response.json()["error"]
+        assert error["code"] == "HTTP_ERROR_403"
+        assert error["message"] == "You can only modify your own resources"
+        assert error["details"] is None
+
+        # User deletes their OWN SKU (should succeed)
+        response = await async_client.delete(
+            f"/api/v1/skus/{user_sku_id}", headers=auth_headers_user
+        )
         assert response.status_code == 204
 
-        # Verify item is deleted
-        response = await async_client.get(f"/api/v1/skus/{sku_id}", headers=auth_headers_user)
+        # Verify user's SKU is deleted
+        response = await async_client.get(
+            f"/api/v1/skus/{user_sku_id}", headers=auth_headers_user
+        )
         assert response.status_code == 404
-        error = response.json()["error"]
-        assert error["message"] == f"SKU with id {sku_id} not found"
+
+        # System deletes their own SKU (should succeed)
+        response = await async_client.delete(
+            f"/api/v1/skus/{system_sku_id}", headers=auth_headers_system
+        )
+        assert response.status_code == 204
+
+        # Verify system SKU is deleted
+        response = await async_client.get(
+            f"/api/v1/skus/{system_sku_id}", headers=auth_headers_system
+        )
+        assert response.status_code == 404
