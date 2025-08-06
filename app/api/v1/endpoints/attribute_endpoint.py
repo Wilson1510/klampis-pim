@@ -15,7 +15,7 @@ from app.utils.response_helpers import (
     create_multiple_items_response
 )
 from app.api.v1.dependencies.auth import get_current_user
-from app.models.user_model import Users
+from app.models import Users
 
 router = APIRouter()
 
