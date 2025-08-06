@@ -4,11 +4,12 @@ from fastapi import HTTPException
 from fastapi import status
 
 from app.repositories import supplier_repository
-from app.models import Suppliers, Products
+from app.models import Suppliers, Products, Users
 from app.schemas.supplier_schema import (
     SupplierCreate,
     SupplierUpdate
 )
+from app.api.v1.dependencies.auth import require_resource_ownership
 
 
 class SupplierService:
@@ -84,7 +85,7 @@ class SupplierService:
         return data, total
 
     async def create_supplier(
-        self, db: AsyncSession, supplier_create: SupplierCreate
+        self, db: AsyncSession, supplier_create: SupplierCreate, created_by: int
     ) -> Suppliers:
         """Create a new supplier with business validation."""
         # Check if supplier with same name already exists
@@ -122,13 +123,17 @@ class SupplierService:
                 )
             )
 
-        return await self.repository.create(db, obj_in=supplier_create)
+        return await self.repository.create(
+            db, obj_in=supplier_create, created_by=created_by
+        )
 
     async def update_supplier(
         self,
         db: AsyncSession,
         supplier_id: int,
-        supplier_update: SupplierUpdate
+        supplier_update: SupplierUpdate,
+        updated_by: int,
+        current_user: Users
     ) -> Suppliers:
         """Update an existing supplier with business validation."""
         # Get existing supplier
@@ -138,6 +143,9 @@ class SupplierService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Supplier with id {supplier_id} not found"
             )
+
+        # Check ownership - ADMIN/MANAGER/SYSTEM can update any, USER only their own
+        require_resource_ownership(current_user, db_supplier.created_by)
 
         # Check for name conflicts if name is being updated
         if supplier_update.name and supplier_update.name != db_supplier.name:
@@ -185,11 +193,11 @@ class SupplierService:
                 )
 
         return await self.repository.update(
-            db, db_obj=db_supplier, obj_in=supplier_update
+            db, db_obj=db_supplier, obj_in=supplier_update, updated_by=updated_by
         )
 
     async def delete_supplier(
-        self, db: AsyncSession, supplier_id: int
+        self, db: AsyncSession, supplier_id: int, current_user: Users
     ) -> Suppliers:
         """Delete a supplier after validation."""
         db_supplier = await self.repository.get(db, id=supplier_id)
@@ -198,6 +206,9 @@ class SupplierService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Supplier with id {supplier_id} not found"
             )
+
+        # Check ownership - ADMIN/MANAGER/SYSTEM can delete any, USER only their own
+        require_resource_ownership(current_user, db_supplier.created_by)
 
         # Check if supplier has products
         products_count = await self.repository.count_children(

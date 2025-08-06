@@ -4,11 +4,12 @@ from fastapi import HTTPException
 from fastapi import status
 
 from app.repositories import category_type_repository
-from app.models import CategoryTypes, Categories
+from app.models import CategoryTypes, Categories, Users
 from app.schemas.category_type_schema import (
     CategoryTypeCreate,
     CategoryTypeUpdate
 )
+from app.api.v1.dependencies.auth import require_resource_ownership
 
 
 class CategoryTypeService:
@@ -57,7 +58,8 @@ class CategoryTypeService:
         return await self.repository.get(db, id=category_type_id)
 
     async def create_category_type(
-        self, db: AsyncSession, category_type_create: CategoryTypeCreate
+        self, db: AsyncSession, category_type_create: CategoryTypeCreate,
+        created_by: int
     ) -> CategoryTypes:
         """Create a new category type."""
         # Check if category type with same name already exists
@@ -73,13 +75,17 @@ class CategoryTypeService:
                 )
             )
 
-        return await self.repository.create(db, obj_in=category_type_create)
+        return await self.repository.create(
+            db, obj_in=category_type_create, created_by=created_by
+        )
 
     async def update_category_type(
         self,
         db: AsyncSession,
         category_type_id: int,
-        category_type_update: CategoryTypeUpdate
+        category_type_update: CategoryTypeUpdate,
+        updated_by: int,
+        current_user: Users
     ) -> CategoryTypes:
         """Update an existing category type."""
         # Get existing category type
@@ -89,6 +95,9 @@ class CategoryTypeService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Category type with id {category_type_id} not found"
             )
+
+        # Check ownership - ADMIN/MANAGER/SYSTEM can update any, USER only their own
+        require_resource_ownership(current_user, db_category_type.created_by)
 
         # Check if new name conflicts with existing category type
         if (
@@ -108,11 +117,12 @@ class CategoryTypeService:
                 )
 
         return await self.repository.update(
-            db, db_obj=db_category_type, obj_in=category_type_update
+            db, db_obj=db_category_type, obj_in=category_type_update,
+            updated_by=updated_by
         )
 
     async def delete_category_type(
-        self, db: AsyncSession, category_type_id: int
+        self, db: AsyncSession, category_type_id: int, current_user: Users
     ) -> CategoryTypes:
         """Delete a category type."""
         db_category_type = await self.repository.get(db, id=category_type_id)
@@ -121,6 +131,9 @@ class CategoryTypeService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Category type with id {category_type_id} not found"
             )
+
+        # Check ownership - ADMIN/MANAGER/SYSTEM can delete any, USER only their own
+        require_resource_ownership(current_user, db_category_type.created_by)
 
         # Check if category type has associated categories
         categories_count = await self.repository.count_children(

@@ -3,8 +3,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException, status
 
 from app.repositories import sku_repository
-from app.models import Skus, Attributes
+from app.models import Skus, Attributes, Users
 from app.schemas.sku_schema import SkuCreate, SkuUpdate, AttributeValueInput
+from app.api.v1.dependencies.auth import require_resource_ownership
 
 
 class SkuService:
@@ -46,7 +47,7 @@ class SkuService:
         return await self.repository.get_with_relationships(db, sku_id=sku_id)
 
     async def create_sku(
-        self, db: AsyncSession, sku_create: SkuCreate
+        self, db: AsyncSession, sku_create: SkuCreate, created_by: int
     ) -> Skus:
         """Create a new SKU with business validation."""
 
@@ -100,13 +101,17 @@ class SkuService:
                     detail=f"Pricelists with IDs {missing_pricelist_ids} not found"
                 )
 
-        return await self.repository.create_sku(db, obj_in=sku_create)
+        return await self.repository.create_sku(
+            db, obj_in=sku_create, created_by=created_by
+        )
 
     async def update_sku(
         self,
         db: AsyncSession,
         sku_id: int,
-        sku_update: SkuUpdate
+        sku_update: SkuUpdate,
+        updated_by: int,
+        current_user: Users
     ) -> Skus:
         """Update an existing SKU with business validation."""
 
@@ -117,6 +122,9 @@ class SkuService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"SKU with id {sku_id} not found"
             )
+
+        # Check ownership - ADMIN/MANAGER/SYSTEM can update any, USER only their own
+        require_resource_ownership(current_user, db_sku.created_by)
 
         # Validate name uniqueness within product if being updated
         if sku_update.name and sku_update.name != db_sku.name:
@@ -179,11 +187,11 @@ class SkuService:
                 )
 
         return await self.repository.update_sku(
-            db, db_sku, sku_update
+            db, db_sku, sku_update, updated_by=updated_by
         )
 
     async def delete_sku(
-        self, db: AsyncSession, sku_id: int
+        self, db: AsyncSession, sku_id: int, current_user: Users
     ) -> Skus:
         """Delete a SKU after validation."""
         db_sku = await self.repository.get(db, id=sku_id)
@@ -192,6 +200,9 @@ class SkuService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"SKU with id {sku_id} not found"
             )
+
+        # Check ownership - ADMIN/MANAGER/SYSTEM can delete any, USER only their own
+        require_resource_ownership(current_user, db_sku.created_by)
 
         return await self.repository.delete(db, id=sku_id)
 

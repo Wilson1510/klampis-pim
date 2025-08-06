@@ -4,11 +4,12 @@ from fastapi import HTTPException
 from fastapi import status
 
 from app.repositories import category_repository
-from app.models import Categories, Products
+from app.models import Categories, Products, Users
 from app.schemas.category_schema import (
     CategoryCreate,
     CategoryUpdate
 )
+from app.api.v1.dependencies.auth import require_resource_ownership
 
 
 class CategoryService:
@@ -93,7 +94,7 @@ class CategoryService:
         return data, total
 
     async def create_category(
-        self, db: AsyncSession, category_create: CategoryCreate
+        self, db: AsyncSession, category_create: CategoryCreate, created_by: int
     ) -> Categories:
         """Create a new category with business validation."""
         existing = await self.repository.get_by_field(db, 'name', category_create.name)
@@ -103,14 +104,18 @@ class CategoryService:
                 detail=f"Category with name '{category_create.name}' already exists"
             )
 
-        data = await self.repository.create_category(db, obj_in=category_create)
+        data = await self.repository.create_category(
+            db, obj_in=category_create, created_by=created_by
+        )
         return data
 
     async def update_category(
         self,
         db: AsyncSession,
         category_id: int,
-        category_update: CategoryUpdate
+        category_update: CategoryUpdate,
+        updated_by: int,
+        current_user: Users
     ) -> Categories:
         """Update an existing category with business validation."""
         # Get existing category
@@ -120,6 +125,9 @@ class CategoryService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Category with id {category_id} not found"
             )
+
+        # Check ownership - ADMIN/MANAGER/SYSTEM can update any, USER only their own
+        require_resource_ownership(current_user, db_category.created_by)
 
         if category_update.name and category_update.name != db_category.name:
 
@@ -142,11 +150,11 @@ class CategoryService:
             )
 
         return await self.repository.update_category(
-            db, db_obj=db_category, obj_in=category_update
+            db, db_obj=db_category, obj_in=category_update, updated_by=updated_by
         )
 
     async def delete_category(
-        self, db: AsyncSession, category_id: int
+        self, db: AsyncSession, category_id: int, current_user: Users
     ) -> Categories:
         """Delete a category after validation."""
         db_category = await self.repository.get(db, id=category_id)
@@ -155,6 +163,9 @@ class CategoryService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Category with id {category_id} not found"
             )
+
+        # Check ownership - ADMIN/MANAGER/SYSTEM can delete any, USER only their own
+        require_resource_ownership(current_user, db_category.created_by)
 
         # Check if category has children
         children_count = await self.repository.count_children(

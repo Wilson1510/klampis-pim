@@ -4,11 +4,12 @@ from fastapi import HTTPException
 from fastapi import status
 
 from app.repositories import pricelist_repository
-from app.models import Pricelists, PriceDetails
+from app.models import Pricelists, PriceDetails, Users
 from app.schemas.pricelist_schema import (
     PricelistCreate,
     PricelistUpdate
 )
+from app.api.v1.dependencies.auth import require_resource_ownership
 
 
 class PricelistService:
@@ -57,7 +58,7 @@ class PricelistService:
         return await self.repository.get(db, id=pricelist_id)
 
     async def create_pricelist(
-        self, db: AsyncSession, pricelist_create: PricelistCreate
+        self, db: AsyncSession, pricelist_create: PricelistCreate, created_by: int
     ) -> Pricelists:
         """Create a new pricelist."""
         # Check if pricelist with same name already exists
@@ -73,13 +74,17 @@ class PricelistService:
                 )
             )
 
-        return await self.repository.create(db, obj_in=pricelist_create)
+        return await self.repository.create(
+            db, obj_in=pricelist_create, created_by=created_by
+        )
 
     async def update_pricelist(
         self,
         db: AsyncSession,
         pricelist_id: int,
-        pricelist_update: PricelistUpdate
+        pricelist_update: PricelistUpdate,
+        updated_by: int,
+        current_user: Users
     ) -> Pricelists:
         """Update an existing pricelist."""
         # Get existing pricelist
@@ -89,6 +94,9 @@ class PricelistService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Pricelist with id {pricelist_id} not found"
             )
+
+        # Check ownership - ADMIN/MANAGER/SYSTEM can update any, USER only their own
+        require_resource_ownership(current_user, db_pricelist.created_by)
 
         # Check if new name conflicts with existing pricelist
         if (
@@ -108,11 +116,11 @@ class PricelistService:
                 )
 
         return await self.repository.update(
-            db, db_obj=db_pricelist, obj_in=pricelist_update
+            db, db_obj=db_pricelist, obj_in=pricelist_update, updated_by=updated_by
         )
 
     async def delete_pricelist(
-        self, db: AsyncSession, pricelist_id: int
+        self, db: AsyncSession, pricelist_id: int, current_user: Users
     ) -> Pricelists:
         """Delete a pricelist."""
         db_pricelist = await self.repository.get(db, id=pricelist_id)
@@ -121,6 +129,9 @@ class PricelistService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Pricelist with id {pricelist_id} not found"
             )
+
+        # Check ownership - ADMIN/MANAGER/SYSTEM can delete any, USER only their own
+        require_resource_ownership(current_user, db_pricelist.created_by)
 
         # Check if pricelist has associated price details
         price_details_count = await self.repository.count_children(
