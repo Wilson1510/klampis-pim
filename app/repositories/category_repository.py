@@ -118,13 +118,15 @@ class CategoryRepository(
         return products
 
     async def create_category(
-        self, db: AsyncSession, obj_in: CategoryCreate
+        self, db: AsyncSession, obj_in: CategoryCreate, created_by: int
     ) -> Categories:
         """Create a new category."""
         try:
             category_data = obj_in.model_dump(
                 exclude={'images'}
             )
+            category_data['created_by'] = created_by
+            category_data['updated_by'] = created_by
             if category_data['parent_id']:
                 await self.validate_foreign_key(
                     db, Categories, category_data['parent_id']
@@ -168,7 +170,8 @@ class CategoryRepository(
             )
 
     async def update_category(
-        self, db: AsyncSession, db_obj: Categories, obj_in: CategoryUpdate
+        self, db: AsyncSession, db_obj: Categories, obj_in: CategoryUpdate,
+        updated_by: int
     ) -> Categories:
         """Update an existing category."""
         obj_data = db_obj.__dict__
@@ -177,6 +180,7 @@ class CategoryRepository(
                 exclude_unset=True,
                 exclude={'images_to_create', 'images_to_update', 'images_to_delete'}
             )
+            update_data['updated_by'] = updated_by
 
             if update_data:
                 if 'parent_id' in update_data:
