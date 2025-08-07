@@ -5,12 +5,13 @@ class TestDataTypeEndpoint:
     """Test cases for data type validation on endpoints."""
 
     async def test_get_models_pagination_parameters_not_integer(
-        self, async_client: AsyncClient
+        self, async_client: AsyncClient, auth_headers_system
     ):
         """Test GET request with non-integer pagination parameters."""
         # Test skip parameter with string value
         response = await async_client.get(
-            "/api/v1/products/?skip=not_a_number&limit=10"
+            "/api/v1/products/?skip=not_a_number&limit=10",
+            headers=auth_headers_system
         )
 
         assert response.status_code == 422
@@ -34,12 +35,13 @@ class TestDataTypeEndpoint:
         }
 
     async def test_get_models_filter_parameter_data_type_not_match(
-        self, async_client: AsyncClient
+        self, async_client: AsyncClient, auth_headers_system
     ):
         """Test GET request with filter parameter having wrong data type."""
         # Test category_id parameter with string value instead of int
         response = await async_client.get(
-            "/api/v1/products/?category_id=not_a_number"
+            "/api/v1/products/?category_id=not_a_number",
+            headers=auth_headers_system
         )
 
         assert response.status_code == 422
@@ -63,7 +65,7 @@ class TestDataTypeEndpoint:
         }
 
     async def test_create_model_string_field_not_string(
-        self, async_client: AsyncClient
+        self, async_client: AsyncClient, auth_headers_system
     ):
         """Test creating attribute with non-string value in name field."""
         # name field expects StrictStr, providing integer should fail
@@ -73,7 +75,11 @@ class TestDataTypeEndpoint:
             "uom": "pieces"
         }
 
-        response = await async_client.post("/api/v1/attributes/", json=attribute_data)
+        response = await async_client.post(
+            "/api/v1/attributes/",
+            json=attribute_data,
+            headers=auth_headers_system
+        )
 
         assert response.status_code == 422
         assert response.json() == {
@@ -93,7 +99,7 @@ class TestDataTypeEndpoint:
         }
 
     async def test_create_model_integer_field_not_integer(
-        self, async_client: AsyncClient
+        self, async_client: AsyncClient, auth_headers_system
     ):
         """Test creating product with non-integer value in category_id field."""
         # category_id field expects StrictPositiveInt, providing string should fail
@@ -104,7 +110,11 @@ class TestDataTypeEndpoint:
             "supplier_id": 1
         }
 
-        response = await async_client.post("/api/v1/products/", json=product_data)
+        response = await async_client.post(
+            "/api/v1/products/",
+            json=product_data,
+            headers=auth_headers_system
+        )
 
         assert response.status_code == 422
         assert response.json() == {
@@ -126,7 +136,7 @@ class TestDataTypeEndpoint:
         }
 
     async def test_create_model_boolean_field_not_boolean(
-        self, async_client: AsyncClient
+        self, async_client: AsyncClient, auth_headers_system
     ):
         """Test creating supplier with non-boolean value in is_active field."""
         # is_active field expects StrictBool, providing string should fail
@@ -139,7 +149,11 @@ class TestDataTypeEndpoint:
             "is_active": "not_a_boolean"  # String instead of boolean
         }
 
-        response = await async_client.post("/api/v1/suppliers/", json=supplier_data)
+        response = await async_client.post(
+            "/api/v1/suppliers/",
+            json=supplier_data,
+            headers=auth_headers_system
+        )
 
         assert response.status_code == 422
         assert response.json() == {
@@ -159,7 +173,7 @@ class TestDataTypeEndpoint:
         }
 
     async def test_create_model_literal_field_not_match(
-        self, async_client: AsyncClient
+        self, async_client: AsyncClient, auth_headers_system
     ):
         """Test creating attribute with invalid literal value in data_type field."""
         # data_type field expects Literal["TEXT", "NUMBER", "BOOLEAN", "DATE"]
@@ -169,7 +183,11 @@ class TestDataTypeEndpoint:
             "uom": "pieces"
         }
 
-        response = await async_client.post("/api/v1/attributes/", json=attribute_data)
+        response = await async_client.post(
+            "/api/v1/attributes/",
+            json=attribute_data,
+            headers=auth_headers_system
+        )
 
         assert response.status_code == 422
         assert response.json() == {
@@ -191,7 +209,7 @@ class TestDataTypeEndpoint:
         }
 
     async def test_create_model_list_field_not_list(
-        self, async_client: AsyncClient, product_factory
+        self, async_client: AsyncClient, product_factory, auth_headers_system
     ):
         """Test creating SKU with non-list value in price_details field."""
         # Create required dependencies
@@ -206,7 +224,11 @@ class TestDataTypeEndpoint:
             "attribute_values": []
         }
 
-        response = await async_client.post("/api/v1/skus/", json=sku_data)
+        response = await async_client.post(
+            "/api/v1/skus/",
+            json=sku_data,
+            headers=auth_headers_system
+        )
 
         assert response.status_code == 422
         assert response.json() == {
@@ -226,11 +248,14 @@ class TestDataTypeEndpoint:
         }
 
     async def test_get_model_id_not_integer(
-        self, async_client: AsyncClient
+        self, async_client: AsyncClient, auth_headers_system
     ):
         """Test GET request for single model with non-integer ID."""
         # Test getting a product with non-integer ID
-        response = await async_client.get("/api/v1/products/not_a_number")
+        response = await async_client.get(
+            "/api/v1/products/not_a_number",
+            headers=auth_headers_system
+        )
 
         assert response.status_code == 422
         assert response.json() == {
@@ -253,11 +278,14 @@ class TestDataTypeEndpoint:
         }
 
     async def test_delete_model_id_not_integer(
-        self, async_client: AsyncClient
+        self, async_client: AsyncClient, auth_headers_system
     ):
         """Test DELETE request with non-integer ID."""
         # Test deleting a supplier with non-integer ID
-        response = await async_client.delete("/api/v1/suppliers/not_a_number")
+        response = await async_client.delete(
+            "/api/v1/suppliers/not_a_number",
+            headers=auth_headers_system
+        )
 
         assert response.status_code == 422
         assert response.json() == {

@@ -12,9 +12,13 @@ from httpx import AsyncClient
 class TestGetAllModel:
     """Test cases for GET / endpoint with empty data."""
 
-    async def test_get_simple_model_empty_list(self, async_client: AsyncClient):
+    async def test_get_simple_model_empty_list(
+        self, async_client: AsyncClient, auth_headers_system
+    ):
         """Test getting models when none exist."""
-        response = await async_client.get("/api/v1/category-types/")
+        response = await async_client.get(
+            "/api/v1/category-types/", headers=auth_headers_system
+        )
 
         assert response.status_code == 200
         data = response.json()
@@ -31,7 +35,7 @@ class TestGetAllModel:
         }
 
     async def test_get_simple_model_with_pagination(
-        self, async_client: AsyncClient, category_type_factory
+        self, async_client: AsyncClient, category_type_factory, auth_headers_system
     ):
         """Test getting models with pagination."""
         # Create 5 category types
@@ -39,7 +43,9 @@ class TestGetAllModel:
             await category_type_factory(name=f"Category Type {i}")
 
         # Test first page with limit 2
-        response = await async_client.get("/api/v1/category-types/?skip=0&limit=2")
+        response = await async_client.get(
+            "/api/v1/category-types/?skip=0&limit=2", headers=auth_headers_system
+        )
         assert response.status_code == 200
         data = response.json()
         assert data == {
@@ -78,7 +84,9 @@ class TestGetAllModel:
         }
 
         # Test second page
-        response = await async_client.get("/api/v1/category-types/?skip=2&limit=2")
+        response = await async_client.get(
+            "/api/v1/category-types/?skip=2&limit=2", headers=auth_headers_system
+        )
         assert response.status_code == 200
         data = response.json()
         assert data == {
@@ -117,7 +125,9 @@ class TestGetAllModel:
         }
 
         # Test last page
-        response = await async_client.get("/api/v1/category-types/?skip=4&limit=2")
+        response = await async_client.get(
+            "/api/v1/category-types/?skip=4&limit=2", headers=auth_headers_system
+        )
         assert response.status_code == 200
         data = response.json()
         assert data == {
@@ -145,7 +155,7 @@ class TestGetAllModel:
         }
 
     async def test_get_simple_model_pagination_edge_cases(
-        self, async_client: AsyncClient, category_type_factory
+        self, async_client: AsyncClient, category_type_factory, auth_headers_system
     ):
         """Test pagination edge cases."""
         # Create 3 category types
@@ -153,7 +163,9 @@ class TestGetAllModel:
             await category_type_factory(name=f"Category Type {i}")
 
         # Test skip beyond available records
-        response = await async_client.get("/api/v1/category-types/?skip=10")
+        response = await async_client.get(
+            "/api/v1/category-types/?skip=10", headers=auth_headers_system
+        )
         assert response.status_code == 200
         data = response.json()
         assert data == {
@@ -169,7 +181,9 @@ class TestGetAllModel:
         }
 
         # Test limit larger than available records
-        response = await async_client.get("/api/v1/category-types/?limit=100")
+        response = await async_client.get(
+            "/api/v1/category-types/?limit=100", headers=auth_headers_system
+        )
         assert response.status_code == 200
         data = response.json()
         assert data == {
@@ -219,7 +233,9 @@ class TestGetAllModel:
         }
 
         # Test invalid pagination parameters
-        response = await async_client.get("/api/v1/category-types/?skip=-1")
+        response = await async_client.get(
+            "/api/v1/category-types/?skip=-1", headers=auth_headers_system
+        )
         assert response.status_code == 422
         assert response.json() == {
             "success": False,
@@ -237,7 +253,9 @@ class TestGetAllModel:
             }
         }
 
-        response = await async_client.get("/api/v1/category-types/?limit=0")
+        response = await async_client.get(
+            "/api/v1/category-types/?limit=0", headers=auth_headers_system
+        )
         assert response.status_code == 422
         assert response.json() == {
             "success": False,
@@ -255,7 +273,9 @@ class TestGetAllModel:
             }
         }
 
-        response = await async_client.get("/api/v1/category-types/?limit=1001")
+        response = await async_client.get(
+            "/api/v1/category-types/?limit=1001", headers=auth_headers_system
+        )
         assert response.status_code == 422
         assert response.json() == {
             "success": False,
@@ -274,7 +294,8 @@ class TestGetAllModel:
         }
 
     async def test_get_simple_model_with_images(
-        self, async_client: AsyncClient, category_factory, image_factory
+        self, async_client: AsyncClient, category_factory, image_factory,
+        auth_headers_system
     ):
         """Test getting model with image."""
         category = await category_factory(name="Electronics")
@@ -289,7 +310,9 @@ class TestGetAllModel:
             object_id=category.id,
             content_type="categories"
         )
-        response = await async_client.get("/api/v1/categories/")
+        response = await async_client.get(
+            "/api/v1/categories/", headers=auth_headers_system
+        )
 
         assert response.status_code == 200
         data = response.json()
@@ -372,7 +395,7 @@ class TestCreateModel:
     """Test cases for POST / endpoint."""
 
     async def test_create_simple_model_with_all_fields_provided(
-        self, async_client: AsyncClient
+        self, async_client: AsyncClient, auth_headers_system
     ):
         """Test creating model with all fields provided."""
         model_data = {
@@ -383,7 +406,8 @@ class TestCreateModel:
 
         response = await async_client.post(
             "/api/v1/category-types/",
-            json=model_data
+            json=model_data,
+            headers=auth_headers_system
         )
 
         assert response.status_code == 201
@@ -405,7 +429,7 @@ class TestCreateModel:
         }
 
     async def test_create_simple_model_with_only_required_fields(
-        self, async_client: AsyncClient
+        self, async_client: AsyncClient, auth_headers_system
     ):
         """Test creating model with only required fields."""
         model_data = {
@@ -414,7 +438,8 @@ class TestCreateModel:
 
         response = await async_client.post(
             "/api/v1/category-types/",
-            json=model_data
+            json=model_data,
+            headers=auth_headers_system
         )
 
         assert response.status_code == 201
@@ -436,7 +461,7 @@ class TestCreateModel:
         }
 
     async def test_create_simple_model_with_partial_required(
-        self, async_client: AsyncClient
+        self, async_client: AsyncClient, auth_headers_system
     ):
         """Test creating model with missing required fields."""
         model_data = {
@@ -446,7 +471,8 @@ class TestCreateModel:
 
         response = await async_client.post(
             "/api/v1/suppliers/",
-            json=model_data
+            json=model_data,
+            headers=auth_headers_system
         )
         assert response.status_code == 422
         assert response.json() == {
@@ -471,7 +497,7 @@ class TestCreateModel:
         }
 
     async def test_create_simple_model_with_only_optional_fields(
-        self, async_client: AsyncClient
+        self, async_client: AsyncClient, auth_headers_system
     ):
         """Test creating model with only optional fields (should fail)."""
         model_data = {
@@ -482,7 +508,8 @@ class TestCreateModel:
 
         response = await async_client.post(
             "/api/v1/suppliers/",
-            json=model_data
+            json=model_data,
+            headers=auth_headers_system
         )
         assert response.status_code == 422
         assert response.json() == {
@@ -517,10 +544,14 @@ class TestCreateModel:
         }
 
     async def test_create_simple_model_with_no_fields(
-        self, async_client: AsyncClient
+        self, async_client: AsyncClient, auth_headers_system
     ):
         """Test creating model with no fields provided."""
-        response = await async_client.post("/api/v1/category-types/", json={})
+        response = await async_client.post(
+            "/api/v1/category-types/",
+            json={},
+            headers=auth_headers_system
+        )
         assert response.status_code == 422
         assert response.json() == {
             "success": False,
@@ -539,14 +570,18 @@ class TestCreateModel:
         }
 
     async def test_create_simple_model_invalid_parent_id(
-        self, async_client: AsyncClient
+        self, async_client: AsyncClient, auth_headers_system
     ):
         """Test creating model with invalid parent id."""
         category_data = {
             "name": "Mobile Phones",
             "category_type_id": 999
         }
-        response = await async_client.post("/api/v1/categories/", json=category_data)
+        response = await async_client.post(
+            "/api/v1/categories/",
+            json=category_data,
+            headers=auth_headers_system
+        )
         assert response.status_code == 404
         assert response.json() == {
             "success": False,
@@ -559,7 +594,7 @@ class TestCreateModel:
         }
 
     async def test_create_simple_model_with_images(
-        self, async_client: AsyncClient, category_type_factory
+        self, async_client: AsyncClient, category_type_factory, auth_headers_system
     ):
         """Test creating model with images."""
         category_type = await category_type_factory(name="Electronics")
@@ -580,7 +615,11 @@ class TestCreateModel:
             ]
         }
 
-        response = await async_client.post("/api/v1/categories/", json=category_data)
+        response = await async_client.post(
+            "/api/v1/categories/",
+            json=category_data,
+            headers=auth_headers_system
+        )
         assert response.status_code == 201
         data = response.json()
         assert data == {
@@ -631,7 +670,8 @@ class TestGetModel:
     """Test cases for GET /{id} endpoint."""
 
     async def test_get_simple_model_with_images(
-        self, async_client: AsyncClient, category_factory, image_factory
+        self, async_client: AsyncClient, category_factory, image_factory,
+        auth_headers_system
     ):
         """Test getting model with image."""
         category = await category_factory(name="Electronics")
@@ -645,7 +685,10 @@ class TestGetModel:
             object_id=category.id,
             content_type="categories"
         )
-        response = await async_client.get(f"/api/v1/categories/{category.id}")
+        response = await async_client.get(
+            f"/api/v1/categories/{category.id}",
+            headers=auth_headers_system
+        )
         assert response.status_code == 200
         data = response.json()
         assert data == {
@@ -695,7 +738,7 @@ class TestUpdateModel:
     """Test cases for PUT /{id} endpoint."""
 
     async def test_update_simple_model_with_all_fields_provided(
-        self, async_client: AsyncClient, category_type_factory
+        self, async_client: AsyncClient, category_type_factory, auth_headers_system
     ):
         """Test updating model with all fields provided."""
         category_type = await category_type_factory(
@@ -712,7 +755,8 @@ class TestUpdateModel:
 
         response = await async_client.put(
             f"/api/v1/category-types/{category_type.id}",
-            json=update_data
+            json=update_data,
+            headers=auth_headers_system
         )
 
         assert response.status_code == 200
@@ -734,7 +778,7 @@ class TestUpdateModel:
         }
 
     async def test_update_simple_model_with_no_fields(
-        self, async_client: AsyncClient, category_type_factory
+        self, async_client: AsyncClient, category_type_factory, auth_headers_system
     ):
         """Test updating model with empty request body."""
         category_type = await category_type_factory(
@@ -744,7 +788,8 @@ class TestUpdateModel:
 
         response = await async_client.put(
             f"/api/v1/category-types/{category_type.id}",
-            json={}
+            json={},
+            headers=auth_headers_system
         )
 
         assert response.status_code == 200
@@ -766,7 +811,7 @@ class TestUpdateModel:
         }
 
     async def test_update_simple_model_same_name(
-        self, async_client: AsyncClient, category_type_factory
+        self, async_client: AsyncClient, category_type_factory, auth_headers_system
     ):
         """Test updating model with same name (should succeed)."""
         category_type = await category_type_factory(
@@ -781,7 +826,8 @@ class TestUpdateModel:
 
         response = await async_client.put(
             f"/api/v1/category-types/{category_type.id}",
-            json=update_data
+            json=update_data,
+            headers=auth_headers_system
         )
 
         assert response.status_code == 200
@@ -803,7 +849,8 @@ class TestUpdateModel:
         }
 
     async def test_update_simple_model_change_parent_id(
-        self, async_client: AsyncClient, category_factory, product_factory
+        self, async_client: AsyncClient, category_factory, product_factory,
+        auth_headers_system
     ):
         """Test updating model with new parent id."""
         category = await category_factory(name="Electronics")
@@ -814,7 +861,8 @@ class TestUpdateModel:
         }
         response = await async_client.put(
             f"/api/v1/products/{product.id}",
-            json=update_data
+            json=update_data,
+            headers=auth_headers_system
         )
         assert response.status_code == 200
         data = response.json()
@@ -852,7 +900,7 @@ class TestUpdateModel:
         }
 
     async def test_update_simple_model_invalid_parent_id(
-        self, async_client: AsyncClient, category_factory
+        self, async_client: AsyncClient, category_factory, auth_headers_system
     ):
         """Test updating model with invalid parent id."""
         category = await category_factory(name="Electronics")
@@ -861,7 +909,8 @@ class TestUpdateModel:
         }
         response = await async_client.put(
             f"/api/v1/categories/{category.id}",
-            json=update_data
+            json=update_data,
+            headers=auth_headers_system
         )
         assert response.status_code == 404
         assert response.json() == {
@@ -875,7 +924,8 @@ class TestUpdateModel:
         }
 
     async def test_update_simple_model_with_all_images_fields_provided(
-        self, async_client: AsyncClient, category_factory, image_factory
+        self, async_client: AsyncClient, category_factory, image_factory,
+        auth_headers_system
     ):
         """Test updating model with images."""
         category = await category_factory(name="Electronics")
@@ -912,7 +962,8 @@ class TestUpdateModel:
         }
         response = await async_client.put(
             f"/api/v1/categories/{category.id}",
-            json=update_data
+            json=update_data,
+            headers=auth_headers_system
         )
         assert response.status_code == 200
         data = response.json()
@@ -959,7 +1010,8 @@ class TestUpdateModel:
         }
 
     async def test_update_simple_model_with_images_to_create_only(
-        self, async_client: AsyncClient, category_factory, image_factory
+        self, async_client: AsyncClient, category_factory, image_factory,
+        auth_headers_system
     ):
         """Test updating model with images."""
         category = await category_factory(name="Electronics")
@@ -980,7 +1032,8 @@ class TestUpdateModel:
         }
         response = await async_client.put(
             f"/api/v1/categories/{category.id}",
-            json=update_data
+            json=update_data,
+            headers=auth_headers_system
         )
         assert response.status_code == 200
         data = response.json()
@@ -1027,7 +1080,8 @@ class TestUpdateModel:
         }
 
     async def test_update_simple_model_with_images_to_update_only(
-        self, async_client: AsyncClient, category_factory, image_factory
+        self, async_client: AsyncClient, category_factory, image_factory,
+        auth_headers_system
     ):
         """Test updating model with images."""
         category = await category_factory(name="Electronics")
@@ -1054,7 +1108,8 @@ class TestUpdateModel:
         }
         response = await async_client.put(
             f"/api/v1/categories/{category.id}",
-            json=update_data
+            json=update_data,
+            headers=auth_headers_system
         )
         assert response.status_code == 200
         data = response.json()
@@ -1101,7 +1156,8 @@ class TestUpdateModel:
         }
 
     async def test_update_simple_model_with_images_to_delete_only(
-        self, async_client: AsyncClient, category_factory, image_factory
+        self, async_client: AsyncClient, category_factory, image_factory,
+        auth_headers_system
     ):
         """Test updating model with images."""
         category = await category_factory(name="Electronics")
@@ -1123,7 +1179,8 @@ class TestUpdateModel:
         }
         response = await async_client.put(
             f"/api/v1/categories/{category.id}",
-            json=update_data
+            json=update_data,
+            headers=auth_headers_system
         )
         assert response.status_code == 200
         data = response.json()
@@ -1164,7 +1221,8 @@ class TestUpdateModel:
         }
 
     async def test_update_simple_model_invalid_image_id(
-        self, async_client: AsyncClient, category_factory, image_factory
+        self, async_client: AsyncClient, category_factory, image_factory,
+        auth_headers_system
     ):
         """Test updating model with invalid image id."""
         category = await category_factory(name="Electronics")
@@ -1183,7 +1241,8 @@ class TestUpdateModel:
         }
         response = await async_client.put(
             f"/api/v1/categories/{category.id}",
-            json=update_data
+            json=update_data,
+            headers=auth_headers_system
         )
 
         assert response.status_code == 404
@@ -1202,7 +1261,8 @@ class TestUpdateModel:
         }
         response = await async_client.put(
             f"/api/v1/categories/{category.id}",
-            json=update_data
+            json=update_data,
+            headers=auth_headers_system
         )
 
         assert response.status_code == 404
@@ -1217,7 +1277,8 @@ class TestUpdateModel:
         }
 
     async def test_update_simple_model_image_object_id_mismatch(
-        self, async_client: AsyncClient, category_factory, image_factory
+        self, async_client: AsyncClient, category_factory, image_factory,
+        auth_headers_system
     ):
         """Test updating model with object id mismatch."""
         category = await category_factory(name="Electronics")
@@ -1244,7 +1305,8 @@ class TestUpdateModel:
         }
         response = await async_client.put(
             f"/api/v1/categories/{category.id}",
-            json=update_data
+            json=update_data,
+            headers=auth_headers_system
         )
         assert response.status_code == 400
         assert response.json() == {
@@ -1262,7 +1324,8 @@ class TestUpdateModel:
         }
         response = await async_client.put(
             f"/api/v1/categories/{category.id}",
-            json=update_data
+            json=update_data,
+            headers=auth_headers_system
         )
         assert response.status_code == 400
         assert response.json() == {
@@ -1276,7 +1339,8 @@ class TestUpdateModel:
         }
 
     async def test_update_simple_model_invalid_image_content_type(
-        self, async_client: AsyncClient, category_factory, image_factory
+        self, async_client: AsyncClient, category_factory, image_factory,
+        auth_headers_system
     ):
         """Test updating model with invalid image content type."""
         category = await category_factory(name="Electronics")
@@ -1302,7 +1366,8 @@ class TestUpdateModel:
         }
         response = await async_client.put(
             f"/api/v1/categories/{category.id}",
-            json=update_data
+            json=update_data,
+            headers=auth_headers_system
         )
         assert response.status_code == 400
         assert response.json() == {
@@ -1320,7 +1385,8 @@ class TestUpdateModel:
         }
         response = await async_client.put(
             f"/api/v1/categories/{category.id}",
-            json=update_data
+            json=update_data,
+            headers=auth_headers_system
         )
         assert response.status_code == 400
         assert response.json() == {
@@ -1338,13 +1404,14 @@ class TestGetChildrenByModel:
     """Test cases for GET /{id}/children endpoint."""
 
     async def test_get_children_by_model_empty_list(
-        self, async_client: AsyncClient, category_type_factory
+        self, async_client: AsyncClient, category_type_factory, auth_headers_system
     ):
         """Test getting children when none exist."""
         category_type = await category_type_factory(name="Electronics")
 
         response = await async_client.get(
-            f"/api/v1/category-types/{category_type.id}/categories/"
+            f"/api/v1/category-types/{category_type.id}/categories/",
+            headers=auth_headers_system
         )
 
         assert response.status_code == 200
@@ -1362,7 +1429,8 @@ class TestGetChildrenByModel:
         }
 
     async def test_get_children_by_model_with_pagination(
-        self, async_client: AsyncClient, category_type_factory, category_factory
+        self, async_client: AsyncClient, category_type_factory, category_factory,
+        auth_headers_system
     ):
         """Test getting children with pagination."""
         category_type = await category_type_factory(name="Electronics")
@@ -1376,7 +1444,8 @@ class TestGetChildrenByModel:
 
         # Test first page
         response = await async_client.get(
-            f"/api/v1/category-types/{category_type.id}/categories/?skip=0&limit=2"
+            f"/api/v1/category-types/{category_type.id}/categories/?skip=0&limit=2",
+            headers=auth_headers_system
         )
         assert response.status_code == 200
         data = response.json()
@@ -1442,7 +1511,8 @@ class TestGetChildrenByModel:
         }
         # Test second page
         response = await async_client.get(
-            f"/api/v1/category-types/{category_type.id}/categories/?skip=2&limit=2"
+            f"/api/v1/category-types/{category_type.id}/categories/?skip=2&limit=2",
+            headers=auth_headers_system
         )
         assert response.status_code == 200
         data = response.json()
@@ -1508,7 +1578,8 @@ class TestGetChildrenByModel:
         }
 
     async def test_get_children_by_model_edge_cases(
-        self, async_client: AsyncClient, category_type_factory, category_factory
+        self, async_client: AsyncClient, category_type_factory, category_factory,
+        auth_headers_system
     ):
         """Test edge cases for getting children."""
         category_type = await category_type_factory(name="Electronics")
@@ -1522,7 +1593,8 @@ class TestGetChildrenByModel:
 
         # Test skip beyond available records
         response = await async_client.get(
-            f"/api/v1/category-types/{category_type.id}/categories/?skip=10"
+            f"/api/v1/category-types/{category_type.id}/categories/?skip=10",
+            headers=auth_headers_system
         )
         assert response.status_code == 200
         data = response.json()
@@ -1540,7 +1612,8 @@ class TestGetChildrenByModel:
 
         # Test limit larger than available records
         response = await async_client.get(
-            f"/api/v1/category-types/{category_type.id}/categories/?limit=100"
+            f"/api/v1/category-types/{category_type.id}/categories/?limit=100",
+            headers=auth_headers_system
         )
         assert response.status_code == 200
         data = response.json()
@@ -1629,10 +1702,13 @@ class TestGetChildrenByModel:
             "error": None
         }
 
-    async def test_get_children_by_model_invalid_id(self, async_client: AsyncClient):
+    async def test_get_children_by_model_invalid_id(
+        self, async_client: AsyncClient, auth_headers_system
+    ):
         """Test getting children for non-existent model."""
         response = await async_client.get(
-            "/api/v1/category-types/invalid/categories/"
+            "/api/v1/category-types/invalid/categories/",
+            headers=auth_headers_system
         )
         assert response.status_code == 422
         assert response.json() == {
@@ -1658,7 +1734,9 @@ class TestGetChildrenByModel:
 class TestConcurrentOperations:
     """Test cases for concurrent operations."""
 
-    async def test_concurrent_creation_same_name(self, async_client: AsyncClient):
+    async def test_concurrent_creation_same_name(
+        self, async_client: AsyncClient, auth_headers_system
+    ):
         """Test handling concurrent creation with same name."""
         model_data = {
             "name": "Electronics"
@@ -1667,7 +1745,11 @@ class TestConcurrentOperations:
         # Create tasks for concurrent requests
         tasks = []
         for _ in range(3):
-            task = async_client.post("/api/v1/category-types/", json=model_data)
+            task = async_client.post(
+                "/api/v1/category-types/",
+                json=model_data,
+                headers=auth_headers_system
+            )
             tasks.append(task)
 
         # Execute all requests concurrently
