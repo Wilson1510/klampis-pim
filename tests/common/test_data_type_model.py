@@ -203,10 +203,15 @@ class TestDataType:
             8887776665554.44, 77777.4, 77777.444, 8887776665554, 888777666555.4,
             2067, "3174.12", "1556", (77777.55)
         ]
+
+        """
+        These 3 first invalid data are commented out because their error message
+        depends on the database language.
+        """
+        # [888777666555444, DBAPIError, "field numerik melebihi jangkauan"],
+        # [8887776665554443, DBAPIError, "field numerik melebihi jangkauan"],
+        # [888777666555444.2, DBAPIError, "field numerik melebihi jangkauan"],
         invalid_data = [
-            [888777666555444, DBAPIError, "field numerik melebihi jangkauan"],
-            [8887776665554443, DBAPIError, "field numerik melebihi jangkauan"],
-            [888777666555444.2, DBAPIError, "field numerik melebihi jangkauan"],
             ["test123", DBAPIError, "class 'decimal.ConversionSyntax'"],
             [
                 False,
@@ -263,6 +268,16 @@ class TestDataType:
             "2023-12-25T14:30:00.123456+04:00",
             "2023-12-25T14:30:00+04:00",
         ]
+
+        """
+        This invalid data is commented out because its error message depends on
+        the device operating system.
+        """
+        # [
+        #     datetime(1, 1, 1, 1, 1, 1, 1),
+        #     DBAPIError,
+        #     "\\(\\[Errno 22\\] Invalid argument\\)"
+        # ],
         invalid_data = [
             [
                 9915,
@@ -279,11 +294,6 @@ class TestDataType:
                 True,
                 DBAPIError,
                 "(expected a datetime.date or datetime.datetime instance, got 'bool')"
-            ],
-            [
-                datetime(1, 1, 1, 1, 1, 1, 1),
-                DBAPIError,
-                "\\(\\[Errno 22\\] Invalid argument\\)"
             ],
             [
                 [datetime(2025, 1, 4)],
@@ -398,19 +408,23 @@ class TestDataType:
             "   THIRD   ",
             (SampleEnum.FIRST),
         ]
+        """
+        These 3 first invalid data are commented out because their error message
+        depends on the database language.
+        """
+        # [
+        #     "second", DBAPIError,
+        #     "nilai masukan tidak valid untuk enum sampleenum : « second »"
+        # ],
+        # [
+        #     "aaaaaaaaa", DBAPIError,
+        #     "nilai masukan tidak valid untuk enum sampleenum : « aaaaaaaaa »"
+        # ],
+        # [
+        #     "aaa", DBAPIError,
+        #     "nilai masukan tidak valid untuk enum sampleenum : « aaa »"
+        # ],
         invalid_data = [
-            [
-                "second", DBAPIError,
-                "nilai masukan tidak valid untuk enum sampleenum : « second »"
-            ],
-            [
-                "aaaaaaaaa", DBAPIError,
-                "nilai masukan tidak valid untuk enum sampleenum : « aaaaaaaaa »"
-            ],
-            [
-                "aaa", DBAPIError,
-                "nilai masukan tidak valid untuk enum sampleenum : « aaa »"
-            ],
             [
                 123, StatementError,
                 "'123' is not among the defined enum values. Enum name: "

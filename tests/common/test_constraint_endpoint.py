@@ -5,7 +5,7 @@ class TestConstraintEndpoint:
     """Test cases for constraint validation on create endpoints."""
 
     async def test_create_model_with_special_character_string(
-        self, async_client: AsyncClient
+        self, async_client: AsyncClient, auth_headers_system
     ):
         """Test creating supplier with special characters in name field."""
         # Test with special characters that should be allowed
@@ -17,7 +17,11 @@ class TestConstraintEndpoint:
             "email": "maju.berkah@test.com"
         }
 
-        response = await async_client.post("/api/v1/suppliers/", json=supplier_data)
+        response = await async_client.post(
+            "/api/v1/suppliers/",
+            json=supplier_data,
+            headers=auth_headers_system
+        )
 
         assert response.status_code == 422
         assert response.json() == {
@@ -34,7 +38,7 @@ class TestConstraintEndpoint:
         }
 
     async def test_create_model_empty_string_field(
-        self, async_client: AsyncClient
+        self, async_client: AsyncClient, auth_headers_system
     ):
         """Test creating product with empty string in required name field."""
         product_data = {
@@ -44,7 +48,11 @@ class TestConstraintEndpoint:
             "supplier_id": 1
         }
 
-        response = await async_client.post("/api/v1/products/", json=product_data)
+        response = await async_client.post(
+            "/api/v1/products/",
+            json=product_data,
+            headers=auth_headers_system
+        )
 
         assert response.status_code == 422
         assert response.json() == {
@@ -64,7 +72,7 @@ class TestConstraintEndpoint:
         }
 
     async def test_create_model_string_length_exceeded(
-        self, async_client: AsyncClient
+        self, async_client: AsyncClient, auth_headers_system
     ):
         """Test creating attribute with name exceeding max_length constraint."""
         # Attribute name has max_length=50
@@ -76,7 +84,11 @@ class TestConstraintEndpoint:
             "uom": "pieces"
         }
 
-        response = await async_client.post("/api/v1/attributes/", json=attribute_data)
+        response = await async_client.post(
+            "/api/v1/attributes/",
+            json=attribute_data,
+            headers=auth_headers_system
+        )
 
         assert response.status_code == 422
         assert response.json() == {
@@ -99,7 +111,8 @@ class TestConstraintEndpoint:
         self,
         async_client: AsyncClient,
         product_factory,
-        pricelist_factory
+        pricelist_factory,
+        auth_headers_system
     ):
         """Test creating SKU with price that subceeds minimum positive decimal."""
         # Create required dependencies
@@ -121,7 +134,11 @@ class TestConstraintEndpoint:
             "attribute_values": []
         }
 
-        response = await async_client.post("/api/v1/skus/", json=sku_data)
+        response = await async_client.post(
+            "/api/v1/skus/",
+            json=sku_data,
+            headers=auth_headers_system
+        )
 
         assert response.status_code == 422
         assert response.json() == {
