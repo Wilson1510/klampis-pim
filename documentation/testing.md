@@ -1,148 +1,248 @@
 # Test Structure
 ```
 /tests
-├── /api
+├── /api                        # API layer tests (52 test files total)
 │   ├── /v1
-│   │   ├── /endpoints          # Test individual endpoint files
-│   │   │   ├── test_endpoints_file.py (example)
-│   │   │   ├── the other file ...
-│   │   └── /dependencies       # Test API dependencies
-│   │       ├── test_dependencies_file.py (example)
-│   │       └── the other file ...
-├── /core                       # Test core functionality
-│   ├── test_config.py
-│   ├── test_common_operation.py
-│   ├── test_constraint.py
-│   ├── test_data_type.py
-│   ├── test_security.py
-│   ├── test_session.py
-│   ├── test_exceptions.py
-│   └── test_base.py
-├── /models                     # Test SQLAlchemy models
-│   ├── test_model_name_model.py (example)
-│   ├── the other file ...
-├── /schemas                    # Test Pydantic schemas
-│   ├── test_model_name_schema.py (example)
-│   ├── the other file ...
-├── /services                   # Test business logic
-│   ├── test_model_name_service.py (example)
-│   ├── the other file ...
-├── /repositories               # Test data access layer
-│   ├── test_model_name_repository.py (example)
-│   ├── the other file ...
+│   │   ├── /endpoints          # Individual endpoint tests (10 files)
+│   │   │   ├── test_auth_endpoint.py
+│   │   │   ├── test_user_endpoint.py
+│   │   │   ├── test_profile_endpoint.py
+│   │   │   ├── test_attribute_endpoint.py
+│   │   │   ├── test_category_type_endpoint.py
+│   │   │   ├── test_category_endpoint.py
+│   │   │   ├── test_product_endpoint.py
+│   │   │   ├── test_sku_endpoint.py
+│   │   │   ├── test_supplier_endpoint.py
+│   │   │   └── test_pricelist_endpoint.py
+├── /core                       # Core functionality tests
+│   ├── test_mixins.py
+│   └── test_session.py
+├── /common                     # Generic/reusable tests
+│   ├── test_base_model.py
+│   ├── test_base_schema.py
+│   ├── test_common_operation_endpoint.py
+│   ├── test_common_operation_model.py
+│   ├── test_common_operation_schema.py
+│   ├── test_constraint_endpoint.py
+│   ├── test_constraint_model.py
+│   ├── test_constraint_schema.py
+│   ├── test_data_type_endpoint.py
+│   ├── test_data_type_model.py
+│   └── test_data_type_schema.py
+├── /models                     # SQLAlchemy model tests (11 files)
+│   ├── test_user_model.py
+│   ├── test_attribute_model.py
+│   ├── test_category_type_model.py
+│   ├── test_category_model.py
+│   ├── test_product_model.py
+│   ├── test_sku_model.py
+│   ├── test_supplier_model.py
+│   ├── test_pricelist_model.py
+│   ├── test_price_detail_model.py
+│   ├── test_sku_attribute_value_model.py
+│   └── test_image_model.py
+├── /schemas                    # Pydantic schema tests (9 files)
+│   ├── test_user_schema.py
+│   ├── test_attribute_schema.py
+│   ├── test_category_type_schema.py
+│   ├── test_category_schema.py
+│   ├── test_product_schema.py
+│   ├── test_sku_schema.py
+│   ├── test_supplier_schema.py
+│   ├── test_pricelist_schema.py
+│   └── test_image_schema.py
 ├── /utils                      # Test utility functions
-│   ├── test_file_utils.py (example)
-│   ├── the other file ...
-├── /integration                # Integration tests
-│   ├── test_intergration_file.py (example)
-│   ├── the other file ...
-├── /fixtures                   # Test data factories
+│   └── model_test_utils.py     # Database operation helpers
+├── /fixtures                   # Test data factories and fixtures
 │   ├── __init__.py
-│   ├── fixture_file.py (example)
-│   ├── the other file ...
-├── conftest.py                 # Global test configuration
-├── test_main.py                # Main app tests
+│   ├── model_factories.py      # Factory functions for creating test data
+│   └── auth_headers_factories.py # Authentication fixtures
+├── conftest.py                 # Global test configuration and database setup
+└── test_main.py                # FastAPI application tests
 ```
 
 ## Testing Strategy
 
-This project implements a **DRY (Don't Repeat Yourself) testing approach** to minimize code duplication and maximize test efficiency. Instead of writing repetitive tests for every model, we focus on two main testing layers:
+This project implements a **comprehensive multi-layered testing approach** that ensures high coverage across all application layers while maintaining test efficiency and maintainability.
 
-### 1. **Generic/Common Tests** (`/core` directory)
-These tests cover functionality that applies to **all models** in the system:
+### **Current Test Coverage: 52 Test Files**
+- **API Endpoints**: 10 comprehensive endpoint test files
+- **Models**: 11 SQLAlchemy model test files  
+- **Schemas**: 9 Pydantic schema validation test files
+- **Common/Generic**: 11 reusable test files for shared functionality
+- **Core**: 2 core functionality test files
+- **Utils**: 1 testing utility file
+- **Integration**: Embedded within endpoint tests
 
-- **`test_base.py`** - Tests Base model inheritance, field configuration, table name generation, and common model behavior
-- **`test_common_operation.py`** - Tests database operations like bulk creation, rollback scenarios, and transaction handling
-- **`test_data_type.py`** - Tests data type validation for String, Integer, Boolean, Float, DateTime, and JSONB fields
-- **`test_constraint.py`** - Tests database constraints and validation rules
-- **`test_session.py`** - Tests database session management and connection handling
+## **Testing Layers**
 
-These tests ensure that every model inheriting from `Base` automatically gets tested for common functionality without writing duplicate test code.
+### 1. **API Endpoint Tests** (`/api/v1/endpoints/`)
+Comprehensive testing of all REST API endpoints with focus on:
 
-### 2. **Model-Specific Tests** (`/models` directory)
-These tests focus **only on unique features** specific to each model:
+**Authentication & Authorization:**
+- JWT token validation
+- Role-based access control (USER, ADMIN, MANAGER, SYSTEM)
+- Permission-based resource access
+- Ownership-based operations
 
-- **Business logic specific to the model**
-- **Custom validation rules**
-- **Unique field properties and constraints**
-- **Model-specific relationships**
-- **Custom methods and behaviors**
+**CRUD Operations:**
+- Create, Read, Update, Delete operations
+- Bulk operations and filtering
+- Pagination with skip/limit parameters
+- Search and filter functionality
 
-For example, `test_category_type_model.py` only tests:
-- Model initialization and field assignment
-- CRUD operations (Create, Read, Update, Delete) specific to the model
-- Slug generation from name field
-- Specific field properties (length, uniqueness)
-- CategoryType-specific string representation
-- Model-specific listeners and events
+**Integration Workflows:**
+- Complete CRUD workflows (Create → Read → Update → Delete)
+- Multi-step business processes
+- Cross-endpoint data consistency
+- Error handling and edge cases
 
-### 3. **Utility Functions** (`/utils` directory)
-- **`model_test_utils.py`** - Provides reusable functions for common database operations like `save_object()`, `get_object_by_id()`, `delete_object()`, etc.
-- **Relationship testing utilities** - Helper functions to test model relationships
-
-### 4. **Model Initialization and CRUD Testing**
-Every model test should include comprehensive testing of:
-
-**Initialization Testing:**
-- Model instantiation with valid data
-- Field assignment and default values
-- String representation (`__str__` and `__repr__` methods)
-- Model inheritance verification
-
-**CRUD Operations Testing:**
-- **Create**: Test object creation with various data combinations
-- **Read**: Test retrieval by ID and bulk retrieval operations
-- **Update**: Test field modifications and data persistence
-- **Delete**: Test object deletion and cascade behavior
-
-**Standard Test Pattern:**
+**Example from `test_user_endpoint.py`:**
 ```python
-async def test_create_operation(self, db_session):
-    """Test the create operation"""
-    item = ModelName(field="value")
-    await save_object(db_session, item)
-    
-    # Assert ID is assigned (incremental based on existing objects)
-    assert item.id == 1  # or 2, 3, etc. based on existing test data
-    
-    # Assert all model-specific fields (exclude Base model fields)
-    assert item.field == "value"
-    assert item.other_field == "expected_value"
-    # ... assert all other model-specific fields
-
-async def test_get_operation(self, db_session):
-    """Test the get operation"""
-    item = await get_object_by_id(db_session, ModelName, item_id)
-    
-    # Assert all model-specific fields are retrieved correctly
-    assert item.field == "expected_value"
-    assert item.other_field == "expected_value"
-    # ... assert all other model-specific fields
-
-async def test_update_operation(self, db_session):
-    """Test the update operation"""
-    item.field = "new_value"
-    await save_object(db_session, item)
-    
-    # Assert updated fields and unchanged fields
-    assert item.field == "new_value"
-    assert item.other_field == "unchanged_value"  # Verify other fields remain unchanged
-
-async def test_delete_operation(self, db_session):
-    """Test the delete operation"""
-    await delete_object(db_session, item)
-    deleted_item = await get_object_by_id(db_session, ModelName, item_id)
-    assert deleted_item is None
+class TestUserEndpointIntegration:
+    async def test_full_crud_workflow(self, async_client, auth_headers_admin):
+        # Create → Read → Update → Delete workflow
 ```
 
-**Important Notes:**
-- **ID Assertion**: Always assert the specific ID value (1, 2, 3, etc.) based on the count of existing objects in your test setup
-- **Field Coverage**: Assert ALL model-specific fields in each test, excluding Base model fields (`id`, `created_at`, `updated_at`, `created_by`, `updated_by`, `is_active`, `sequence`)
-- **Complete Validation**: Ensure every custom field defined in your model is properly tested and validated
+### 2. **Model Tests** (`/models/`)
+Focused on SQLAlchemy model behavior and database operations:
 
-### Benefits of This Approach:
-- **Reduced code duplication** - Common functionality is tested once in `/core`
-- **Faster test development** - New models only need tests for their unique features
-- **Better maintainability** - Changes to common functionality only require updates in one place
-- **Comprehensive coverage** - All models get tested for both common and specific functionality
-- **Clear separation of concerns** - Generic vs specific test logic is clearly separated
+**Model Initialization:**
+- Field validation and constraints
+- Default value assignment
+- Relationship configuration
+- Custom property methods
+
+**Database Operations:**
+- CRUD operations with proper transaction handling
+- Complex relationship testing
+- Cascade behavior validation
+- Custom model methods and properties
+
+**Business Logic:**
+- Model-specific validation rules
+- Custom field processing (slug generation, etc.)
+- Computed properties and methods
+
+### 3. **Schema Tests** (`/schemas/`)
+Pydantic schema validation and serialization testing:
+
+**Input Validation:**
+- Required field validation
+- Data type validation
+- Custom validator functions
+- Field constraints (min/max length, patterns)
+
+**Serialization/Deserialization:**
+- Model to schema conversion
+- Schema to model conversion
+- Nested schema handling
+- Custom field transformations
+
+### 4. **Common/Generic Tests** (`/common/`)
+Reusable tests that apply to all models and schemas:
+
+**Base Functionality:**
+- Base model inheritance testing
+- Common field validation
+- Standard CRUD operations
+- Database constraint testing
+
+**Data Type Validation:**
+- String, Integer, Boolean, Float validation
+- DateTime handling and timezone support
+- JSONB field operations
+- Enum field validation
+
+### 5. **Core Tests** (`/core/`)
+Testing of core application functionality:
+
+**Session Management:**
+- Database connection handling
+- Transaction management
+- Async session behavior
+
+**Utility Functions:**
+- Mixin functionality
+- Helper utilities
+- Configuration validation
+
+## **Testing Utilities & Fixtures**
+
+### **Authentication Fixtures** (`/fixtures/auth_headers_factories.py`)
+```python
+@pytest.fixture
+async def auth_headers_admin(db_session):
+    # Creates admin user and returns auth headers
+    
+@pytest.fixture  
+async def auth_headers_user(db_session):
+    # Creates regular user and returns auth headers
+```
+
+### **Model Factories** (`/fixtures/model_factories.py`)
+Factory functions for creating test data with proper relationships and realistic data.
+
+### **Test Utilities** (`/utils/model_test_utils.py`)
+Common database operations for testing:
+```python
+async def save_object(session, object)
+async def get_object_by_id(session, model_class, object_id)
+async def get_all_objects(session, model_class)
+async def delete_object(session, object)
+async def count_model_objects(session, model_class)
+def assert_relationship(model_class, relationship_name, back_populates)
+```
+
+## **Test Configuration**
+
+### **Database Setup** (`conftest.py`)
+- **Session-scoped test database** creation/teardown
+- **Async session management** with proper cleanup
+- **Factory fixture imports** for easy test data creation
+- **Real PostgreSQL database** for integration testing
+
+### **Async Testing** (`pytest.ini`)
+```ini
+[pytest]
+asyncio_mode = auto
+asyncio_default_fixture_loop_scope = function
+pythonpath = .
+```
+
+## **Testing Best Practices Implemented**
+
+### **1. Comprehensive Coverage**
+- **Every endpoint** has full CRUD testing
+- **Every model** has initialization and relationship testing  
+- **Every schema** has validation and serialization testing
+- **Integration workflows** test real-world usage patterns
+
+### **2. Realistic Test Data**
+- **Factory pattern** for consistent test data creation
+- **Proper relationships** between test entities
+- **Edge cases and error scenarios** coverage
+
+### **3. Authentication Testing**
+- **Role-based access control** validation
+- **JWT token handling** in all protected endpoints
+- **Permission boundary** testing
+
+### **4. Database Integrity**
+- **Real database transactions** with proper rollback
+- **Relationship integrity** validation
+- **Constraint testing** for data consistency
+
+### **5. Error Handling**
+- **HTTP status code** validation
+- **Error message** consistency testing
+- **Exception handling** verification
+
+## **Test Execution**
+
+Run with coverage:
+```bash
+pytest --cov=app --cov-report=html
+```
+
+This testing strategy ensures **high confidence** in the application's reliability, **comprehensive coverage** of all functionality, and **maintainable test code** that grows with the application.

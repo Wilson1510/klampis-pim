@@ -121,7 +121,7 @@ class SkuRepository(CRUDBase[Skus, SkuCreate, SkuUpdate]):
         return pricelists
 
     async def create_sku(
-        self, db: AsyncSession, obj_in: SkuCreate
+        self, db: AsyncSession, obj_in: SkuCreate, created_by: int
     ) -> Skus:
         """Create SKU with price details and attribute values."""
         try:
@@ -129,6 +129,8 @@ class SkuRepository(CRUDBase[Skus, SkuCreate, SkuUpdate]):
             sku_data = obj_in.model_dump(
                 exclude={'price_details', 'attribute_values'}
             )
+            sku_data['created_by'] = created_by
+            sku_data['updated_by'] = created_by
             await self.validate_foreign_key(
                 db, Products, sku_data['product_id']
             )
@@ -175,7 +177,7 @@ class SkuRepository(CRUDBase[Skus, SkuCreate, SkuUpdate]):
             )
 
     async def update_sku(
-        self, db: AsyncSession, db_obj: Skus, obj_in: SkuUpdate
+        self, db: AsyncSession, db_obj: Skus, obj_in: SkuUpdate, updated_by: int
     ) -> Skus:
         """Update SKU with price details and attribute values."""
         obj_data = db_obj.__dict__
@@ -189,6 +191,7 @@ class SkuRepository(CRUDBase[Skus, SkuCreate, SkuUpdate]):
                 'attribute_values'
             }
         )
+        update_data['updated_by'] = updated_by
 
         try:
             if update_data:

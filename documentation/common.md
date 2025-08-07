@@ -27,11 +27,9 @@ app/
 ```
 
 # Audit Trail Strategy
-- System user with (ID: 1) will be created for all automated operations
+- System user with (ID: 1) and Admin user with (ID: 2) will be created for all automated operations
 - `created_by` and `updated_by` will be used as non-nullable foreign keys
 - Default to system user (ID: 1) when no user context is available
-- System user has role "SYSTEM"
-- All data migrations and seeding operations use system user
 
 # Create .env, test_config.py, and alembic.ini file
 1. Copy configuration files:

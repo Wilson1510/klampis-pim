@@ -4,11 +4,12 @@ from fastapi import HTTPException
 from fastapi import status
 
 from app.repositories import attribute_repository
-from app.models import Attributes, SkuAttributeValue
+from app.models import Attributes, SkuAttributeValue, Users
 from app.schemas.attribute_schema import (
     AttributeCreate,
     AttributeUpdate
 )
+from app.api.v1.dependencies.auth import require_resource_ownership
 
 
 class AttributeService:
@@ -59,7 +60,7 @@ class AttributeService:
         return await self.repository.get(db, id=attribute_id)
 
     async def create_attribute(
-        self, db: AsyncSession, attribute_create: AttributeCreate
+        self, db: AsyncSession, attribute_create: AttributeCreate, created_by: int
     ) -> Attributes:
         """Create a new attribute."""
         # Check if attribute with same name already exists
@@ -75,13 +76,17 @@ class AttributeService:
                 )
             )
 
-        return await self.repository.create(db, obj_in=attribute_create)
+        return await self.repository.create(
+            db, obj_in=attribute_create, created_by=created_by
+        )
 
     async def update_attribute(
         self,
         db: AsyncSession,
         attribute_id: int,
-        attribute_update: AttributeUpdate
+        attribute_update: AttributeUpdate,
+        updated_by: int,
+        current_user: Users
     ) -> Attributes:
         """Update an existing attribute."""
         # Get existing attribute
@@ -91,6 +96,9 @@ class AttributeService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Attribute with id {attribute_id} not found"
             )
+
+        # Check ownership - ADMIN/MANAGER/SYSTEM can update any, USER only their own
+        require_resource_ownership(current_user, db_attribute.created_by)
 
         # Check if new name conflicts with existing attribute
         if (
@@ -110,11 +118,11 @@ class AttributeService:
                 )
 
         return await self.repository.update(
-            db, db_obj=db_attribute, obj_in=attribute_update
+            db, db_obj=db_attribute, obj_in=attribute_update, updated_by=updated_by
         )
 
     async def delete_attribute(
-        self, db: AsyncSession, attribute_id: int
+        self, db: AsyncSession, attribute_id: int, current_user: Users
     ) -> Attributes:
         """Delete an attribute."""
         db_attribute = await self.repository.get(db, id=attribute_id)
@@ -123,6 +131,9 @@ class AttributeService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Attribute with id {attribute_id} not found"
             )
+
+        # Check ownership - ADMIN/MANAGER/SYSTEM can delete any, USER only their own
+        require_resource_ownership(current_user, db_attribute.created_by)
 
         # Check if attribute has associated SKU attribute values
         sku_values_count = await self.repository.count_children(

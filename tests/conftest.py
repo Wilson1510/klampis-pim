@@ -17,6 +17,7 @@ from app.main import app
 
 # Import all factory fixtures to make them available to tests
 from tests.fixtures.model_factories import *  # noqa
+from tests.fixtures.auth_headers_factories import *  # noqa
 
 # Constants for database connection
 TEST_DB_NAME = "test_db"
@@ -113,7 +114,7 @@ async def db_engine(create_test_database):
         # Create system user if it doesn't exist
         system_user = Users(
             username="system",
-            email="system@test.local",
+            email="system@test.com",
             password="systempassword",
             name="System User",
             role="SYSTEM",

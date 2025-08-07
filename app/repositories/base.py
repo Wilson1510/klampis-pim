@@ -35,8 +35,16 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         )
         return result.scalars().all()
 
-    async def create(self, db: AsyncSession, *, obj_in: CreateSchemaType) -> ModelType:
+    async def create(
+        self,
+        db: AsyncSession,
+        *,
+        obj_in: CreateSchemaType,
+        created_by: int
+    ) -> ModelType:
         obj_in_data = obj_in.model_dump()
+        obj_in_data['created_by'] = created_by
+        obj_in_data['updated_by'] = created_by
         db_obj = self.model(**obj_in_data)
         db.add(db_obj)
         try:
@@ -61,14 +69,17 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         db: AsyncSession,
         *,
         db_obj: ModelType,
-        obj_in: Union[UpdateSchemaType, Dict[str, Any]]
+        obj_in: Union[UpdateSchemaType, Dict[str, Any]],
+        updated_by: int
     ) -> ModelType:
         obj_data = db_obj.__dict__
         if isinstance(obj_in, dict):
+            obj_in['updated_by'] = updated_by
             update_data = obj_in
         else:
             # exclude_unset=True agar hanya field yang dikirim yang di-update
             update_data = obj_in.model_dump(exclude_unset=True)
+            update_data['updated_by'] = updated_by
 
         if not update_data:
             return db_obj

@@ -6,7 +6,7 @@ class TestGetSkus:
 
     async def test_get_skus_success(
         self, async_client: AsyncClient, sku_factory, price_detail_factory,
-        attribute_factory, sku_attribute_value_factory
+        attribute_factory, sku_attribute_value_factory, auth_headers_system
     ):
         """Test getting SKUs successfully."""
         # Create test data
@@ -34,7 +34,9 @@ class TestGetSkus:
             sku=sku2, attribute=attribute2, value="Value 4"
         )
 
-        response = await async_client.get("/api/v1/skus/")
+        response = await async_client.get(
+            "/api/v1/skus/", headers=auth_headers_system
+        )
 
         assert response.status_code == 200
         data = response.json()["data"]
@@ -67,26 +69,30 @@ class TestGetSkus:
             assert "sku_attribute_values" in item
 
     async def test_get_skus_filter_by_name(
-        self, async_client: AsyncClient, sku_factory
+        self, async_client: AsyncClient, sku_factory, auth_headers_system
     ):
         """Test filtering by name."""
         await sku_factory(name="iPhone 15 Pro Max")
         await sku_factory(name="Samsung Galaxy S24")
 
-        response = await async_client.get("/api/v1/skus/?name=iPhone")
+        response = await async_client.get(
+            "/api/v1/skus/?name=iPhone", headers=auth_headers_system
+        )
         assert response.status_code == 200
         data = response.json()["data"]
         assert len(data) == 1
         assert data[0]["name"] == "iPhone 15 Pro Max"
 
     async def test_get_skus_filter_by_slug(
-        self, async_client: AsyncClient, sku_factory
+        self, async_client: AsyncClient, sku_factory, auth_headers_system
     ):
         """Test filtering by slug."""
         sku = await sku_factory(name="iPhone 15 Pro")
         await sku_factory(name="Samsung Galaxy S24")
 
-        response = await async_client.get(f"/api/v1/skus/?slug={sku.slug}")
+        response = await async_client.get(
+            f"/api/v1/skus/?slug={sku.slug}", headers=auth_headers_system
+        )
 
         assert response.status_code == 200
         data = response.json()["data"]
@@ -94,13 +100,15 @@ class TestGetSkus:
         assert data[0]["slug"] == sku.slug
 
     async def test_get_skus_filter_by_sku_number(
-        self, async_client: AsyncClient, sku_factory
+        self, async_client: AsyncClient, sku_factory, auth_headers_system
     ):
         """Test filtering by SKU number."""
         sku = await sku_factory(name="iPhone 15 Pro")
         await sku_factory(name="Samsung Galaxy S24")
 
-        response = await async_client.get(f"/api/v1/skus/?sku_number={sku.sku_number}")
+        response = await async_client.get(
+            f"/api/v1/skus/?sku_number={sku.sku_number}", headers=auth_headers_system
+        )
 
         assert response.status_code == 200
         data = response.json()["data"]
@@ -108,7 +116,8 @@ class TestGetSkus:
         assert data[0]["sku_number"] == sku.sku_number
 
     async def test_get_skus_filter_by_product_id(
-        self, async_client: AsyncClient, sku_factory, product_factory
+        self, async_client: AsyncClient, sku_factory, product_factory,
+        auth_headers_system
     ):
         """Test filtering by product ID."""
         product1 = await product_factory(name="iPhone 15")
@@ -117,7 +126,9 @@ class TestGetSkus:
         await sku_factory(name="iPhone 15 Pro", product=product1)
         await sku_factory(name="Samsung Galaxy S24 Ultra", product=product2)
 
-        response = await async_client.get(f"/api/v1/skus/?product_id={product1.id}")
+        response = await async_client.get(
+            f"/api/v1/skus/?product_id={product1.id}", headers=auth_headers_system
+        )
 
         assert response.status_code == 200
         data = response.json()["data"]
@@ -125,28 +136,33 @@ class TestGetSkus:
         assert data[0]["product_id"] == product1.id
 
     async def test_get_skus_filter_by_is_active(
-        self, async_client: AsyncClient, sku_factory
+        self, async_client: AsyncClient, sku_factory, auth_headers_system
     ):
         """Test filtering by is_active status."""
         await sku_factory(name="Active SKU", is_active=True)
         await sku_factory(name="Inactive SKU", is_active=False)
 
         # Test active filter
-        response = await async_client.get("/api/v1/skus/?is_active=true")
+        response = await async_client.get(
+            "/api/v1/skus/?is_active=true", headers=auth_headers_system
+        )
         assert response.status_code == 200
         data = response.json()["data"]
         assert len(data) == 1
         assert data[0]["is_active"] is True
 
         # Test inactive filter
-        response = await async_client.get("/api/v1/skus/?is_active=false")
+        response = await async_client.get(
+            "/api/v1/skus/?is_active=false", headers=auth_headers_system
+        )
         assert response.status_code == 200
         data = response.json()["data"]
         assert len(data) == 1
         assert data[0]["is_active"] is False
 
     async def test_get_skus_combined_filters(
-        self, async_client: AsyncClient, sku_factory, product_factory
+        self, async_client: AsyncClient, sku_factory, product_factory,
+        auth_headers_system
     ):
         """Test combining multiple filters."""
         product = await product_factory(name="iPhone 15")
@@ -161,7 +177,8 @@ class TestGetSkus:
         )
 
         response = await async_client.get(
-            f"/api/v1/skus/?product_id={product.id}&is_active=true"
+            f"/api/v1/skus/?product_id={product.id}&is_active=true",
+            headers=auth_headers_system
         )
 
         assert response.status_code == 200
@@ -170,13 +187,66 @@ class TestGetSkus:
         assert data[0]["product_id"] == product.id
         assert data[0]["is_active"] is True
 
+    async def test_get_skus_by_user(
+        self, async_client: AsyncClient, sku_factory, price_detail_factory,
+        attribute_factory, sku_attribute_value_factory, auth_headers_user
+    ):
+        """Test getting SKUs by user."""
+        # Create test data
+        sku1 = await sku_factory(name="SKU 1")
+        sku2 = await sku_factory(name="SKU 2")
+
+        attribute1 = await attribute_factory(name="Attribute 1", data_type="TEXT")
+        attribute2 = await attribute_factory(name="Attribute 2", data_type="TEXT")
+
+        await price_detail_factory(sku=sku1, price=100, minimum_quantity=1)
+        await price_detail_factory(sku=sku2, price=300, minimum_quantity=3)
+
+        await sku_attribute_value_factory(
+            sku=sku1, attribute=attribute1, value="Value 1"
+        )
+        await sku_attribute_value_factory(
+            sku=sku2, attribute=attribute2, value="Value 2"
+        )
+
+        response = await async_client.get(
+            "/api/v1/skus/", headers=auth_headers_user
+        )
+
+        assert response.status_code == 200
+        data = response.json()["data"]
+        assert len(data) == 2
+
+        # Verify response structure and data
+        names = {item["name"] for item in data}
+        expected_names = {"SKU 1", "SKU 2"}
+        assert names == expected_names
+
+        for item in data:
+            assert "name" in item
+            assert "slug" in item
+            assert "sku_number" in item
+            assert "description" in item
+            assert "product_id" in item
+
+    async def test_get_skus_unauthenticated(
+        self, async_client: AsyncClient
+    ):
+        """Test getting SKUs without authentication."""
+        response = await async_client.get("/api/v1/skus/")
+        assert response.status_code == 403
+        error = response.json()["error"]
+        assert error["code"] == "HTTP_ERROR_403"
+        assert error["message"] == "Not authenticated"
+        assert error["details"] is None
+
 
 class TestCreateSku:
     """Test cases for POST /skus/ endpoint."""
 
     async def test_create_sku_success(
         self, async_client: AsyncClient, product_factory, pricelist_factory,
-        attribute_factory
+        attribute_factory, auth_headers_system
     ):
         """Test creating SKU successfully."""
         product = await product_factory(name="iPhone 15")
@@ -202,7 +272,9 @@ class TestCreateSku:
             ]
         }
 
-        response = await async_client.post("/api/v1/skus/", json=sku_data)
+        response = await async_client.post(
+            "/api/v1/skus/", json=sku_data, headers=auth_headers_system
+        )
 
         assert response.status_code == 201
         data = response.json()["data"]
@@ -233,7 +305,7 @@ class TestCreateSku:
 
     async def test_create_sku_duplicate_name(
         self, async_client: AsyncClient, sku_factory, product_factory,
-        pricelist_factory, attribute_factory
+        pricelist_factory, attribute_factory, auth_headers_system
     ):
         """Test creating SKU with duplicate name."""
         product = await product_factory(name="iPhone 15")
@@ -260,7 +332,9 @@ class TestCreateSku:
             ]
         }
 
-        response = await async_client.post("/api/v1/skus/", json=sku_data)
+        response = await async_client.post(
+            "/api/v1/skus/", json=sku_data, headers=auth_headers_system
+        )
         error = response.json()["error"]
 
         assert response.status_code == 400
@@ -269,7 +343,8 @@ class TestCreateSku:
         assert error["details"] is None
 
     async def test_create_sku_nonexistent_attribute(
-        self, async_client: AsyncClient, product_factory, pricelist_factory
+        self, async_client: AsyncClient, product_factory, pricelist_factory,
+        auth_headers_system
     ):
         """Test creating SKU with non-existent attribute."""
         product = await product_factory(name="iPhone 15")
@@ -293,7 +368,9 @@ class TestCreateSku:
             ]
         }
 
-        response = await async_client.post("/api/v1/skus/", json=sku_data)
+        response = await async_client.post(
+            "/api/v1/skus/", json=sku_data, headers=auth_headers_system
+        )
         error = response.json()["error"]
 
         assert response.status_code == 404
@@ -302,7 +379,8 @@ class TestCreateSku:
         assert error["details"] is None
 
     async def test_create_sku_nonexistent_pricelist(
-        self, async_client: AsyncClient, product_factory, attribute_factory
+        self, async_client: AsyncClient, product_factory, attribute_factory,
+        auth_headers_system
     ):
         """Test creating SKU with non-existent pricelist."""
         product = await product_factory(name="iPhone 15")
@@ -326,7 +404,9 @@ class TestCreateSku:
             ]
         }
 
-        response = await async_client.post("/api/v1/skus/", json=sku_data)
+        response = await async_client.post(
+            "/api/v1/skus/", json=sku_data, headers=auth_headers_system
+        )
         error = response.json()["error"]
 
         assert response.status_code == 404
@@ -336,7 +416,7 @@ class TestCreateSku:
 
     async def test_create_sku_invalid_attribute_value(
         self, async_client: AsyncClient, product_factory, pricelist_factory,
-        attribute_factory
+        attribute_factory, auth_headers_system
     ):
         """Test creating SKU with invalid attribute value for data type."""
         product = await product_factory(name="iPhone 15")
@@ -362,7 +442,9 @@ class TestCreateSku:
             ]
         }
 
-        response = await async_client.post("/api/v1/skus/", json=sku_data)
+        response = await async_client.post(
+            "/api/v1/skus/", json=sku_data, headers=auth_headers_system
+        )
         error = response.json()["error"]
 
         assert response.status_code == 400
@@ -373,7 +455,7 @@ class TestCreateSku:
         assert error["details"] is None
 
     async def test_create_sku_empty_price_details(
-        self, async_client: AsyncClient, product_factory
+        self, async_client: AsyncClient, product_factory, auth_headers_system
     ):
         """Test creating SKU with empty price details."""
         product = await product_factory(name="iPhone 15")
@@ -385,7 +467,9 @@ class TestCreateSku:
             "attribute_values": []
         }
 
-        response = await async_client.post("/api/v1/skus/", json=sku_data)
+        response = await async_client.post(
+            "/api/v1/skus/", json=sku_data, headers=auth_headers_system
+        )
         assert response.status_code == 201
         data = response.json()["data"]
         assert data["name"] == "iPhone 15 Pro"
@@ -395,17 +479,79 @@ class TestCreateSku:
         assert data["price_details"] == []
         assert data["sku_attribute_values"] == []
 
+    async def test_create_sku_by_user(
+        self, async_client: AsyncClient, product_factory, pricelist_factory,
+        attribute_factory, auth_headers_user
+    ):
+        """Test creating SKU by user."""
+        product = await product_factory(name="iPhone 15")
+        pricelist = await pricelist_factory(name="Retail")
+        attribute = await attribute_factory(name="Color", data_type="TEXT")
+
+        sku_data = {
+            "name": "iPhone 15 Pro Max",
+            "description": "Latest iPhone model",
+            "product_id": product.id,
+            "price_details": [
+                {
+                    "pricelist_id": pricelist.id,
+                    "price": 1299.99,
+                    "minimum_quantity": 1
+                }
+            ],
+            "attribute_values": [
+                {
+                    "attribute_id": attribute.id,
+                    "value": "Space Black"
+                }
+            ]
+        }
+
+        response = await async_client.post(
+            "/api/v1/skus/", json=sku_data, headers=auth_headers_user
+        )
+
+        assert response.status_code == 201
+        data = response.json()["data"]
+        assert data["name"] == "iPhone 15 Pro Max"
+        assert data["description"] == "Latest iPhone model"
+        assert data["product_id"] == product.id
+        assert data["slug"] == "iphone-15-pro-max"
+
+    async def test_create_sku_unauthenticated(
+        self, async_client: AsyncClient
+    ):
+        """Test creating SKU without authentication."""
+        sku_data = {
+            "name": "iPhone 15 Pro",
+            "product_id": 1,
+            "price_details": [],
+            "attribute_values": []
+        }
+
+        response = await async_client.post(
+            "/api/v1/skus/", json=sku_data
+        )
+
+        assert response.status_code == 403
+        error = response.json()["error"]
+        assert error["code"] == "HTTP_ERROR_403"
+        assert error["message"] == "Not authenticated"
+        assert error["details"] is None
+
 
 class TestGetSku:
     """Test cases for GET /skus/{id} endpoint."""
 
     async def test_get_sku_success(
-        self, async_client: AsyncClient, sku_factory
+        self, async_client: AsyncClient, sku_factory, auth_headers_system
     ):
         """Test getting SKU by ID successfully."""
         sku = await sku_factory(name="iPhone 15 Pro")
 
-        response = await async_client.get(f"/api/v1/skus/{sku.id}")
+        response = await async_client.get(
+            f"/api/v1/skus/{sku.id}", headers=auth_headers_system
+        )
 
         assert response.status_code == 200
         data = response.json()["data"]
@@ -417,9 +563,13 @@ class TestGetSku:
         assert data["price_details"] == []
         assert data["sku_attribute_values"] == []
 
-    async def test_get_sku_not_found(self, async_client: AsyncClient):
+    async def test_get_sku_not_found(
+        self, async_client: AsyncClient, auth_headers_system
+    ):
         """Test getting non-existent SKU."""
-        response = await async_client.get("/api/v1/skus/999")
+        response = await async_client.get(
+            "/api/v1/skus/999", headers=auth_headers_system
+        )
         error = response.json()["error"]
 
         assert response.status_code == 404
@@ -434,7 +584,7 @@ class TestUpdateSku:
     async def test_update_sku_success(
         self, async_client: AsyncClient, sku_factory, product_factory,
         pricelist_factory, attribute_factory, sku_attribute_value_factory,
-        price_detail_factory
+        price_detail_factory, auth_headers_system
     ):
         """Test updating SKU basic fields successfully."""
         product = await product_factory(name="iPhone 15")
@@ -479,7 +629,7 @@ class TestUpdateSku:
         }
 
         response = await async_client.put(
-            f"/api/v1/skus/{sku.id}", json=update_data
+            f"/api/v1/skus/{sku.id}", json=update_data, headers=auth_headers_system
         )
 
         assert response.status_code == 200
@@ -504,10 +654,14 @@ class TestUpdateSku:
         assert data["sku_attribute_values"][0]["attribute"]["data_type"] == "TEXT"
         assert data["sku_attribute_values"][0]["attribute"]["uom"] is None
 
-    async def test_update_sku_not_found(self, async_client: AsyncClient):
+    async def test_update_sku_not_found(
+        self, async_client: AsyncClient, auth_headers_system
+    ):
         """Test updating non-existent SKU."""
         update_data = {"name": "Updated Name"}
-        response = await async_client.put("/api/v1/skus/999", json=update_data)
+        response = await async_client.put(
+            "/api/v1/skus/999", json=update_data, headers=auth_headers_system
+        )
 
         assert response.status_code == 404
         error = response.json()["error"]
@@ -516,7 +670,7 @@ class TestUpdateSku:
         assert error["details"] is None
 
     async def test_update_sku_duplicate_name(
-        self, async_client: AsyncClient, sku_factory
+        self, async_client: AsyncClient, sku_factory, auth_headers_system
     ):
         """Test updating SKU with duplicate name."""
         await sku_factory(name="iPhone 15 Pro")
@@ -524,7 +678,7 @@ class TestUpdateSku:
 
         update_data = {"name": "iPhone 15 Pro"}
         response = await async_client.put(
-            f"/api/v1/skus/{sku2.id}", json=update_data
+            f"/api/v1/skus/{sku2.id}", json=update_data, headers=auth_headers_system
         )
 
         assert response.status_code == 400
@@ -534,7 +688,8 @@ class TestUpdateSku:
         assert error["details"] is None
 
     async def test_update_sku_delete_all_price_details_fails(
-        self, async_client: AsyncClient, sku_factory, price_detail_factory, db_session
+        self, async_client: AsyncClient, sku_factory, price_detail_factory, db_session,
+        auth_headers_system
     ):
         """Test that deleting all price details fails."""
         sku = await sku_factory(name="iPhone 15 Pro")
@@ -550,7 +705,7 @@ class TestUpdateSku:
             "price_details_to_delete": price_detail_ids
         }
         response = await async_client.put(
-            f"/api/v1/skus/{sku.id}", json=update_data
+            f"/api/v1/skus/{sku.id}", json=update_data, headers=auth_headers_system
         )
 
         assert response.status_code == 400
@@ -560,7 +715,8 @@ class TestUpdateSku:
         assert error["details"] is None
 
     async def test_update_sku_delete_price_detail_not_its_own(
-        self, async_client: AsyncClient, sku_factory, price_detail_factory
+        self, async_client: AsyncClient, sku_factory, price_detail_factory,
+        auth_headers_system
     ):
         """Test deleting price detail that is not its own."""
         sku = await sku_factory(name="iPhone 15 Pro")
@@ -574,7 +730,7 @@ class TestUpdateSku:
             "price_details_to_delete": [price_detail.id]
         }
         response = await async_client.put(
-            f"/api/v1/skus/{sku2.id}", json=update_data
+            f"/api/v1/skus/{sku2.id}", json=update_data, headers=auth_headers_system
         )
         error = response.json()["error"]
         assert response.status_code == 400
@@ -585,7 +741,7 @@ class TestUpdateSku:
         assert error["details"] is None
 
     async def test_update_sku_delete_nonexistent_price_detail(
-        self, async_client: AsyncClient, sku_factory
+        self, async_client: AsyncClient, sku_factory, auth_headers_system
     ):
         """Test deleting non-existent price detail."""
         sku = await sku_factory(name="iPhone 15 Pro")
@@ -594,7 +750,7 @@ class TestUpdateSku:
             "price_details_to_delete": [999]
         }
         response = await async_client.put(
-            f"/api/v1/skus/{sku.id}", json=update_data
+            f"/api/v1/skus/{sku.id}", json=update_data, headers=auth_headers_system
         )
 
         assert response.status_code == 404
@@ -604,7 +760,7 @@ class TestUpdateSku:
         assert error["details"] is None
 
     async def test_update_sku_create_price_detail_missing_pricelist(
-        self, async_client: AsyncClient, sku_factory
+        self, async_client: AsyncClient, sku_factory, auth_headers_system
     ):
         """Test creating price detail with missing pricelist."""
         sku = await sku_factory(name="iPhone 15 Pro")
@@ -618,7 +774,7 @@ class TestUpdateSku:
             ]
         }
         response = await async_client.put(
-            f"/api/v1/skus/{sku.id}", json=update_data
+            f"/api/v1/skus/{sku.id}", json=update_data, headers=auth_headers_system
         )
         error = response.json()["error"]
         assert response.status_code == 404
@@ -630,7 +786,7 @@ class TestUpdateSku:
 
     async def test_update_sku_update_attribute_values(
         self, async_client: AsyncClient, sku_factory, attribute_factory,
-        sku_attribute_value_factory
+        sku_attribute_value_factory, auth_headers_system
     ):
         """Test updating attribute values."""
         sku = await sku_factory(name="iPhone 15 Pro")
@@ -650,7 +806,7 @@ class TestUpdateSku:
             ]
         }
         response = await async_client.put(
-            f"/api/v1/skus/{sku.id}", json=update_data
+            f"/api/v1/skus/{sku.id}", json=update_data, headers=auth_headers_system
         )
 
         assert response.status_code == 200
@@ -663,7 +819,7 @@ class TestUpdateSku:
 
     async def test_update_sku_invalid_attribute_value(
         self, async_client: AsyncClient, sku_factory, attribute_factory,
-        sku_attribute_value_factory
+        sku_attribute_value_factory, auth_headers_system
     ):
         """Test updating SKU with invalid attribute value."""
         sku = await sku_factory(name="iPhone 15 Pro")
@@ -679,7 +835,7 @@ class TestUpdateSku:
             ]
         }
         response = await async_client.put(
-            f"/api/v1/skus/{sku.id}", json=update_data
+            f"/api/v1/skus/{sku.id}", json=update_data, headers=auth_headers_system
         )
 
         assert response.status_code == 400
@@ -689,7 +845,7 @@ class TestUpdateSku:
         assert error["details"] is None
 
     async def test_update_sku_nonexistent_attribute(
-        self, async_client: AsyncClient, sku_factory
+        self, async_client: AsyncClient, sku_factory, auth_headers_system
     ):
         """Test updating SKU with non-existent attribute."""
         sku = await sku_factory(name="iPhone 15 Pro")
@@ -703,7 +859,7 @@ class TestUpdateSku:
             ]
         }
         response = await async_client.put(
-            f"/api/v1/skus/{sku.id}", json=update_data
+            f"/api/v1/skus/{sku.id}", json=update_data, headers=auth_headers_system
         )
 
         assert response.status_code == 404
@@ -715,7 +871,8 @@ class TestUpdateSku:
         assert error["details"] is None
 
     async def test_update_sku_update_price_detail_not_its_own(
-        self, async_client: AsyncClient, sku_factory, price_detail_factory
+        self, async_client: AsyncClient, sku_factory, price_detail_factory,
+        auth_headers_system
     ):
         """Test updating price detail that is not its own."""
         sku = await sku_factory(name="iPhone 15 Pro")
@@ -733,7 +890,7 @@ class TestUpdateSku:
             ]
         }
         response = await async_client.put(
-            f"/api/v1/skus/{sku2.id}", json=update_data
+            f"/api/v1/skus/{sku2.id}", json=update_data, headers=auth_headers_system
         )
         error = response.json()["error"]
         assert response.status_code == 400
@@ -744,7 +901,7 @@ class TestUpdateSku:
         assert error["details"] is None
 
     async def test_update_sku_update_price_detail_not_found(
-        self, async_client: AsyncClient, sku_factory
+        self, async_client: AsyncClient, sku_factory, auth_headers_system
     ):
         """Test updating price detail that is not found."""
         sku = await sku_factory(name="iPhone 15 Pro")
@@ -758,7 +915,7 @@ class TestUpdateSku:
             ]
         }
         response = await async_client.put(
-            f"/api/v1/skus/{sku.id}", json=update_data
+            f"/api/v1/skus/{sku.id}", json=update_data, headers=auth_headers_system
         )
         error = response.json()["error"]
         assert response.status_code == 404
@@ -768,28 +925,90 @@ class TestUpdateSku:
         )
         assert error["details"] is None
 
+    async def test_update_sku_by_user(
+        self, async_client: AsyncClient, sku_factory, auth_headers_user
+    ):
+        """Test updating SKU by user."""
+        sku = await sku_factory(name="iPhone 15 Pro")
+        update_data = {"name": "iPhone 15 Pro Max"}
+        response = await async_client.put(
+            f"/api/v1/skus/{sku.id}", json=update_data, headers=auth_headers_user
+        )
+        assert response.status_code == 403
+        error = response.json()["error"]
+        assert error["code"] == "HTTP_ERROR_403"
+        assert error["message"] == "You can only modify your own resources"
+        assert error["details"] is None
+
+    async def test_update_sku_unauthenticated(
+        self, async_client: AsyncClient, sku_factory
+    ):
+        """Test updating SKU without authentication."""
+        sku = await sku_factory(name="iPhone 15 Pro")
+        update_data = {"name": "iPhone 15 Pro Max"}
+        response = await async_client.put(
+            f"/api/v1/skus/{sku.id}", json=update_data
+        )
+        assert response.status_code == 403
+        error = response.json()["error"]
+        assert error["code"] == "HTTP_ERROR_403"
+        assert error["message"] == "Not authenticated"
+        assert error["details"] is None
+
 
 class TestDeleteSku:
     """Test cases for DELETE /skus/{id} endpoint."""
 
     async def test_delete_sku_success(
-        self, async_client: AsyncClient, sku_factory
+        self, async_client: AsyncClient, sku_factory, auth_headers_system
     ):
         """Test deleting SKU successfully."""
         sku = await sku_factory(name="iPhone 15 Pro")
 
-        response = await async_client.delete(f"/api/v1/skus/{sku.id}")
+        response = await async_client.delete(
+            f"/api/v1/skus/{sku.id}", headers=auth_headers_system
+        )
 
         assert response.status_code == 204
 
-    async def test_delete_sku_not_found(self, async_client: AsyncClient):
+    async def test_delete_sku_not_found(
+        self, async_client: AsyncClient, auth_headers_system
+    ):
         """Test deleting non-existent SKU."""
-        response = await async_client.delete("/api/v1/skus/999")
+        response = await async_client.delete(
+            "/api/v1/skus/999", headers=auth_headers_system
+        )
 
         assert response.status_code == 404
         error = response.json()["error"]
         assert error["code"] == "HTTP_ERROR_404"
         assert error["message"] == "SKU with id 999 not found"
+        assert error["details"] is None
+
+    async def test_delete_sku_by_user(
+        self, async_client: AsyncClient, sku_factory, auth_headers_user
+    ):
+        """Test deleting SKU by user."""
+        sku = await sku_factory(name="iPhone 15 Pro")
+        response = await async_client.delete(
+            f"/api/v1/skus/{sku.id}", headers=auth_headers_user
+        )
+        assert response.status_code == 403
+        error = response.json()["error"]
+        assert error["code"] == "HTTP_ERROR_403"
+        assert error["message"] == "You can only modify your own resources"
+        assert error["details"] is None
+
+    async def test_delete_sku_unauthenticated(
+        self, async_client: AsyncClient, sku_factory
+    ):
+        """Test deleting SKU without authentication."""
+        sku = await sku_factory(name="iPhone 15 Pro")
+        response = await async_client.delete(f"/api/v1/skus/{sku.id}")
+        assert response.status_code == 403
+        error = response.json()["error"]
+        assert error["code"] == "HTTP_ERROR_403"
+        assert error["message"] == "Not authenticated"
         assert error["details"] is None
 
 
@@ -798,7 +1017,7 @@ class TestSkuEndpointIntegration:
 
     async def test_full_crud_workflow(
         self, async_client: AsyncClient, product_factory, pricelist_factory,
-        attribute_factory
+        attribute_factory, auth_headers_system
     ):
         """Test complete CRUD workflow for SKUs."""
         # Setup dependencies
@@ -825,13 +1044,17 @@ class TestSkuEndpointIntegration:
                 }
             ]
         }
-        response = await async_client.post("/api/v1/skus/", json=create_data)
+        response = await async_client.post(
+            "/api/v1/skus/", json=create_data, headers=auth_headers_system
+        )
         assert response.status_code == 201
         created_data = response.json()["data"]
         sku_id = created_data["id"]
 
         # Read individual
-        response = await async_client.get(f"/api/v1/skus/{sku_id}")
+        response = await async_client.get(
+            f"/api/v1/skus/{sku_id}", headers=auth_headers_system
+        )
         assert response.status_code == 200
         data = response.json()["data"]
         assert data["name"] == "iPhone 15 Pro"
@@ -841,7 +1064,7 @@ class TestSkuEndpointIntegration:
         assert len(data["sku_attribute_values"]) == 1
 
         # Read list
-        response = await async_client.get("/api/v1/skus/")
+        response = await async_client.get("/api/v1/skus/", headers=auth_headers_system)
         assert response.status_code == 200
         data = response.json()["data"]
         assert len(data) == 1
@@ -853,7 +1076,9 @@ class TestSkuEndpointIntegration:
             "description": "Updated description",
             "is_active": False
         }
-        response = await async_client.put(f"/api/v1/skus/{sku_id}", json=update_data)
+        response = await async_client.put(
+            f"/api/v1/skus/{sku_id}", json=update_data, headers=auth_headers_system
+        )
         assert response.status_code == 200
         data = response.json()["data"]
         assert data["name"] == "iPhone 15 Pro Max"
@@ -862,18 +1087,23 @@ class TestSkuEndpointIntegration:
         assert data["is_active"] is False
 
         # Delete
-        response = await async_client.delete(f"/api/v1/skus/{sku_id}")
+        response = await async_client.delete(
+            f"/api/v1/skus/{sku_id}", headers=auth_headers_system
+        )
         assert response.status_code == 204
 
         # Verify item is deleted
-        response = await async_client.get(f"/api/v1/skus/{sku_id}")
+        response = await async_client.get(
+            f"/api/v1/skus/{sku_id}", headers=auth_headers_system
+        )
         assert response.status_code == 404
         error = response.json()["error"]
         assert error["message"] == f"SKU with id {sku_id} not found"
 
     async def test_complex_update_workflow(
         self, async_client: AsyncClient, sku_factory, pricelist_factory,
-        attribute_factory, price_detail_factory, sku_attribute_value_factory
+        attribute_factory, price_detail_factory, sku_attribute_value_factory,
+        auth_headers_system
     ):
         """Test complex update operations with price details and attributes."""
         # Create SKU with initial data
@@ -931,7 +1161,9 @@ class TestSkuEndpointIntegration:
             ]
         }
 
-        response = await async_client.put(f"/api/v1/skus/{sku.id}", json=update_data)
+        response = await async_client.put(
+            f"/api/v1/skus/{sku.id}", json=update_data, headers=auth_headers_system
+        )
         assert response.status_code == 200
         data = response.json()["data"]
 
@@ -965,3 +1197,160 @@ class TestSkuEndpointIntegration:
             if av["attribute"]["name"] == "Storage"
         )
         assert storage_attr["value"] == "256GB"
+
+    async def test_full_crud_workflow_by_user(
+        self, async_client: AsyncClient, product_factory, pricelist_factory,
+        attribute_factory, auth_headers_system, auth_headers_user
+    ):
+        """Test CRUD workflow with resource ownership by user vs system."""
+        # Setup dependencies
+        product = await product_factory(name="iPhone 15")
+        pricelist = await pricelist_factory(name="Retail")
+        attribute = await attribute_factory(name="Color", data_type="TEXT")
+
+        # === CREATE PHASE ===
+        # Create SKU by SYSTEM
+        system_sku_data = {
+            "name": "iPhone 15 Pro System",
+            "description": "SKU created by system",
+            "product_id": product.id,
+            "price_details": [
+                {
+                    "pricelist_id": pricelist.id,
+                    "price": 999.99,
+                    "minimum_quantity": 1
+                }
+            ],
+            "attribute_values": [
+                {
+                    "attribute_id": attribute.id,
+                    "value": "Space Black"
+                }
+            ]
+        }
+        response = await async_client.post(
+            "/api/v1/skus/",
+            json=system_sku_data,
+            headers=auth_headers_system
+        )
+        assert response.status_code == 201
+        system_sku_id = response.json()["data"]["id"]
+
+        # Create SKU by USER
+        user_sku_data = {
+            "name": "iPhone 15 Pro User",
+            "description": "SKU created by user",
+            "product_id": product.id,
+            "price_details": [
+                {
+                    "pricelist_id": pricelist.id,
+                    "price": 1099.99,
+                    "minimum_quantity": 1
+                }
+            ],
+            "attribute_values": [
+                {
+                    "attribute_id": attribute.id,
+                    "value": "Blue"
+                }
+            ]
+        }
+        response = await async_client.post(
+            "/api/v1/skus/",
+            json=user_sku_data,
+            headers=auth_headers_user
+        )
+        assert response.status_code == 201
+        user_sku_id = response.json()["data"]["id"]
+
+        # === READ PHASE ===
+        # User can read both SKUs (system and their own)
+        response = await async_client.get(
+            f"/api/v1/skus/{system_sku_id}", headers=auth_headers_user
+        )
+        assert response.status_code == 200
+        assert response.json()["data"]["name"] == "iPhone 15 Pro System"
+
+        response = await async_client.get(
+            f"/api/v1/skus/{user_sku_id}", headers=auth_headers_user
+        )
+        assert response.status_code == 200
+        assert response.json()["data"]["name"] == "iPhone 15 Pro User"
+
+        # === UPDATE PHASE ===
+        # User tries to update SYSTEM SKU (should fail - ownership check)
+        update_data = {"description": "Updated by user"}
+        response = await async_client.put(
+            f"/api/v1/skus/{system_sku_id}",
+            json=update_data,
+            headers=auth_headers_user
+        )
+        assert response.status_code == 403
+        error = response.json()["error"]
+        assert error["code"] == "HTTP_ERROR_403"
+        assert error["message"] == "You can only modify your own resources"
+        assert error["details"] is None
+
+        # User updates their OWN SKU (should succeed)
+        update_data = {"description": "Updated by user - own SKU"}
+        response = await async_client.put(
+            f"/api/v1/skus/{user_sku_id}",
+            json=update_data,
+            headers=auth_headers_user
+        )
+        assert response.status_code == 200
+        data = response.json()["data"]
+        assert data["description"] == "Updated by user - own SKU"
+
+        # System can update both SKUs (admin privileges)
+        update_data = {"description": "Updated by system"}
+        response = await async_client.put(
+            f"/api/v1/skus/{system_sku_id}",
+            json=update_data,
+            headers=auth_headers_system
+        )
+        assert response.status_code == 200
+        assert response.json()["data"]["description"] == "Updated by system"
+
+        response = await async_client.put(
+            f"/api/v1/skus/{user_sku_id}",
+            json=update_data,
+            headers=auth_headers_system
+        )
+        assert response.status_code == 200
+        assert response.json()["data"]["description"] == "Updated by system"
+
+        # === DELETE PHASE ===
+        # User tries to delete SYSTEM SKU (should fail - ownership check)
+        response = await async_client.delete(
+            f"/api/v1/skus/{system_sku_id}", headers=auth_headers_user
+        )
+        assert response.status_code == 403
+        error = response.json()["error"]
+        assert error["code"] == "HTTP_ERROR_403"
+        assert error["message"] == "You can only modify your own resources"
+        assert error["details"] is None
+
+        # User deletes their OWN SKU (should succeed)
+        response = await async_client.delete(
+            f"/api/v1/skus/{user_sku_id}", headers=auth_headers_user
+        )
+        assert response.status_code == 204
+
+        # Verify user's SKU is deleted
+        response = await async_client.get(
+            f"/api/v1/skus/{user_sku_id}", headers=auth_headers_user
+        )
+        assert response.status_code == 404
+
+        # System deletes their own SKU (should succeed)
+        response = await async_client.delete(
+            f"/api/v1/skus/{system_sku_id}", headers=auth_headers_system
+        )
+        assert response.status_code == 204
+
+        # Verify system SKU is deleted
+        response = await async_client.get(
+            f"/api/v1/skus/{system_sku_id}", headers=auth_headers_system
+        )
+        assert response.status_code == 404

@@ -15,6 +15,8 @@ from app.utils.response_helpers import (
     create_single_item_response,
     create_multiple_items_response
 )
+from app.api.v1.dependencies.auth import get_current_user
+from app.models import Users
 
 router = APIRouter()
 
@@ -64,7 +66,8 @@ async def get_category_types(
 )
 async def create_category_type(
     category_type_create: CategoryTypeCreate,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: Users = Depends(get_current_user)
 ):
     """
     Create a new category type.
@@ -72,7 +75,7 @@ async def create_category_type(
     - **name**: Name of the category type (required, max 100 chars)
     """
     category_type = await category_type_service.create_category_type(
-        db=db, category_type_create=category_type_create
+        db=db, category_type_create=category_type_create, created_by=current_user.id
     )
     return create_single_item_response(data=category_type)
 
@@ -110,7 +113,8 @@ async def get_category_type(
 async def update_category_type(
     category_type_id: int,
     category_type_update: CategoryTypeUpdate,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: Users = Depends(get_current_user)
 ):
     """
     Update an existing category type.
@@ -121,7 +125,9 @@ async def update_category_type(
     category_type = await category_type_service.update_category_type(
         db=db,
         category_type_id=category_type_id,
-        category_type_update=category_type_update
+        category_type_update=category_type_update,
+        updated_by=current_user.id,
+        current_user=current_user
     )
     return create_single_item_response(data=category_type)
 
@@ -132,7 +138,8 @@ async def update_category_type(
 )
 async def delete_category_type(
     category_type_id: int,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: Users = Depends(get_current_user)
 ):
     """
     Delete a category type.
@@ -142,7 +149,7 @@ async def delete_category_type(
     Note: Category type cannot be deleted if it has associated categories.
     """
     await category_type_service.delete_category_type(
-        db=db, category_type_id=category_type_id
+        db=db, category_type_id=category_type_id, current_user=current_user
     )
 
 

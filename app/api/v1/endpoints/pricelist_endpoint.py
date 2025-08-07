@@ -14,6 +14,8 @@ from app.utils.response_helpers import (
     create_single_item_response,
     create_multiple_items_response
 )
+from app.api.v1.dependencies.auth import get_current_user
+from app.models import Users
 
 router = APIRouter()
 
@@ -69,7 +71,8 @@ async def get_pricelists(
 )
 async def create_pricelist(
     pricelist_create: PricelistCreate,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: Users = Depends(get_current_user)
 ):
     """
     Create a new pricelist.
@@ -78,7 +81,7 @@ async def create_pricelist(
     - **description**: Description of the pricelist (optional)
     """
     pricelist = await pricelist_service.create_pricelist(
-        db=db, pricelist_create=pricelist_create
+        db=db, pricelist_create=pricelist_create, created_by=current_user.id
     )
     return create_single_item_response(data=pricelist)
 
@@ -116,7 +119,8 @@ async def get_pricelist(
 async def update_pricelist(
     pricelist_id: int,
     pricelist_update: PricelistUpdate,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: Users = Depends(get_current_user)
 ):
     """
     Update an existing pricelist.
@@ -128,7 +132,9 @@ async def update_pricelist(
     pricelist = await pricelist_service.update_pricelist(
         db=db,
         pricelist_id=pricelist_id,
-        pricelist_update=pricelist_update
+        pricelist_update=pricelist_update,
+        updated_by=current_user.id,
+        current_user=current_user
     )
     return create_single_item_response(data=pricelist)
 
@@ -139,7 +145,8 @@ async def update_pricelist(
 )
 async def delete_pricelist(
     pricelist_id: int,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: Users = Depends(get_current_user)
 ):
     """
     Delete a pricelist.
@@ -149,5 +156,5 @@ async def delete_pricelist(
     Note: Pricelist cannot be deleted if it has associated price details.
     """
     await pricelist_service.delete_pricelist(
-        db=db, pricelist_id=pricelist_id
+        db=db, pricelist_id=pricelist_id, current_user=current_user
     )

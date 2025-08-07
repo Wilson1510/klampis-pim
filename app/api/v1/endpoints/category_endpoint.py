@@ -15,6 +15,8 @@ from app.utils.response_helpers import (
     create_single_item_response,
     create_multiple_items_response
 )
+from app.api.v1.dependencies.auth import get_current_user
+from app.models import Users
 
 router = APIRouter()
 
@@ -87,7 +89,8 @@ async def get_categories(
 )
 async def create_category(
     category_create: CategoryCreate,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: Users = Depends(get_current_user)
 ):
     """
     Create a new category.
@@ -103,7 +106,7 @@ async def create_category(
     - Child categories (parent_id is not null) MUST NOT have category_type_id
     """
     category = await category_service.create_category(
-        db=db, category_create=category_create
+        db=db, category_create=category_create, created_by=current_user.id
     )
     return create_single_item_response(data=category)
 
@@ -141,7 +144,8 @@ async def get_category(
 async def update_category(
     category_id: int,
     category_update: CategoryUpdate,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: Users = Depends(get_current_user)
 ):
     """
     Update an existing category.
@@ -162,7 +166,9 @@ async def update_category(
     category = await category_service.update_category(
         db=db,
         category_id=category_id,
-        category_update=category_update
+        category_update=category_update,
+        updated_by=current_user.id,
+        current_user=current_user
     )
     return create_single_item_response(data=category)
 
@@ -173,7 +179,8 @@ async def update_category(
 )
 async def delete_category(
     category_id: int,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: Users = Depends(get_current_user)
 ):
     """
     Delete a category.
@@ -182,7 +189,9 @@ async def delete_category(
 
     Note: Category cannot be deleted if it has child categories or products.
     """
-    await category_service.delete_category(db=db, category_id=category_id)
+    await category_service.delete_category(
+        db=db, category_id=category_id, current_user=current_user
+    )
 
 
 @router.get(

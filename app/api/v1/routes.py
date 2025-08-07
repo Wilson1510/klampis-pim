@@ -135,5 +135,5 @@ api_router = APIRouter()
 # Include all router groups
 api_router.include_router(public_router)
 api_router.include_router(protected_router)
-api_router.include_router(manager_router, prefix="/manager")
-api_router.include_router(admin_router, prefix="/admin")
+api_router.include_router(manager_router)
+api_router.include_router(admin_router)

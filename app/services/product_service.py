@@ -135,6 +135,9 @@ class ProductService:
                 detail=f"Product with id {product_id} not found"
             )
 
+        # Check ownership - ADMIN/MANAGER/SYSTEM can delete any, USER only their own
+        require_resource_ownership(current_user, db_product.created_by)
+
         # Check if product has SKUs
         sku_count = await self.repository.count_children(
             db, 'product_id', product_id, Skus
@@ -147,9 +150,6 @@ class ProductService:
                     "SKUs"
                 )
             )
-
-        # Check ownership - ADMIN/MANAGER/SYSTEM can delete any, USER only their own
-        require_resource_ownership(current_user, db_product.created_by)
 
         await self.repository.delete(db, id=product_id)
 
