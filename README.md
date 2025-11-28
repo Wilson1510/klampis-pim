@@ -47,14 +47,14 @@ The fastest way to get the application running is using Docker. We provide a set
    ./docker-setup.sh
 
 2. **Manual Docker Commands (Alternative): If you prefer running commands manually:**
-# Start services
-docker-compose up -d
+   ```Start services
+   docker-compose up -d
 
-# Run database migrations
-docker-compose exec app alembic upgrade head
+   ```Run database migrations
+   docker-compose exec app alembic upgrade head
 
-# Create system & admin users
-docker-compose exec app python scripts/create_initial_user.py
+   ```Create system & admin users
+   docker-compose exec app python scripts/create_initial_user.py
 
 ### Prerequisites
 
