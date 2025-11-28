@@ -37,6 +37,25 @@ A modern, scalable Product Information Management (PIM) system built for large s
 
 ## 🚀 Quick Start
 
+### 🐳 Docker Quick Start (Recommended)
+
+The fastest way to get the application running is using Docker. We provide a setup script that automates the build process, database migrations, and initial user creation.
+
+1. **Run the setup script:**
+   ```bash
+   chmod +x docker-setup.sh
+   ./docker-setup.sh
+
+2. **Manual Docker Commands (Alternative): If you prefer running commands manually:**
+# Start services
+docker-compose up -d
+
+# Run database migrations
+docker-compose exec app alembic upgrade head
+
+# Create system & admin users
+docker-compose exec app python scripts/create_initial_user.py
+
 ### Prerequisites
 
 - Python 3.11+
