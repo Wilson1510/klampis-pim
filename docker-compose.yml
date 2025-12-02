@@ -7,11 +7,9 @@ services:
     container_name: klampis_pim_db
     restart: always
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres123
-      POSTGRES_DB: klampis_pim
-    ports:
-      - "5433:5433"
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     volumes:
       # Persist database data
       - postgres_data:/var/lib/postgresql/data
@@ -30,8 +28,8 @@ services:
       - "8001:8001"
     environment:
       # Database connection (using db service name as host)
-      DATABASE_URI: postgresql+asyncpg://postgres:postgres123@db:5432/klampis_pim
-      ADMIN_PARAMS: '{"database": "postgres", "user": "postgres", "password": "postgres123", "host": "db", "port": "5432"}'
+      DATABASE_URI: ${DATABASE_URI}
+      ADMIN_PARAMS: ${ADMIN_PARAMS}
       
       # API Configuration
       API_V1_PREFIX: /api
@@ -39,7 +37,7 @@ services:
       ACCESS_TOKEN_EXPIRE_MINUTES: 60
       
       # CORS Settings
-      BACKEND_CORS_ORIGINS: '["http://localhost:8000", "http://localhost:3000"]'
+      BACKEND_CORS_ORIGINS: '["http://localhost:8001", "http://localhost:3000"]'
       
       # Project Info
       PROJECT_NAME: KLAMPIS PIM

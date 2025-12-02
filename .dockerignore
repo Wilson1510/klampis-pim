@@ -36,3 +36,5 @@ documentation/
 # Database
 *.db
 *.sqlite
+alembic.example
+env.example

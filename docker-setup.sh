@@ -5,18 +5,18 @@
 echo "🚀 Starting KLAMPIS PIM with Docker..."
 
 # Start the containers
-docker-compose up -d
+docker compose up -d --build
 
 echo "⏳ Waiting for database to be ready..."
 sleep 5
 
 # Run database migrations
 echo "📦 Running database migrations..."
-docker-compose exec app alembic upgrade head
+docker compose exec app alembic upgrade head
 
 # Create initial user
 echo "👤 Creating initial user..."
-docker-compose exec app python scripts/create_initial_user.py
+docker compose exec app python scripts/create_initial_user.py
 
 echo "✅ Setup complete!"
 echo ""
